@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { QrReader } from 'react-qr-reader';
 import api from '../api';
-import { Scan, CheckCircle, XCircle, Play, Square, Camera, Zap } from 'lucide-react';
+import { Scan, CheckCircle, XCircle, Square, Camera, Zap } from 'lucide-react';
 
 const CheckIn = () => {
     const [result, setResult] = useState('');
@@ -62,8 +62,8 @@ const CheckIn = () => {
                     <button
                         onClick={() => setScanning(!scanning)}
                         className={`w-full py-4 px-6 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center gap-2 border-2 ${scanning
-                                ? 'bg-red-600 border-red-600 text-white hover:bg-red-700 shadow-lg'
-                                : 'bg-teal-600 border-teal-600 text-white hover:bg-teal-700 shadow-lg'
+                            ? 'bg-red-600 border-red-600 text-white hover:bg-red-700 shadow-lg'
+                            : 'bg-teal-600 border-teal-600 text-white hover:bg-teal-700 shadow-lg'
                             }`}
                     >
                         {scanning ? (

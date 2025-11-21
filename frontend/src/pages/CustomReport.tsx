@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { ArrowLeft, Calendar, Filter, Download, Users, TrendingUp, UserCheck, PieChart as PieChartIcon } from 'lucide-react';
+import { ArrowLeft, Filter, Users, TrendingUp, UserCheck, PieChart as PieChartIcon } from 'lucide-react';
 import {
     LineChart,
     Line,
@@ -84,7 +84,7 @@ const CustomReport = () => {
         }
     }, [startDate, endDate, type]);
 
-    const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042'];
+
 
     return (
         <div className="min-h-screen bg-[#0a0f1e] p-6">

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { ArrowLeft, Users, UserPlus, Calendar, TrendingUp, UserCheck, Download } from 'lucide-react';
@@ -249,7 +249,7 @@ const EventReport = () => {
                                         paddingAngle={5}
                                         dataKey="value"
                                     >
-                                        {genderData.map((entry, index) => (
+                                        {genderData.map((_entry, index) => (
                                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                         ))}
                                     </Pie>
@@ -270,7 +270,7 @@ const EventReport = () => {
                                     <YAxis stroke="#94a3b8" />
                                     <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', color: '#fff' }} />
                                     <Bar dataKey="value" fill="#8884d8">
-                                        {attendanceData.map((entry, index) => (
+                                        {attendanceData.map((_entry, index) => (
                                             <Cell key={`cell-${index}`} fill={COLORS[index + 2]} />
                                         ))}
                                     </Bar>

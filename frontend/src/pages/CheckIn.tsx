@@ -14,17 +14,13 @@ interface Event {
 
 const CheckIn = () => {
     const [activeEvent, setActiveEvent] = useState<Event | null>(null);
-    const [loadingEvent, setLoadingEvent] = useState(true);
+
     const [result, setResult] = useState('');
     const [scanning, setScanning] = useState(false);
     const [status, setStatus] = useState<'idle' | 'success' | 'error' | 'loading'>('idle');
     const [message, setMessage] = useState('');
     const [permissionDenied, setPermissionDenied] = useState(false);
     const scannerRef = useRef<Html5QrcodeScanner | null>(null);
-
-    useEffect(() => {
-        fetchActiveEvent();
-    }, []);
 
     const fetchActiveEvent = async () => {
         try {
@@ -36,10 +32,12 @@ const CheckIn = () => {
             } else {
                 setMessage('Failed to load event information');
             }
-        } finally {
-            setLoadingEvent(false);
         }
     };
+
+    useEffect(() => {
+        fetchActiveEvent();
+    }, []);
 
     useEffect(() => {
         if (scanning && activeEvent) {

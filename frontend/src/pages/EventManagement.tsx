@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Calendar, Plus, Edit2, Trash2, ToggleLeft, ToggleRight, Users, Play, Square, BarChart2 } from 'lucide-react';
+import { Calendar, Plus, Trash2, ToggleLeft, ToggleRight, Users, Play, Square, BarChart2 } from 'lucide-react';
 
 const api = axios.create({
     baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000/api',

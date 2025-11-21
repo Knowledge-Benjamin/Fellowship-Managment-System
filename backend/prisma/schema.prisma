@@ -1,0 +1,82 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum ServiceType {
+  TUESDAY_FELLOWSHIP
+  THURSDAY_PHANEROO
+}
+
+enum CheckInMethod {
+  QR
+  MANUAL
+}
+
+enum TransportStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+model Member {
+  id          String   @id @default(uuid())
+  fullName    String
+  phoneNumber String
+  gender      Gender
+  residence   String?
+  course      String?
+  yearOfStudy Int?
+  qrCode      String   @unique @default(uuid())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  attendances       Attendance[]
+  transportBookings TransportBooking[]
+}
+
+model Service {
+  id          String      @id @default(uuid())
+  date        DateTime
+  type        ServiceType
+  name        String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  attendances       Attendance[]
+  transportBookings TransportBooking[]
+}
+
+model Attendance {
+  id          String        @id @default(uuid())
+  memberId    String
+  serviceId   String
+  checkInTime DateTime      @default(now())
+  method      CheckInMethod
+  
+  member      Member        @relation(fields: [memberId], references: [id])
+  service     Service       @relation(fields: [serviceId], references: [id])
+
+  @@unique([memberId, serviceId]) // Prevent duplicate check-ins
+}
+
+model TransportBooking {
+  id          String          @id @default(uuid())
+  memberId    String
+  serviceId   String
+  pickupPoint String
+  status      TransportStatus @default(PENDING)
+  createdAt   DateTime        @default(now())
+
+  member      Member          @relation(fields: [memberId], references: [id])
+  service     Service         @relation(fields: [serviceId], references: [id])
+}

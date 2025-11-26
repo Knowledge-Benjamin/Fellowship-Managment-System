@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Calendar, Plus, Trash2, ToggleLeft, ToggleRight, Users, Play, Square, BarChart2 } from 'lucide-react';
+import VolunteerManager from '../components/VolunteerManager';
 
 const api = axios.create({
     baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000/api',
@@ -31,6 +32,7 @@ const EventManagement = () => {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
     const [showCreateForm, setShowCreateForm] = useState(false);
+    const [selectedEventForVolunteers, setSelectedEventForVolunteers] = useState<string | null>(null);
     const [formData, setFormData] = useState({
         name: '',
         date: '',
@@ -111,17 +113,17 @@ const EventManagement = () => {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-purple-900 via-purple-800 to-indigo-900 p-6">
+        <div className="min-h-screen bg-[#0a0f1e] p-6">
             <div className="max-w-6xl mx-auto">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-8">
                     <div>
                         <h1 className="text-4xl font-bold text-white mb-2">Event Management</h1>
-                        <p className="text-purple-200">Create and manage fellowship events</p>
+                        <p className="text-slate-400">Create and manage fellowship events</p>
                     </div>
                     <button
                         onClick={() => setShowCreateForm(true)}
-                        className="flex items-center gap-2 bg-gradient-to-r from-pink-500 to-purple-600 text-white px-6 py-3 rounded-xl hover:from-pink-600 hover:to-purple-700 transition-all transform hover:scale-105 shadow-lg"
+                        className="flex items-center gap-2 bg-teal-600 text-white px-6 py-3 rounded-xl hover:bg-teal-700 transition-all transform hover:scale-105 shadow-lg"
                     >
                         <Plus size={20} />
                         Create Event
@@ -130,8 +132,8 @@ const EventManagement = () => {
 
                 {/* Create Event Modal */}
                 {showCreateForm && (
-                    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-                        <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 max-w-2xl w-full border border-white/20 shadow-2xl">
+                    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                        <div className="bg-[#151d30]/95 backdrop-blur-xl rounded-2xl p-8 max-w-2xl w-full border border-slate-700 shadow-2xl">
                             <h2 className="text-2xl font-bold text-white mb-6">Create New Event</h2>
                             <form onSubmit={handleCreateEvent} className="space-y-4">
                                 <div>
@@ -141,7 +143,7 @@ const EventManagement = () => {
                                         required
                                         value={formData.name}
                                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                        className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                        className="w-full px-4 py-3 rounded-xl bg-slate-900/50 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500"
                                         placeholder="Tuesday Fellowship"
                                     />
                                 </div>
@@ -154,7 +156,7 @@ const EventManagement = () => {
                                             required
                                             value={formData.date}
                                             onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                                            className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                            className="w-full px-4 py-3 rounded-xl bg-slate-900/50 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
                                         />
                                     </div>
                                     <div>
@@ -162,7 +164,7 @@ const EventManagement = () => {
                                         <select
                                             value={formData.type}
                                             onChange={(e) => setFormData({ ...formData, type: e.target.value as any })}
-                                            className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                            className="w-full px-4 py-3 rounded-xl bg-slate-900/50 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
                                         >
                                             <option value="TUESDAY_FELLOWSHIP">Tuesday Fellowship</option>
                                             <option value="THURSDAY_PHANEROO">Thursday Phaneroo</option>
@@ -178,7 +180,7 @@ const EventManagement = () => {
                                             required
                                             value={formData.startTime}
                                             onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
-                                            className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                            className="w-full px-4 py-3 rounded-xl bg-slate-900/50 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
                                         />
                                     </div>
                                     <div>
@@ -188,7 +190,7 @@ const EventManagement = () => {
                                             required
                                             value={formData.endTime}
                                             onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
-                                            className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                            className="w-full px-4 py-3 rounded-xl bg-slate-900/50 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
                                         />
                                     </div>
                                 </div>
@@ -199,7 +201,7 @@ const EventManagement = () => {
                                         type="text"
                                         value={formData.venue}
                                         onChange={(e) => setFormData({ ...formData, venue: e.target.value })}
-                                        className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                        className="w-full px-4 py-3 rounded-xl bg-slate-900/50 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500"
                                         placeholder="Main Hall"
                                     />
                                 </div>
@@ -219,7 +221,7 @@ const EventManagement = () => {
                                         <select
                                             value={formData.recurrenceRule}
                                             onChange={(e) => setFormData({ ...formData, recurrenceRule: e.target.value })}
-                                            className="px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                            className="px-4 py-2 rounded-xl bg-slate-900/50 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
                                         >
                                             <option value="DAILY">Daily</option>
                                             <option value="WEEKLY">Weekly</option>
@@ -242,13 +244,13 @@ const EventManagement = () => {
                                     <button
                                         type="button"
                                         onClick={() => setShowCreateForm(false)}
-                                        className="flex-1 px-6 py-3 rounded-xl bg-white/10 text-white hover:bg-white/20 transition-all"
+                                        className="flex-1 px-6 py-3 rounded-xl bg-slate-800 text-white hover:bg-slate-700 transition-all"
                                     >
                                         Cancel
                                     </button>
                                     <button
                                         type="submit"
-                                        className="flex-1 px-6 py-3 rounded-xl bg-gradient-to-r from-pink-500 to-purple-600 text-white hover:from-pink-600 hover:to-purple-700 transition-all"
+                                        className="flex-1 px-6 py-3 rounded-xl bg-teal-600 text-white hover:bg-teal-700 transition-all"
                                     >
                                         Create Event
                                     </button>
@@ -271,7 +273,7 @@ const EventManagement = () => {
                         {events.map((event) => (
                             <div
                                 key={event.id}
-                                className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20 shadow-lg hover:shadow-2xl transition-all"
+                                className="bg-[#151d30]/80 backdrop-blur-xl rounded-2xl p-6 border border-slate-700 shadow-lg hover:shadow-2xl transition-all"
                             >
                                 <div className="flex items-start justify-between">
                                     <div className="flex-1">
@@ -350,6 +352,14 @@ const EventManagement = () => {
                                         </button>
 
                                         <button
+                                            onClick={() => setSelectedEventForVolunteers(event.id)}
+                                            className="p-2 rounded-lg bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30 transition-all"
+                                            title="Manage Volunteers"
+                                        >
+                                            <Users size={20} />
+                                        </button>
+
+                                        <button
                                             onClick={() => deleteEvent(event.id)}
                                             className="p-2 rounded-lg bg-red-500/20 text-red-300 hover:bg-red-500/30 transition-all"
                                             title="Delete event"
@@ -369,6 +379,13 @@ const EventManagement = () => {
                             </div>
                         ))}
                     </div>
+                )}
+
+                {selectedEventForVolunteers && (
+                    <VolunteerManager
+                        eventId={selectedEventForVolunteers}
+                        onClose={() => setSelectedEventForVolunteers(null)}
+                    />
                 )}
             </div>
         </div>

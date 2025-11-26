@@ -51,6 +51,7 @@ model Member {
 
   attendances       Attendance[]
   transportBookings TransportBooking[]
+  volunteers        EventVolunteer[]
 
   @@index([phoneNumber])
   @@index([email])
@@ -75,6 +76,7 @@ model Event {
   attendances       Attendance[]
   guestAttendances  GuestAttendance[]
   transportBookings TransportBooking[]
+  volunteers        EventVolunteer[]
 
   @@index([date])
   @@index([isActive])
@@ -116,4 +118,16 @@ model GuestAttendance {
   checkedInAt DateTime @default(now())
 
   event Event @relation(fields: [eventId], references: [id])
+}
+
+model EventVolunteer {
+  id        String   @id @default(uuid())
+  eventId   String
+  memberId  String
+  assignedAt DateTime @default(now())
+
+  event  Event  @relation(fields: [eventId], references: [id])
+  member Member @relation(fields: [memberId], references: [id])
+
+  @@unique([eventId, memberId])
 }

@@ -20,12 +20,31 @@ const CheckIn = () => {
     const [status, setStatus] = useState<'idle' | 'success' | 'error' | 'loading'>('idle');
     const [message, setMessage] = useState('');
     const [permissionDenied, setPermissionDenied] = useState(false);
+    const [accessDenied, setAccessDenied] = useState(false);
     const scannerRef = useRef<Html5QrcodeScanner | null>(null);
+
+    const checkPermission = async (eventId: string) => {
+        try {
+            const response = await api.get(`/volunteers/${eventId}/check-permission`);
+            if (!response.data.hasPermission) {
+                setAccessDenied(true);
+                setMessage('You do not have permission to perform check-ins for this event.');
+            }
+        } catch (error) {
+            console.error('Failed to check permission:', error);
+            // SECURITY: Block access if permission check fails
+            setAccessDenied(true);
+            setMessage('Unable to verify check-in permissions. Access denied for security.');
+        }
+    };
 
     const fetchActiveEvent = async () => {
         try {
             const response = await api.get('/events/active');
             setActiveEvent(response.data);
+            if (response.data) {
+                checkPermission(response.data.id);
+            }
         } catch (error: any) {
             if (error.response?.status === 404) {
                 setMessage('No active event. Please wait for an event to start.');
@@ -40,7 +59,7 @@ const CheckIn = () => {
     }, []);
 
     useEffect(() => {
-        if (scanning && activeEvent) {
+        if (scanning && activeEvent && !accessDenied) {
             setPermissionDenied(false);
 
             const scanner = new Html5QrcodeScanner(
@@ -99,7 +118,7 @@ const CheckIn = () => {
                 });
             };
         }
-    }, [scanning]);
+    }, [scanning, activeEvent, accessDenied]);
 
     const handleStartScan = () => {
         setPermissionDenied(false);
@@ -142,6 +161,26 @@ const CheckIn = () => {
                     </div>
                 </div>
 
+                {/* Access Denied State */}
+                {accessDenied && (
+                    <div className="mb-6 bg-red-600/20 border-2 border-red-500 rounded-xl p-6 animate-slide-up">
+                        <div className="flex items-start gap-4">
+                            <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center shrink-0">
+                                <AlertTriangle className="text-red-400" size={24} />
+                            </div>
+                            <div className="flex-1">
+                                <h3 className="text-red-100 font-bold text-lg mb-2">Access Denied</h3>
+                                <p className="text-red-200 text-sm mb-4 leading-relaxed">
+                                    {message}
+                                </p>
+                                <p className="text-red-300 text-xs">
+                                    Only Fellowship Managers and assigned Check-in Volunteers can access this page for the current event.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* Permission Denied State */}
                 {permissionDenied && (
                     <div className="mb-6 bg-yellow-600/20 border-2 border-yellow-500 rounded-xl p-6 animate-slide-up">
@@ -181,7 +220,7 @@ const CheckIn = () => {
                 )}
 
                 {/* Start Scanner Button */}
-                {!scanning && status === 'idle' && !permissionDenied && (
+                {!scanning && status === 'idle' && !permissionDenied && !accessDenied && (
                     <div className="mb-6 relative z-10">
                         <button
                             onClick={handleStartScan}

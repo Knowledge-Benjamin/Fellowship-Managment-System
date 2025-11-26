@@ -4,11 +4,13 @@ import helmet from 'helmet';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
+import authRoutes from './routes/authRoutes';
 import memberRoutes from './routes/memberRoutes';
 import eventRoutes from './routes/eventRoutes';
 import attendanceRoutes from './routes/attendanceRoutes';
 import transportRoutes from './routes/transportRoutes';
 import reportRoutes from './routes/reportRoutes';
+import volunteerRoutes from './routes/volunteerRoutes';
 
 dotenv.config();
 
@@ -30,10 +32,6 @@ app.use(limiter);
 
 app.use(express.json());
 
-import authRoutes from './routes/authRoutes';
-
-// ... (existing imports)
-
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/members', memberRoutes);
@@ -41,6 +39,7 @@ app.use('/api/attendance', attendanceRoutes);
 app.use('/api/transport', transportRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/volunteers', volunteerRoutes);
 
 app.get('/', (req, res) => {
     res.send('Fellowship Information Management System API');

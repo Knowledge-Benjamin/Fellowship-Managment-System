@@ -11,6 +11,8 @@ import Profile from './pages/Profile';
 import { ToastProvider } from './components/ToastProvider';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
+import CheckInPermissionGuard from './components/CheckInPermissionGuard';
+import { useCheckInAccess } from './hooks/useCheckInAccess';
 import { Home, QrCode, Bus, Calendar, UserPlus, PieChart, LogIn, LogOut, User } from 'lucide-react';
 
 function NavLink({ to, children, icon: Icon }: { to: string; children: React.ReactNode; icon: any }) {
@@ -40,6 +42,7 @@ function NavLink({ to, children, icon: Icon }: { to: string; children: React.Rea
 
 function Navigation() {
   const { isAuthenticated, isManager, logout } = useAuth();
+  const { hasAccess: hasCheckInAccess } = useCheckInAccess();
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-slate-800 bg-[#151d30]/80 backdrop-blur-xl">
@@ -64,7 +67,7 @@ function Navigation() {
             {isAuthenticated && (
               <>
                 {isManager && <NavLink to="/" icon={Home}>Register</NavLink>}
-                <NavLink to="/check-in" icon={QrCode}>Check-in</NavLink>
+                {hasCheckInAccess && <NavLink to="/check-in" icon={QrCode}>Check-in</NavLink>}
                 {isManager && <NavLink to="/guest-check-in" icon={UserPlus}>Guest</NavLink>}
                 {isManager && <NavLink to="/events" icon={Calendar}>Events</NavLink>}
                 {isManager && <NavLink to="/reports/custom" icon={PieChart}>Reports</NavLink>}
@@ -90,7 +93,7 @@ function Navigation() {
           {isAuthenticated && (
             <>
               {isManager && <NavLink to="/" icon={Home}>Register</NavLink>}
-              <NavLink to="/check-in" icon={QrCode}>Check-in</NavLink>
+              {hasCheckInAccess && <NavLink to="/check-in" icon={QrCode}>Check-in</NavLink>}
               <NavLink to="/transport" icon={Bus}>Transport</NavLink>
               <NavLink to="/profile" icon={User}>Profile</NavLink>
             </>
@@ -129,9 +132,9 @@ function AppContent() {
             } />
 
             <Route path="/check-in" element={
-              <ProtectedRoute>
+              <CheckInPermissionGuard>
                 <CheckIn />
-              </ProtectedRoute>
+              </CheckInPermissionGuard>
             } />
 
             <Route path="/guest-check-in" element={

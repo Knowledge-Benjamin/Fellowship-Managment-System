@@ -37,55 +37,84 @@ const Toast = ({ id, type, message, duration = 4000, onClose }: ToastProps) => {
     };
 
     const icons = {
-        success: <CheckCircle className="w-5 h-5" />,
-        error: <XCircle className="w-5 h-5" />,
-        warning: <AlertTriangle className="w-5 h-5" />,
-        info: <Info className="w-5 h-5" />,
+        success: <CheckCircle className="w-6 h-6" />,
+        error: <XCircle className="w-6 h-6" />,
+        warning: <AlertTriangle className="w-6 h-6" />,
+        info: <Info className="w-6 h-6" />,
     };
 
+    // Glassmorphic premium styling matching VolunteerManager
     const styles = {
-        success: 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400',
-        error: 'bg-red-500/10 border-red-500/30 text-red-400',
-        warning: 'bg-amber-500/10 border-amber-500/30 text-amber-400',
-        info: 'bg-blue-500/10 border-blue-500/30 text-blue-400',
+        success: 'bg-green-500/10 backdrop-blur-xl border-green-500/30 text-green-100',
+        error: 'bg-red-500/10 backdrop-blur-xl border-red-500/30 text-red-100',
+        warning: 'bg-yellow-500/10 backdrop-blur-xl border-yellow-500/30 text-yellow-100',
+        info: 'bg-blue-500/10 backdrop-blur-xl border-blue-500/30 text-blue-100',
+    };
+
+    const iconBgStyles = {
+        success: 'bg-green-500/20 text-green-400',
+        error: 'bg-red-500/20 text-red-400',
+        warning: 'bg-yellow-500/20 text-yellow-400',
+        info: 'bg-blue-500/20 text-blue-400',
     };
 
     const progressStyles = {
-        success: 'bg-emerald-500',
+        success: 'bg-green-500',
         error: 'bg-red-500',
-        warning: 'bg-amber-500',
+        warning: 'bg-yellow-500',
+        info: 'bg-blue-500',
+    };
+
+    const topBarStyles = {
+        success: 'bg-green-500',
+        error: 'bg-red-500',
+        warning: 'bg-yellow-500',
         info: 'bg-blue-500',
     };
 
     return (
         <div
             className={`
-                pointer-events-auto max-w-md w-full backdrop-blur-xl rounded-xl border p-4 shadow-2xl 
-                transition-all duration-300 ${styles[type]}
-                ${isExiting ? 'opacity-0 translate-x-full' : 'opacity-100 translate-x-0'}
+                pointer-events-auto max-w-md w-full rounded-xl border-2 shadow-2xl overflow-hidden
+                transition-all duration-300 ease-out
+                ${styles[type]}
+                ${isExiting ? 'opacity-0 translate-x-full scale-95' : 'opacity-100 translate-x-0 scale-100'}
             `}
             role="alert"
             aria-live="polite"
         >
-            <div className="flex items-start gap-3">
-                <div className="mt-0.5">{icons[type]}</div>
-                <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-white leading-relaxed">{message}</p>
+            {/* Top accent bar */}
+            <div className={`h-1 w-full ${topBarStyles[type]}`}></div>
+
+            <div className="p-4">
+                <div className="flex items-start gap-4">
+                    {/* Icon with glassmorphic background */}
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 ${iconBgStyles[type]}`}>
+                        {icons[type]}
+                    </div>
+
+                    {/* Message */}
+                    <div className="flex-1 min-w-0 pt-1">
+                        <p className="text-sm font-semibold leading-relaxed">{message}</p>
+                    </div>
+
+                    {/* Close button */}
+                    <button
+                        onClick={handleClose}
+                        className="text-white/60 hover:text-white transition-colors shrink-0 mt-1 hover:bg-white/10 rounded-full p-1"
+                        aria-label="Close notification"
+                    >
+                        <X className="w-4 h-4" />
+                    </button>
                 </div>
-                <button
-                    onClick={handleClose}
-                    className="text-white/60 hover:text-white transition-colors shrink-0"
-                    aria-label="Close notification"
-                >
-                    <X className="w-4 h-4" />
-                </button>
-            </div>
-            {/* Progress Bar */}
-            <div className="mt-3 h-1 bg-white/10 rounded-full overflow-hidden">
-                <div
-                    className={`h-full transition-all duration-50 linear ${progressStyles[type]}`}
-                    style={{ width: `${progress}%` }}
-                />
+
+                {/* Progress bar */}
+                <div className="mt-3 h-1 bg-white/10 rounded-full overflow-hidden">
+                    <div
+                        className={`h-full transition-all duration-50 linear ${progressStyles[type]}`}
+                        style={{ width: `${progress}%` }}
+                    />
+                </div>
             </div>
         </div>
     );

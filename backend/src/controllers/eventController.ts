@@ -1,45 +1,21 @@
 import { Request, Response } from 'express';
+import { z } from 'zod';
 import prisma from '../prisma';
 
-// Create a new event
-export const createEvent = async (req: Request, res: Response) => {
-    try {
-        const {
-            name,
-            date,
-            startTime,
-            endTime,
-            type,
-            venue,
-            isRecurring,
-            recurrenceRule,
-            allowGuestCheckin,
-        } = req.body;
+// Validation schemas
+const createEventSchema = z.object({
+    name: z.string().min(1, 'Event name is required').max(100),
+    date: z.string().datetime().or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)),
+    startTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Invalid time format (HH:MM)'),
+    endTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Invalid time format (HH:MM)'),
+    type: z.enum(['TUESDAY_FELLOWSHIP', 'THURSDAY_PHANEROO']),
+    venue: z.string().min(1).max(200).optional(),
+    isRecurring: z.boolean().optional(),
+    recurrenceRule: z.string().optional(),
+    allowGuestCheckin: z.boolean().optional(),
+});
 
-        const event = await prisma.event.create({
-            data: {
-                name,
-                date: new Date(date),
-                startTime,
-                endTime,
-                type,
-                venue,
-                isRecurring: isRecurring || false,
-                recurrenceRule: isRecurring ? recurrenceRule : null,
-                allowGuestCheckin: allowGuestCheckin || false,
-                isActive: false, // Events start as inactive
-            },
-        });
-
-        res.status(201).json({
-            message: 'Event created successfully',
-            event,
-        });
-    } catch (error) {
-        console.error('Create event error:', error);
-        res.status(500).json({ error: 'Failed to create event' });
-    }
-};
+const updateEventSchema = createEventSchema.partial();
 
 // Helper to calculate event status
 const getEventStatus = (event: any) => {
@@ -59,6 +35,43 @@ const getEventStatus = (event: any) => {
     return 'PAST';
 };
 
+// Create a new event
+export const createEvent = async (req: Request, res: Response) => {
+    try {
+        // Validate input
+        const validatedData = createEventSchema.parse(req.body);
+
+        const event = await prisma.event.create({
+            data: {
+                name: validatedData.name,
+                date: new Date(validatedData.date),
+                startTime: validatedData.startTime,
+                endTime: validatedData.endTime,
+                type: validatedData.type,
+                venue: validatedData.venue,
+                isRecurring: validatedData.isRecurring || false,
+                recurrenceRule: validatedData.isRecurring ? validatedData.recurrenceRule : null,
+                allowGuestCheckin: validatedData.allowGuestCheckin || false,
+                isActive: false,
+            },
+        });
+
+        res.status(201).json({
+            message: 'Event created successfully',
+            event,
+        });
+    } catch (error) {
+        if (error instanceof z.ZodError) {
+            return res.status(400).json({
+                error: 'Invalid input',
+                details: error.issues
+            });
+        }
+        console.error('Create event error:', error);
+        res.status(500).json({ error: 'Failed to create event' });
+    }
+};
+
 // Get all events with optional filters
 export const getEvents = async (req: Request, res: Response) => {
     try {
@@ -70,7 +83,7 @@ export const getEvents = async (req: Request, res: Response) => {
             where.isActive = isActive === 'true';
         }
 
-        if (type) {
+        if (type && (type === 'TUESDAY_FELLOWSHIP' || type === 'THURSDAY_PHANEROO')) {
             where.type = type;
         }
 
@@ -139,6 +152,10 @@ export const getEventById = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
 
+        if (!id || typeof id !== 'string') {
+            return res.status(400).json({ error: 'Invalid event ID' });
+        }
+
         const event = await prisma.event.findUnique({
             where: { id },
             include: {
@@ -176,9 +193,17 @@ export const getEventById = async (req: Request, res: Response) => {
 export const updateEvent = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const updateData = req.body;
 
-        // If date is being updated, convert to Date object
+        if (!id || typeof id !== 'string') {
+            return res.status(400).json({ error: 'Invalid event ID' });
+        }
+
+        // Validate input
+        const validatedData = updateEventSchema.parse(req.body);
+
+        const updateData: any = { ...validatedData };
+
+        // Convert date string to Date object if present
         if (updateData.date) {
             updateData.date = new Date(updateData.date);
         }
@@ -193,15 +218,25 @@ export const updateEvent = async (req: Request, res: Response) => {
             event,
         });
     } catch (error) {
+        if (error instanceof z.ZodError) {
+            return res.status(400).json({
+                error: 'Invalid input',
+                details: error.issues
+            });
+        }
         console.error('Update event error:', error);
         res.status(500).json({ error: 'Failed to update event' });
     }
 };
 
-// Delete event (soft delete by setting isActive to false)
+// Delete event
 export const deleteEvent = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
+
+        if (!id || typeof id !== 'string') {
+            return res.status(400).json({ error: 'Invalid event ID' });
+        }
 
         await prisma.event.delete({
             where: { id },
@@ -218,6 +253,10 @@ export const deleteEvent = async (req: Request, res: Response) => {
 export const toggleEventActive = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
+
+        if (!id || typeof id !== 'string') {
+            return res.status(400).json({ error: 'Invalid event ID' });
+        }
 
         const event = await prisma.event.findUnique({ where: { id } });
 
@@ -244,6 +283,10 @@ export const toggleEventActive = async (req: Request, res: Response) => {
 export const toggleGuestCheckin = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
+
+        if (!id || typeof id !== 'string') {
+            return res.status(400).json({ error: 'Invalid event ID' });
+        }
 
         const event = await prisma.event.findUnique({ where: { id } });
 

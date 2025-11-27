@@ -1,14 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import { Calendar, Plus, Trash2, ToggleLeft, ToggleRight, Users, Play, Square, BarChart2 } from 'lucide-react';
-import VolunteerManager from '../components/VolunteerManager';
-
-const api = axios.create({
-    baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000/api',
-});
-
-interface Event {
+import api from '../api';
+import { Calendar, Plus, Trash2, ToggleLeft, ToggleRight, Users, Play, Square, BarChart2, List } from 'lucide-react';
+import VolunteerManager from '../components/VolunteerManager'; interface Event {
     id: string;
     name: string;
     date: string;
@@ -365,6 +359,14 @@ const EventManagement = () => {
                                             title="Delete event"
                                         >
                                             <Trash2 size={20} />
+                                        </button>
+
+                                        <button
+                                            onClick={() => navigate(`/events/${event.id}/manual-checkin`)}
+                                            className="p-2 rounded-lg bg-teal-500/20 text-teal-300 hover:bg-teal-500/30 transition-all"
+                                            title="Manual Check-in"
+                                        >
+                                            <List size={20} />
                                         </button>
 
                                         <button

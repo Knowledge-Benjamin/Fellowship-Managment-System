@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import { ArrowLeft, Filter, Users, TrendingUp, UserCheck, PieChart as PieChartIcon } from 'lucide-react';
+import api from '../api';
+import { ArrowLeft, Filter, Users, TrendingUp, UserCheck, PieChart as PieChartIcon, MapPin } from 'lucide-react';
 import {
     LineChart,
     Line,
@@ -14,11 +14,9 @@ import {
     PieChart,
     Pie,
     Cell,
+    BarChart,
+    Bar,
 } from 'recharts';
-
-const api = axios.create({
-    baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000/api',
-});
 
 interface CustomReportData {
     stats: {
@@ -30,6 +28,7 @@ interface CustomReportData {
             MALE: number;
             FEMALE: number;
         };
+        regionBreakdown: Record<string, number>;
     };
     chartData: Array<{
         date: string;
@@ -38,20 +37,45 @@ interface CustomReportData {
     }>;
 }
 
+interface Region {
+    id: string;
+    name: string;
+}
+
 const CustomReport = () => {
     const navigate = useNavigate();
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
     const [type, setType] = useState('');
+    const [regionId, setRegionId] = useState('');
+    const [regions, setRegions] = useState<Region[]>([]);
     const [data, setData] = useState<CustomReportData | null>(null);
     const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        fetchRegions();
+    }, []);
+
+    const fetchRegions = async () => {
+        try {
+            const response = await api.get('/regions');
+            setRegions(response.data);
+        } catch (error) {
+            console.error('Failed to fetch regions:', error);
+        }
+    };
 
     const fetchReport = async () => {
         if (!startDate || !endDate) return;
         setLoading(true);
         try {
             const response = await api.get('/reports/custom', {
-                params: { startDate, endDate, type: type || undefined },
+                params: {
+                    startDate,
+                    endDate,
+                    type: type || undefined,
+                    regionId: regionId || undefined
+                },
             });
             setData(response.data);
         } catch (error) {
@@ -77,14 +101,17 @@ const CustomReport = () => {
         setEndDate(end.toISOString().split('T')[0]);
     };
 
-    // Trigger fetch when dates change
+    // Trigger fetch when filters change
     useEffect(() => {
         if (startDate && endDate) {
             fetchReport();
         }
-    }, [startDate, endDate, type]);
+    }, [startDate, endDate, type, regionId]);
 
-
+    // Prepare region data for chart
+    const regionChartData = data?.stats.regionBreakdown
+        ? Object.entries(data.stats.regionBreakdown).map(([name, value]) => ({ name, value }))
+        : [];
 
     return (
         <div className="min-h-screen bg-[#0a0f1e] p-6">
@@ -136,6 +163,21 @@ const CustomReport = () => {
                                 <option value="THURSDAY_PHANEROO">Thursday Phaneroo</option>
                             </select>
                         </div>
+                        <div>
+                            <label className="block text-slate-400 text-sm mb-2">Region</label>
+                            <select
+                                value={regionId}
+                                onChange={(e) => setRegionId(e.target.value)}
+                                className="px-4 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white focus:outline-none focus:border-indigo-500 min-w-[150px]"
+                            >
+                                <option value="">All Regions</option>
+                                {regions.map((region) => (
+                                    <option key={region.id} value={region.id}>
+                                        {region.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
 
                         <div className="flex gap-2 ml-auto">
                             <button
@@ -166,9 +208,9 @@ const CustomReport = () => {
                         <p className="text-slate-400">Generating report...</p>
                     </div>
                 ) : data ? (
-                    <div className="animate-fade-in">
+                    <div className="animate-fade-in space-y-8">
                         {/* Key Metrics */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                             <div className="bg-[#151d30] p-6 rounded-2xl border border-slate-800">
                                 <div className="flex items-center gap-3 mb-2">
                                     <div className="p-2 rounded-lg bg-indigo-500/20 text-indigo-400">
@@ -224,8 +266,8 @@ const CustomReport = () => {
                         </div>
 
                         {/* Charts */}
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                            <div className="lg:col-span-2 bg-[#151d30] p-6 rounded-2xl border border-slate-800">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div className="bg-[#151d30] p-6 rounded-2xl border border-slate-800">
                                 <h3 className="text-xl font-bold text-white mb-6">Attendance Trend</h3>
                                 <div className="h-80">
                                     <ResponsiveContainer width="100%" height="100%">
@@ -241,29 +283,16 @@ const CustomReport = () => {
                             </div>
 
                             <div className="bg-[#151d30] p-6 rounded-2xl border border-slate-800">
-                                <h3 className="text-xl font-bold text-white mb-6">Gender Distribution</h3>
+                                <h3 className="text-xl font-bold text-white mb-6">Region Distribution</h3>
                                 <div className="h-80">
                                     <ResponsiveContainer width="100%" height="100%">
-                                        <PieChart>
-                                            <Pie
-                                                data={[
-                                                    { name: 'Male', value: data.stats.genderBreakdown.MALE },
-                                                    { name: 'Female', value: data.stats.genderBreakdown.FEMALE },
-                                                ]}
-                                                cx="50%"
-                                                cy="50%"
-                                                innerRadius={60}
-                                                outerRadius={80}
-                                                fill="#8884d8"
-                                                paddingAngle={5}
-                                                dataKey="value"
-                                            >
-                                                <Cell fill="#8884d8" />
-                                                <Cell fill="#82ca9d" />
-                                            </Pie>
+                                        <BarChart data={regionChartData} layout="vertical">
+                                            <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                                            <XAxis type="number" stroke="#94a3b8" />
+                                            <YAxis dataKey="name" type="category" stroke="#94a3b8" width={100} />
                                             <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', color: '#fff' }} />
-                                            <Legend />
-                                        </PieChart>
+                                            <Bar dataKey="value" fill="#2dd4bf" radius={[0, 4, 4, 0]} />
+                                        </BarChart>
                                     </ResponsiveContainer>
                                 </div>
                             </div>

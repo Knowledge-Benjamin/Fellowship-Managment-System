@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import { ArrowLeft, Users, UserPlus, Calendar, TrendingUp, UserCheck, Download } from 'lucide-react';
+import api from '../api';
+import { ArrowLeft, Users, UserPlus, Calendar, TrendingUp, UserCheck, Download, MapPin } from 'lucide-react';
 import {
     BarChart,
     Bar,
@@ -15,10 +15,6 @@ import {
     Pie,
     Cell,
 } from 'recharts';
-
-const api = axios.create({
-    baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000/api',
-});
 
 interface EventReportData {
     event: {
@@ -36,6 +32,7 @@ interface EventReportData {
             MALE: number;
             FEMALE: number;
         };
+        regionBreakdown: Record<string, number>;
         firstTimersCount: number;
     };
     guests: Array<{
@@ -101,6 +98,13 @@ const EventReport = () => {
             ['Female Attendees', report.stats.genderBreakdown.FEMALE],
         ];
 
+        // Add region breakdown
+        if (report.stats.regionBreakdown) {
+            Object.entries(report.stats.regionBreakdown).forEach(([region, count]) => {
+                rows.push([`Region: ${region}`, count]);
+            });
+        }
+
         // Add guests
         if (report.guests.length > 0) {
             rows.push(['', '']);
@@ -152,7 +156,12 @@ const EventReport = () => {
         { name: 'Guests', value: report.stats.guestCount },
     ];
 
-    const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042'];
+    const regionData = report.stats.regionBreakdown
+        ? Object.entries(report.stats.regionBreakdown).map(([name, value]) => ({ name, value }))
+        : [];
+
+    // Premium color palette for dark theme
+    const COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4', '#f97316'];
 
     return (
         <div className="min-h-screen bg-[#0a0f1e] p-6">
@@ -233,7 +242,7 @@ const EventReport = () => {
                 </div>
 
                 {/* Charts Section */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
                     <div className="bg-[#151d30] p-6 rounded-2xl border border-slate-800">
                         <h3 className="text-xl font-bold text-white mb-6">Gender Distribution</h3>
                         <div className="h-64">
@@ -274,6 +283,21 @@ const EventReport = () => {
                                             <Cell key={`cell-${index}`} fill={COLORS[index + 2]} />
                                         ))}
                                     </Bar>
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+
+                    <div className="bg-[#151d30] p-6 rounded-2xl border border-slate-800">
+                        <h3 className="text-xl font-bold text-white mb-6">Region Distribution</h3>
+                        <div className="h-64">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={regionData} layout="vertical">
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                                    <XAxis type="number" stroke="#94a3b8" />
+                                    <YAxis dataKey="name" type="category" stroke="#94a3b8" width={80} />
+                                    <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', color: '#fff' }} />
+                                    <Bar dataKey="value" fill="#2dd4bf" radius={[0, 4, 4, 0]} />
                                 </BarChart>
                             </ResponsiveContainer>
                         </div>

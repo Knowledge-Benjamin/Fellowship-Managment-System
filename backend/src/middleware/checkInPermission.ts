@@ -56,7 +56,48 @@ export const checkInPermission = async (
             return;
         }
 
-        // Volunteers found - validate event is active
+        // Volunteers found - check for active CHECK_IN_VOLUNTEER tag
+        const checkInTag = await prisma.tag.findUnique({
+            where: { name: 'CHECK_IN_VOLUNTEER' },
+        });
+
+        if (checkInTag) {
+            const memberTag = await prisma.memberTag.findFirst({
+                where: {
+                    memberId: userId,
+                    tagId: checkInTag.id,
+                    isActive: true,
+                },
+            });
+
+            // Check if tag exists and is not expired
+            if (!memberTag) {
+                res.status(403).json({
+                    error: 'Check-in volunteer access has been revoked'
+                });
+                return;
+            }
+
+            // Check if tag has expired
+            if (memberTag.expiresAt && new Date() > new Date(memberTag.expiresAt)) {
+                // Auto-deactivate expired tag
+                await prisma.memberTag.update({
+                    where: { id: memberTag.id },
+                    data: {
+                        isActive: false,
+                        removedAt: new Date(),
+                        notes: 'Auto-expired',
+                    },
+                });
+
+                res.status(403).json({
+                    error: 'Check-in volunteer access has expired'
+                });
+                return;
+            }
+        }
+
+        // Validate event is active
         const event = await prisma.event.findUnique({
             where: { id: eventId },
             select: {

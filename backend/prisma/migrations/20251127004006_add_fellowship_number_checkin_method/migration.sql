@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "CheckInMethod" ADD VALUE 'FELLOWSHIP_NUMBER';

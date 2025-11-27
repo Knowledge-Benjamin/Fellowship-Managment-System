@@ -31,7 +31,11 @@ export const getEventReport = async (req: Request, res: Response) => {
             include: {
                 attendances: {
                     include: {
-                        member: true,
+                        member: {
+                            include: {
+                                region: true
+                            }
+                        },
                     },
                 },
                 guestAttendances: true,
@@ -83,6 +87,16 @@ export const getEventReport = async (req: Request, res: Response) => {
             purpose: g.purpose,
         }));
 
+        // 5. Region Breakdown
+        const regionBreakdown = event.attendances.reduce(
+            (acc, curr) => {
+                const regionName = curr.member.region.name;
+                acc[regionName] = (acc[regionName] || 0) + 1;
+                return acc;
+            },
+            {} as Record<string, number>
+        );
+
         res.json({
             event: {
                 id: event.id,
@@ -96,6 +110,7 @@ export const getEventReport = async (req: Request, res: Response) => {
                 memberCount,
                 guestCount,
                 genderBreakdown,
+                regionBreakdown,
                 firstTimersCount,
             },
             guests: guestDetails,
@@ -224,7 +239,7 @@ export const getDashboardStats = async (req: Request, res: Response) => {
 
 export const getCustomReport = async (req: Request, res: Response) => {
     try {
-        const { startDate, endDate, type } = req.query;
+        const { startDate, endDate, type, regionId } = req.query;
 
         const where: any = {};
 
@@ -239,24 +254,49 @@ export const getCustomReport = async (req: Request, res: Response) => {
             where.type = type;
         }
 
+        // If regionId is provided, we need to filter attendances
+        // Note: We still fetch the events, but we'll filter the attendance counts
         const events = await prisma.event.findMany({
             where,
             orderBy: { date: 'asc' },
             include: {
-                _count: {
-                    select: { attendances: true, guestAttendances: true },
-                },
                 attendances: {
-                    include: { member: true },
+                    where: regionId ? {
+                        member: {
+                            regionId: regionId as string
+                        }
+                    } : undefined,
+                    include: {
+                        member: {
+                            include: {
+                                region: true
+                            }
+                        }
+                    },
                 },
+                guestAttendances: true, // Guests don't have regions, so we include them or exclude them? 
+                // Requirement says "organise data or be queried by region". 
+                // If querying by region, we should probably exclude guests or count them separately.
+                // For now, let's include guests but maybe the frontend can decide how to display.
+                // OR: if regionId is present, maybe we shouldn't count guests as they don't belong to a region?
+                // Let's keep guests for now but note they are not in the region.
             },
         });
 
         // Aggregated Stats
         const totalEvents = events.length;
+
         const totalAttendance = events.reduce((acc, event) => {
-            return acc + (event._count?.attendances || 0) + (event._count?.guestAttendances || 0);
+            // If filtering by region, do we include guests? 
+            // Guests don't have regions. So if I want to see "How many people from Central region attended", 
+            // I probably don't want guests.
+            // But if I want "Total attendance for events filtered by region context", maybe?
+            // Let's exclude guests if regionId is provided, to be precise.
+            const memberCount = event.attendances.length;
+            const guestCount = regionId ? 0 : event.guestAttendances.length;
+            return acc + memberCount + guestCount;
         }, 0);
+
         const averageAttendance = totalEvents > 0 ? Math.round(totalAttendance / totalEvents) : 0;
 
         // Unique Members
@@ -268,12 +308,21 @@ export const getCustomReport = async (req: Request, res: Response) => {
 
         // Gender Distribution (Aggregated)
         const genderBreakdown = { MALE: 0, FEMALE: 0 };
+
+        // Region Distribution (Aggregated)
+        const regionBreakdown: Record<string, number> = {};
+
         events.forEach(event => {
             event.attendances.forEach(a => {
+                // Gender
                 const gender = a.member.gender as 'MALE' | 'FEMALE';
                 if (genderBreakdown[gender] !== undefined) {
                     genderBreakdown[gender]++;
                 }
+
+                // Region
+                const regionName = a.member.region.name;
+                regionBreakdown[regionName] = (regionBreakdown[regionName] || 0) + 1;
             });
         });
 
@@ -281,7 +330,7 @@ export const getCustomReport = async (req: Request, res: Response) => {
         const chartData = events.map(event => ({
             date: event.date.toISOString().split('T')[0],
             name: event.name,
-            attendance: (event._count?.attendances || 0) + (event._count?.guestAttendances || 0),
+            attendance: event.attendances.length + (regionId ? 0 : event.guestAttendances.length),
         }));
 
         res.json({
@@ -291,6 +340,7 @@ export const getCustomReport = async (req: Request, res: Response) => {
                 averageAttendance,
                 uniqueMembers,
                 genderBreakdown,
+                regionBreakdown,
             },
             chartData,
         });

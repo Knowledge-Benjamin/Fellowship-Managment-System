@@ -11,6 +11,8 @@ import attendanceRoutes from './routes/attendanceRoutes';
 import transportRoutes from './routes/transportRoutes';
 import reportRoutes from './routes/reportRoutes';
 import volunteerRoutes from './routes/volunteerRoutes';
+import regionRoutes from './routes/regionRoutes';
+import tagRoutes from './routes/tagRoutes';
 
 dotenv.config();
 
@@ -40,6 +42,8 @@ app.use('/api/transport', transportRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/volunteers', volunteerRoutes);
+app.use('/api/regions', regionRoutes);
+app.use('/api/tags', tagRoutes);
 
 app.get('/', (req, res) => {
     res.send('Fellowship Information Management System API');

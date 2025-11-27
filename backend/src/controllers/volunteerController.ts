@@ -42,24 +42,68 @@ export const assignVolunteer = async (req: Request, res: Response) => {
             return res.status(200).json(existing);
         }
 
-        const volunteer = await prisma.eventVolunteer.create({
-            data: {
-                eventId,
-                memberId,
-            },
-            include: {
-                member: {
-                    select: {
-                        id: true,
-                        fullName: true,
-                        email: true,
-                        fellowshipNumber: true,
-                    },
-                },
-            },
+        // Get CHECK_IN_VOLUNTEER system tag
+        const checkInVolunteerTag = await prisma.tag.findUnique({
+            where: { name: 'CHECK_IN_VOLUNTEER' },
         });
 
-        res.status(201).json(volunteer);
+        if (!checkInVolunteerTag) {
+            console.error('CHECK_IN_VOLUNTEER system tag not found');
+        }
+
+        // Calculate tag expiration based on event end time
+        const eventDate = new Date(event.date);
+        const [endHour, endMinute] = event.endTime.split(':').map(Number);
+        eventDate.setHours(endHour, endMinute, 0, 0);
+
+        // Create volunteer assignment and tag in a transaction
+        const result = await prisma.$transaction(async (tx) => {
+            // Create volunteer assignment
+            const volunteer = await tx.eventVolunteer.create({
+                data: {
+                    eventId,
+                    memberId,
+                },
+                include: {
+                    member: {
+                        select: {
+                            id: true,
+                            fullName: true,
+                            email: true,
+                            fellowshipNumber: true,
+                        },
+                    },
+                },
+            });
+
+            // Auto-assign CHECK_IN_VOLUNTEER tag if it exists
+            if (checkInVolunteerTag) {
+                // Check if member already has this tag (and it's active)
+                const existingTag = await tx.memberTag.findFirst({
+                    where: {
+                        memberId,
+                        tagId: checkInVolunteerTag.id,
+                        isActive: true,
+                    },
+                });
+
+                if (!existingTag) {
+                    await tx.memberTag.create({
+                        data: {
+                            memberId,
+                            tagId: checkInVolunteerTag.id,
+                            assignedBy: (req as any).user.id,
+                            expiresAt: eventDate,
+                            notes: `Auto-assigned for event: ${event.name}`,
+                        },
+                    });
+                }
+            }
+
+            return volunteer;
+        });
+
+        res.status(201).json(result);
     } catch (error) {
         console.error('Error assigning volunteer:', error);
         res.status(500).json({ error: 'Failed to assign volunteer' });
@@ -71,13 +115,39 @@ export const removeVolunteer = async (req: Request, res: Response) => {
     try {
         const { eventId, memberId } = req.params;
 
-        await prisma.eventVolunteer.delete({
-            where: {
-                eventId_memberId: {
-                    eventId,
-                    memberId,
+        // Get CHECK_IN_VOLUNTEER tag
+        const checkInVolunteerTag = await prisma.tag.findUnique({
+            where: { name: 'CHECK_IN_VOLUNTEER' },
+        });
+
+        // Remove volunteer and tag in transaction
+        await prisma.$transaction(async (tx) => {
+            // Delete volunteer assignment
+            await tx.eventVolunteer.delete({
+                where: {
+                    eventId_memberId: {
+                        eventId,
+                        memberId,
+                    },
                 },
-            },
+            });
+
+            //  Remove CHECK_IN_VOLUNTEER tag if it exists and is active
+            if (checkInVolunteerTag) {
+                await tx.memberTag.updateMany({
+                    where: {
+                        memberId,
+                        tagId: checkInVolunteerTag.id,
+                        isActive: true,
+                    },
+                    data: {
+                        isActive: false,
+                        removedBy: (req as any).user.id,
+                        removedAt: new Date(),
+                        notes: `Removed from volunteer duty for event`,
+                    },
+                });
+            }
         });
 
         res.json({ message: 'Volunteer removed successfully' });

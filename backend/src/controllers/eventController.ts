@@ -9,9 +9,9 @@ const createEventSchema = z.object({
     startTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Invalid time format (HH:MM)'),
     endTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Invalid time format (HH:MM)'),
     type: z.enum(['TUESDAY_FELLOWSHIP', 'THURSDAY_PHANEROO']),
-    venue: z.string().min(1).max(200).optional(),
+    venue: z.string().max(200).optional().transform(val => val === '' ? undefined : val),
     isRecurring: z.boolean().optional(),
-    recurrenceRule: z.string().optional(),
+    recurrenceRule: z.string().optional().transform(val => val === '' ? undefined : val),
     allowGuestCheckin: z.boolean().optional(),
 });
 

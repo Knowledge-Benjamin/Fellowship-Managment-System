@@ -1,10 +1,47 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../components/ToastProvider';
+import api from '../api';
 import QRCode from 'react-qr-code';
-import { User, Mail, Hash, Shield } from 'lucide-react';
+import { User, Mail, Hash, Shield, Tag as TagIcon, Loader2 } from 'lucide-react';
+import TagBadge from '../components/TagBadge';
+
+interface Tag {
+    id: string;
+    name: string;
+    color: string;
+    type: 'SYSTEM' | 'CUSTOM';
+    isSystem: boolean;
+}
 
 const Profile = () => {
     const { user } = useAuth();
+    const { showToast } = useToast();
+    const [tags, setTags] = useState<Tag[]>([]);
+    const [loadingTags, setLoadingTags] = useState(true);
+
+    useEffect(() => {
+        if (user?.id) {
+            fetchUserTags();
+        }
+    }, [user?.id]);
+
+    const fetchUserTags = async () => {
+        try {
+            setLoadingTags(true);
+            const response = await api.get(`/tags/members/${user?.id}/history`);
+            // Filter only active tags
+            const activeTags = response.data
+                .filter((mt: any) => mt.isActive)
+                .map((mt: any) => mt.tag);
+            setTags(activeTags);
+        } catch (error) {
+            console.error('Failed to fetch user tags:', error);
+            // Don't show error toast - tags are optional
+        } finally {
+            setLoadingTags(false);
+        }
+    };
 
     if (!user) return null;
 
@@ -50,6 +87,28 @@ const Profile = () => {
                                 <div>
                                     <p className="text-sm text-slate-400">Account Role</p>
                                     <p className="text-white font-medium">{user.role.replace('_', ' ')}</p>
+                                </div>
+                            </div>
+
+                            {/* Tags Section */}
+                            <div className="flex items-start gap-4 p-4 bg-slate-900/50 rounded-xl border border-slate-700/50">
+                                <TagIcon className="text-slate-400 mt-1" size={24} />
+                                <div className="flex-1">
+                                    <p className="text-sm text-slate-400 mb-3">Member Tags</p>
+                                    {loadingTags ? (
+                                        <div className="flex items-center gap-2 text-slate-500">
+                                            <Loader2 size={16} className="animate-spin" />
+                                            <span className="text-sm">Loading tags...</span>
+                                        </div>
+                                    ) : tags.length > 0 ? (
+                                        <div className="flex flex-wrap gap-2">
+                                            {tags.map((tag) => (
+                                                <TagBadge key={tag.id} tag={tag} size="sm" />
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <p className="text-slate-500 text-sm">No tags assigned</p>
+                                    )}
                                 </div>
                             </div>
                         </div>

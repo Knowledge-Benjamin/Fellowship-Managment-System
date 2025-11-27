@@ -9,7 +9,7 @@ const createMemberSchema = z.object({
     email: z.string().email(),
     phoneNumber: z.string(),
     gender: z.enum(['MALE', 'FEMALE']),
-    residence: z.string().optional(),
+    regionId: z.string().uuid('Invalid region ID'),
     course: z.string().optional(),
     yearOfStudy: z.number().min(1).max(7).optional(),
 });
@@ -28,6 +28,15 @@ export const createMember = async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'Email already registered' });
         }
 
+        // Verify region exists
+        const region = await prisma.region.findUnique({
+            where: { id: validatedData.regionId },
+        });
+
+        if (!region) {
+            return res.status(400).json({ error: 'Invalid region' });
+        }
+
         // Generate fellowship number using existing utility
         const fellowshipNumber = await generateFellowshipNumber();
 
@@ -41,7 +50,7 @@ export const createMember = async (req: Request, res: Response) => {
                 email: validatedData.email,
                 phoneNumber: validatedData.phoneNumber,
                 gender: validatedData.gender,
-                residence: validatedData.residence,
+                regionId: validatedData.regionId,
                 course: validatedData.course,
                 yearOfStudy: validatedData.yearOfStudy,
                 fellowshipNumber,
@@ -56,7 +65,13 @@ export const createMember = async (req: Request, res: Response) => {
                 qrCode: true,
                 phoneNumber: true,
                 gender: true,
-                residence: true,
+                regionId: true,
+                region: {
+                    select: {
+                        id: true,
+                        name: true,
+                    },
+                },
                 course: true,
                 yearOfStudy: true,
                 role: true,
@@ -74,20 +89,34 @@ export const createMember = async (req: Request, res: Response) => {
     }
 };
 
-// Get all members (with optional search)
+// Get all members (with optional search and tag filtering)
 export const getMembers = async (req: Request, res: Response) => {
     try {
-        const { search } = req.query;
+        const { search, tags } = req.query;
 
-        const where = search
-            ? {
-                OR: [
-                    { fullName: { contains: search as string, mode: 'insensitive' as const } },
-                    { email: { contains: search as string, mode: 'insensitive' as const } },
-                    { fellowshipNumber: { contains: search as string, mode: 'insensitive' as const } },
-                ],
-            }
-            : {};
+        // Parse tag IDs if provided
+        const tagIds = tags ? (tags as string).split(',').filter(Boolean) : [];
+
+        let where: any = {};
+
+        // Search filter
+        if (search) {
+            where.OR = [
+                { fullName: { contains: search as string, mode: 'insensitive' as const } },
+                { email: { contains: search as string, mode: 'insensitive' as const } },
+                { fellowshipNumber: { contains: search as string, mode: 'insensitive' as const } },
+            ];
+        }
+
+        // Tag filter - members must have ALL specified tags
+        if (tagIds.length > 0) {
+            where.memberTags = {
+                some: {
+                    tagId: { in: tagIds },
+                    isActive: true,
+                },
+            };
+        }
 
         const members = await prisma.member.findMany({
             where,
@@ -95,17 +124,51 @@ export const getMembers = async (req: Request, res: Response) => {
                 id: true,
                 fullName: true,
                 email: true,
-                fellowshipNumber: true,
                 phoneNumber: true,
+                fellowshipNumber: true,
+                qrCode: true,
+                gender: true,
                 role: true,
+                course: true,
+                yearOfStudy: true,
+                createdAt: true,
+                region: {
+                    select: {
+                        id: true,
+                        name: true,
+                    },
+                },
+                memberTags: {
+                    where: { isActive: true },
+                    include: {
+                        tag: {
+                            select: {
+                                id: true,
+                                name: true,
+                                color: true,
+                                type: true,
+                                isSystem: true,
+                            },
+                        },
+                    },
+                    orderBy: {
+                        assignedAt: 'desc',
+                    },
+                },
             },
             orderBy: {
-                fullName: 'asc',
+                createdAt: 'desc',
             },
-            take: 20, // Limit results
         });
 
-        res.json(members);
+        // Transform to include only tag info (not full memberTag object)
+        const membersWithTags = members.map(member => ({
+            ...member,
+            tags: member.memberTags.map(mt => mt.tag),
+            memberTags: undefined, // Remove the join table data
+        }));
+
+        res.json(membersWithTags);
     } catch (error) {
         console.error('Error fetching members:', error);
         res.status(500).json({ error: 'Failed to fetch members' });

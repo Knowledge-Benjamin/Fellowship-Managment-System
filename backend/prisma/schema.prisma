@@ -19,6 +19,7 @@ enum ServiceType {
 
 enum CheckInMethod {
   QR
+  FELLOWSHIP_NUMBER
   MANUAL
 }
 
@@ -33,6 +34,22 @@ enum Role {
   FELLOWSHIP_MANAGER
 }
 
+enum TagType {
+  SYSTEM
+  CUSTOM
+}
+
+model Region {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members Member[]
+
+  @@index([name])
+}
+
 model Member {
   id               String   @id @default(uuid())
   fullName         String
@@ -42,7 +59,8 @@ model Member {
   role             Role     @default(MEMBER)
   fellowshipNumber String   @unique
   gender           Gender
-  residence        String?
+  regionId         String
+  region           Region   @relation(fields: [regionId], references: [id], onDelete: Restrict)
   course           String?
   yearOfStudy      Int?
   qrCode           String   @unique @default(uuid())
@@ -52,10 +70,14 @@ model Member {
   attendances       Attendance[]
   transportBookings TransportBooking[]
   volunteers        EventVolunteer[]
+  memberTags        MemberTag[]
+  tagsAssigned      MemberTag[]       @relation("TagAssigner")
+  tagsRemoved       MemberTag[]       @relation("TagRemover")
 
   @@index([phoneNumber])
   @@index([email])
   @@index([fellowshipNumber])
+  @@index([regionId])
 }
 
 model Event {
@@ -130,4 +152,43 @@ model EventVolunteer {
   member Member @relation(fields: [memberId], references: [id])
 
   @@unique([eventId, memberId])
+}
+
+model Tag {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  description String?
+  type        TagType   @default(CUSTOM)
+  color       String    @default("#6366f1")
+  isSystem    Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  createdBy   String?
+  memberTags  MemberTag[]
+
+  @@index([name])
+  @@index([isSystem])
+}
+
+model MemberTag {
+  id         String    @id @default(uuid())
+  memberId   String
+  tagId      String
+  assignedBy String
+  assignedAt DateTime  @default(now())
+  removedBy  String?
+  removedAt  DateTime?
+  expiresAt  DateTime?
+  notes      String?
+  isActive   Boolean   @default(true)
+
+  member   Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  tag      Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  assigner Member @relation("TagAssigner", fields: [assignedBy], references: [id])
+  remover  Member? @relation("TagRemover", fields: [removedBy], references: [id])
+
+  @@unique([memberId, tagId, isActive])
+  @@index([memberId])
+  @@index([tagId])
+  @@index([isActive])
+  @@index([expiresAt])
 }

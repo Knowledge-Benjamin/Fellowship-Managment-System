@@ -46,14 +46,18 @@ export const protect = async (req: Request, res: Response, next: NextFunction) =
 
             req.user = { id: user.id, role: user.role };
             next();
+            return; // CRITICAL FIX: Prevent further execution after calling next()
         } catch (error) {
             console.error(error);
             res.status(401).json({ message: 'Not authorized, token failed' });
+            return; // CRITICAL FIX: Stop execution after sending error
         }
     }
 
+    // CRITICAL FIX: This must be outside the try-catch but still protected
     if (!token) {
         res.status(401).json({ message: 'Not authorized, no token' });
+        return; // CRITICAL FIX: Stop execution after sending error
     }
 };
 

@@ -4,10 +4,14 @@ import prisma from '../prisma';
 
 // Validation schemas
 const checkInSchema = z.object({
-    qrCode: z.string().uuid('Invalid QR code format'),
+    qrCode: z.string().uuid('Invalid QR code format').optional(),
+    fellowshipNumber: z.string().min(6).max(6).optional(),
     eventId: z.string().uuid('Invalid event ID'),
-    method: z.enum(['QR', 'MANUAL']),
-});
+    method: z.enum(['QR', 'FELLOWSHIP_NUMBER', 'MANUAL']),
+}).refine(
+    (data) => data.qrCode || data.fellowshipNumber,
+    { message: 'Either qrCode or fellowshipNumber must be provided' }
+);
 
 const guestCheckInSchema = z.object({
     eventId: z.string().uuid('Invalid event ID'),
@@ -20,11 +24,14 @@ export const checkIn = async (req: Request, res: Response) => {
     try {
         // Validate input
         const validatedData = checkInSchema.parse(req.body);
-        const { qrCode, eventId, method } = validatedData;
+        const { qrCode, fellowshipNumber, eventId, method } = validatedData;
 
-        // Look up member by QR code
+        // Look up member by QR code or fellowship number
         const member = await prisma.member.findUnique({
-            where: { qrCode },
+            where: qrCode ? { qrCode } : { fellowshipNumber },
+            include: {
+                region: true,
+            },
         });
 
         if (!member) {
@@ -90,8 +97,11 @@ export const checkIn = async (req: Request, res: Response) => {
             message: 'Check-in successful',
             attendance,
             member: {
+                id: member.id,
                 fullName: member.fullName,
+                fellowshipNumber: member.fellowshipNumber,
                 phoneNumber: member.phoneNumber,
+                region: member.region,
             },
         });
     } catch (error) {
@@ -212,5 +222,96 @@ export const getEventAttendance = async (req: Request, res: Response) => {
     } catch (error) {
         console.error('Get attendance error:', error);
         res.status(500).json({ error: 'Failed to fetch attendance' });
+    }
+};
+
+// Get all members with check-in status for manual check-in (Managers only)
+export const getMembersForCheckIn = async (req: Request, res: Response) => {
+    try {
+        const { eventId } = req.params;
+        const { search, regionId, gender, status } = req.query;
+
+        if (!eventId || typeof eventId !== 'string') {
+            return res.status(400).json({ error: 'Invalid event ID' });
+        }
+
+        // Verify event exists
+        const event = await prisma.event.findUnique({
+            where: { id: eventId },
+        });
+
+        if (!event) {
+            return res.status(404).json({ error: 'Event not found' });
+        }
+
+        // Build where clause for member filtering
+        const memberWhere: any = {};
+
+        if (search && typeof search === 'string') {
+            memberWhere.OR = [
+                { fullName: { contains: search, mode: 'insensitive' } },
+                { fellowshipNumber: { contains: search, mode: 'insensitive' } },
+                { email: { contains: search, mode: 'insensitive' } },
+            ];
+        }
+
+        if (regionId && typeof regionId === 'string') {
+            memberWhere.regionId = regionId;
+        }
+
+        if (gender && (gender === 'MALE' || gender === 'FEMALE')) {
+            memberWhere.gender = gender;
+        }
+
+        // Fetch all members with attendance status
+        const members = await prisma.member.findMany({
+            where: memberWhere,
+            include: {
+                region: true,
+                attendances: {
+                    where: { eventId },
+                    select: {
+                        id: true,
+                        checkedInAt: true,
+                        method: true,
+                    },
+                },
+            },
+            orderBy: {
+                fullName: 'asc',
+            },
+        });
+
+        // Transform data to include check-in status
+        const membersWithStatus = members.map((member) => ({
+            id: member.id,
+            fullName: member.fullName,
+            fellowshipNumber: member.fellowshipNumber,
+            email: member.email,
+            phoneNumber: member.phoneNumber,
+            gender: member.gender,
+            region: member.region,
+            isCheckedIn: member.attendances.length > 0,
+            checkInTime: member.attendances[0]?.checkedInAt || null,
+            checkInMethod: member.attendances[0]?.method || null,
+        }));
+
+        // Filter by status if requested
+        let filteredMembers = membersWithStatus;
+        if (status === 'checked-in') {
+            filteredMembers = membersWithStatus.filter((m) => m.isCheckedIn);
+        } else if (status === 'not-checked-in') {
+            filteredMembers = membersWithStatus.filter((m) => !m.isCheckedIn);
+        }
+
+        res.json({
+            eventId,
+            eventName: event.name,
+            totalMembers: filteredMembers.length,
+            members: filteredMembers,
+        });
+    } catch (error) {
+        console.error('Get members for check-in error:', error);
+        res.status(500).json({ error: 'Failed to fetch members' });
     }
 };

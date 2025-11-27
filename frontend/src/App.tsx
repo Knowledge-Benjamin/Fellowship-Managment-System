@@ -6,6 +6,10 @@ import EventManagement from './pages/EventManagement';
 import GuestCheckIn from './pages/GuestCheckIn';
 import EventReport from './pages/EventReport';
 import CustomReport from './pages/CustomReport';
+import RegionManagement from './pages/RegionManagement';
+import ManualCheckIn from './pages/ManualCheckIn';
+import TagManagement from './pages/TagManagement';
+import MemberManagement from './pages/MemberManagement';
 import Login from './pages/Login';
 import Profile from './pages/Profile';
 import { ToastProvider } from './components/ToastProvider';
@@ -13,7 +17,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import CheckInPermissionGuard from './components/CheckInPermissionGuard';
 import { useCheckInAccess } from './hooks/useCheckInAccess';
-import { Home, QrCode, Bus, Calendar, UserPlus, PieChart, LogIn, LogOut, User } from 'lucide-react';
+import { Home, QrCode, Bus, Calendar, UserPlus, PieChart, LogIn, LogOut, User, MapPin, Tag } from 'lucide-react';
 
 function NavLink({ to, children, icon: Icon }: { to: string; children: React.ReactNode; icon: any }) {
   const location = useLocation();
@@ -69,8 +73,16 @@ function Navigation() {
                 {isManager && <NavLink to="/" icon={Home}>Register</NavLink>}
                 {hasCheckInAccess && <NavLink to="/check-in" icon={QrCode}>Check-in</NavLink>}
                 {isManager && <NavLink to="/guest-check-in" icon={UserPlus}>Guest</NavLink>}
-                {isManager && <NavLink to="/events" icon={Calendar}>Events</NavLink>}
-                {isManager && <NavLink to="/reports/custom" icon={PieChart}>Reports</NavLink>}
+                {isManager && (
+                  <>
+                    <div className="w-px h-6 bg-slate-700 mx-2"></div>
+                    <NavLink to="/events" icon={Calendar}>Events</NavLink>
+                    <NavLink to="/regions" icon={MapPin}>Regions</NavLink>
+                    <NavLink to="/members" icon={Users}>Members</NavLink>
+                    <NavLink to="/tags" icon={Tag}>Tags</NavLink>
+                    <NavLink to="/reports/custom" icon={PieChart}>Reports</NavLink>
+                  </>
+                )}
                 <NavLink to="/transport" icon={Bus}>Transport</NavLink>
                 <NavLink to="/profile" icon={User}>Profile</NavLink>
                 <button
@@ -152,6 +164,36 @@ function AppContent() {
             <Route path="/events/:id/report" element={
               <ProtectedRoute roles={['FELLOWSHIP_MANAGER']}>
                 <EventReport />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/events/:id/manual-checkin" element={
+              <ProtectedRoute roles={['FELLOWSHIP_MANAGER']}>
+                <ManualCheckIn />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/regions" element={
+              <ProtectedRoute requiredRole="FELLOWSHIP_MANAGER">
+                <RegionManagement />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/tags" element={
+              <ProtectedRoute roles={['FELLOWSHIP_MANAGER']}>
+                <TagManagement />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/members" element={
+              <ProtectedRoute roles={['FELLOWSHIP_MANAGER']}>
+                <MemberManagement />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/reports/event" element={
+              <ProtectedRoute roles={['FELLOWSHIP_MANAGER']}>
+                <CustomReport />
               </ProtectedRoute>
             } />
 

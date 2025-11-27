@@ -17,7 +17,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import CheckInPermissionGuard from './components/CheckInPermissionGuard';
 import { useCheckInAccess } from './hooks/useCheckInAccess';
-import { Home, QrCode, Bus, Calendar, UserPlus, PieChart, LogIn, LogOut, User, MapPin, Tag } from 'lucide-react';
+import { Home, QrCode, Bus, Calendar, UserPlus, PieChart, LogIn, LogOut, User, MapPin, Tag, Users } from 'lucide-react';
 
 function NavLink({ to, children, icon: Icon }: { to: string; children: React.ReactNode; icon: any }) {
   const location = useLocation();

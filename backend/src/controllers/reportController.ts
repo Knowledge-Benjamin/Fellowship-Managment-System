@@ -389,13 +389,15 @@ export const exportEventReportPDF = async (req: Request, res: Response) => {
         const guestCount = event.guestAttendances.length;
         const totalAttendance = memberCount + guestCount;
 
-        const genderBreakdown = event.attendances.reduce(
+        const genderBreakdown: { MALE: number; FEMALE: number } = event.attendances.reduce(
             (acc, curr) => {
                 const gender = curr.member.gender;
-                acc[gender] = (acc[gender] ||0) + 1;
+                if (gender === 'MALE' || gender === 'FEMALE') {
+                    acc[gender] = (acc[gender] || 0) + 1;
+                }
                 return acc;
             },
-            { MALE: 0, FEMALE: 0 } as Record<string, number>
+            { MALE: 0, FEMALE: 0 }
         );
 
         const memberIds = event.attendances.map((a) => a.memberId);
@@ -485,13 +487,15 @@ export const exportEventReportExcel = async (req: Request, res: Response) => {
         const guestCount = event.guestAttendances.length;
         const totalAttendance = memberCount + guestCount;
 
-        const genderBreakdown = event.attendances.reduce(
+        const genderBreakdown: { MALE: number; FEMALE: number } = event.attendances.reduce(
             (acc, curr) => {
                 const gender = curr.member.gender;
-                acc[gender] = (acc[gender] || 0) + 1;
+                if (gender === 'MALE' || gender === 'FEMALE') {
+                    acc[gender] = (acc[gender] || 0) + 1;
+                }
                 return acc;
             },
-            { MALE: 0, FEMALE: 0 } as Record<string, number>
+            { MALE: 0, FEMALE: 0 }
         );
 
         const memberIds = event.attendances.map((a) => a.memberId);

@@ -233,12 +233,12 @@ export const generateEventReportExcel = async (
     ];
 
     metricsData.forEach(([label, value, color]) => {
-        const row = summarySheet.addRow([label, value]);
+        const row = summarySheet.addRow([label as string, value as number]);
         row.getCell(2).font = { size: 14, bold: true };
         row.getCell(2).fill = {
             type: 'pattern',
             pattern: 'solid',
-            fgColor: { argb: color.replace('#', 'FF') },
+            fgColor: { argb: (color as string).replace('#', 'FF') },
         };
         row.getCell(2).font.color = { argb: 'FFFFFFFF' };
     });

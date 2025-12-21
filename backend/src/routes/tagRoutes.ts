@@ -3,6 +3,7 @@ import {
     getAllTags,
     createTag,
     deleteTag,
+    updateTagRegistrationVisibility,
     getMembersWithTag,
     assignTagToMember,
     removeTagFromMember,
@@ -22,6 +23,7 @@ router.use(protect, authorize('FELLOWSHIP_MANAGER'));
 router.get('/', asyncHandler(getAllTags));
 router.post('/', asyncHandler(createTag));
 router.delete('/:id', asyncHandler(deleteTag));
+router.patch('/:id/registration-visibility', asyncHandler(updateTagRegistrationVisibility));
 router.get('/:id/members', asyncHandler(getMembersWithTag));
 
 // Member tag operations

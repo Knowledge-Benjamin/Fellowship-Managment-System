@@ -2,23 +2,37 @@ import React, { useState, useEffect } from 'react';
 import api from '../api';
 import QRCode from 'react-qr-code';
 import { useToast } from '../components/ToastProvider';
-import { UserPlus, CheckCircle, Download, RotateCcw, Sparkles, Copy, Mail, MapPin } from 'lucide-react';
+import { UserPlus, CheckCircle, Download, RotateCcw, Sparkles, Copy, Mail, MapPin, GraduationCap, Tag as TagIcon } from 'lucide-react';
 
 interface Region {
     id: string;
     name: string;
 }
 
+interface Tag {
+    id: string;
+    name: string;
+    description: string;
+    color: string;
+    isSystem: boolean;
+    showOnRegistration: boolean;
+}
+
 const Registration = () => {
     const { showToast } = useToast();
     const [loading, setLoading] = useState(false);
     const [regions, setRegions] = useState<Region[]>([]);
+    const [classificationTags, setClassificationTags] = useState<Tag[]>([]);
+    const [additionalTags, setAdditionalTags] = useState<Tag[]>([]);
     const [formData, setFormData] = useState({
         fullName: '',
         email: '',
         phoneNumber: '',
         gender: 'MALE',
+        isMakerereStudent: true,
         regionId: '',
+        classificationTagId: '',
+        additionalTagIds: [] as string[],
         course: '',
         yearOfStudy: 1,
     });
@@ -26,19 +40,50 @@ const Registration = () => {
 
     useEffect(() => {
         fetchRegions();
+        fetchTags();
     }, []);
+
+    // Auto-set Non-Resident region when isMakerereStudent changes to false
+    useEffect(() => {
+        if (!formData.isMakerereStudent) {
+            const nonResident = regions.find(r => r.name === 'Non-Resident');
+            if (nonResident) {
+                setFormData(prev => ({ ...prev, regionId: nonResident.id }));
+            }
+        } else {
+            // Clear regionId when switching to Makerere student
+            setFormData(prev => ({ ...prev, regionId: '', classificationTagId: '' }));
+        }
+    }, [formData.isMakerereStudent, regions]);
 
     const fetchRegions = async () => {
         try {
             const response = await api.get('/regions');
             setRegions(response.data);
-            // Auto-select if only one region exists or if it's the first load and we want a default
-            if (response.data.length === 1) {
-                setFormData(prev => ({ ...prev, regionId: response.data[0].id }));
-            }
         } catch (error) {
             console.error('Failed to fetch regions:', error);
             showToast('error', 'Failed to load regions. Please refresh the page.');
+        }
+    };
+
+    const fetchTags = async () => {
+        try {
+            const response = await api.get('/tags');
+            const allTags: Tag[] = response.data;
+
+            // Filter tags with showOnRegistration enabled
+            const registrationTags = allTags.filter(tag => tag.showOnRegistration);
+
+            // Separate classification tags from additional tags
+            const classificationTagNames = ['ALUMNI', 'OTHER_CAMPUS_STUDENT', 'OTHER'];
+            const classification = registrationTags.filter(tag => classificationTagNames.includes(tag.name));
+            const additional = registrationTags.filter(tag => !classificationTagNames.includes(tag.name) && tag.name !== 'MAKERERE_STUDENT');
+
+            setClassificationTags(classification);
+            setAdditionalTags(additional);
+        } catch (error) {
+            console.error('Failed to fetch tags:', error);
+            showToast('error', 'Failed to load tags.');
         }
     };
 
@@ -66,7 +111,10 @@ const Registration = () => {
             email: '',
             phoneNumber: '',
             gender: 'MALE',
+            isMakerereStudent: true,
             regionId: '',
+            classificationTagId: '',
+            additionalTagIds: [],
             course: '',
             yearOfStudy: 1,
         });
@@ -91,6 +139,15 @@ const Registration = () => {
             };
             img.src = 'data:image/svg+xml;base64,' + btoa(svgData);
         }
+    };
+
+    const toggleAdditionalTag = (tagId: string) => {
+        setFormData(prev => ({
+            ...prev,
+            additionalTagIds: prev.additionalTagIds.includes(tagId)
+                ? prev.additionalTagIds.filter(id => id !== tagId)
+                : [...prev.additionalTagIds, tagId]
+        }));
     };
 
     if (createdMember) {
@@ -206,6 +263,8 @@ const Registration = () => {
         );
     }
 
+    const showCourseAndYear = formData.isMakerereStudent || formData.classificationTagId === classificationTags.find(t => t.name === 'OTHER_CAMPUS_STUDENT')?.id;
+
     return (
         <div className="max-w-2xl mx-auto">
             <div className="glass-card p-8 relative overflow-hidden">
@@ -290,6 +349,60 @@ const Registration = () => {
                             </div>
                         </div>
 
+                        {/* Makerere Student Toggle */}
+                        <div className="space-y-2">
+                            <label className="text-sm font-semibold text-slate-300 flex items-center gap-2">
+                                <GraduationCap className="w-4 h-4 text-teal-400" />
+                                Is this person a Makerere student?
+                                <span className="text-red-400">*</span>
+                            </label>
+                            <div className="flex gap-4">
+                                <button
+                                    type="button"
+                                    onClick={() => setFormData({ ...formData, isMakerereStudent: true })}
+                                    className={`flex-1 px-4 py-3 rounded-lg font-medium transition-all ${formData.isMakerereStudent
+                                        ? 'bg-teal-600 text-white shadow-lg'
+                                        : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                                        }`}
+                                >
+                                    Yes
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setFormData({ ...formData, isMakerereStudent: false })}
+                                    className={`flex-1 px-4 py-3 rounded-lg font-medium transition-all ${!formData.isMakerereStudent
+                                        ? 'bg-teal-600 text-white shadow-lg'
+                                        : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                                        }`}
+                                >
+                                    No
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Classification Tag - Only for non-Makerere students */}
+                        {!formData.isMakerereStudent && (
+                            <div className="space-y-2">
+                                <label className="text-sm font-semibold text-slate-300 flex items-center gap-2">
+                                    Classification
+                                    <span className="text-red-400">*</span>
+                                </label>
+                                <select
+                                    className="input transition-smooth cursor-pointer"
+                                    value={formData.classificationTagId}
+                                    onChange={(e) => setFormData({ ...formData, classificationTagId: e.target.value })}
+                                    required={!formData.isMakerereStudent}
+                                >
+                                    <option value="">Select classification</option>
+                                    {classificationTags.map((tag) => (
+                                        <option key={tag.id} value={tag.id}>
+                                            {tag.name.replace(/_/g, ' ')}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+
                         {/* Region */}
                         <div className="space-y-2">
                             <label className="text-sm font-semibold text-slate-300 flex items-center gap-2">
@@ -302,47 +415,77 @@ const Registration = () => {
                                 value={formData.regionId}
                                 onChange={(e) => setFormData({ ...formData, regionId: e.target.value })}
                                 required
+                                disabled={!formData.isMakerereStudent}
                             >
                                 <option value="">Select a region</option>
-                                {regions.map((region) => (
+                                {regions.filter(r => formData.isMakerereStudent ? r.name !== 'Non-Resident' : r.name === 'Non-Resident').map((region) => (
                                     <option key={region.id} value={region.id}>
                                         {region.name}
                                     </option>
                                 ))}
                             </select>
-                            {regions.length === 0 && (
+                            {!formData.isMakerereStudent && (
                                 <p className="text-xs text-amber-400 mt-1">
-                                    No regions available. Please ask a manager to add regions.
+                                    Non-resident members are auto-assigned to Non-Resident region
                                 </p>
                             )}
                         </div>
 
-                        <div className="grid md:grid-cols-2 gap-6">
-                            {/* Course */}
-                            <div className="space-y-2">
-                                <label className="text-sm font-semibold text-slate-300">Course (Optional)</label>
-                                <input
-                                    type="text"
-                                    placeholder="e.g. Computer Science"
-                                    className="input transition-smooth"
-                                    value={formData.course}
-                                    onChange={(e) => setFormData({ ...formData, course: e.target.value })}
-                                />
-                            </div>
+                        {/* Course and Year - Conditional */}
+                        {showCourseAndYear && (
+                            <div className="grid md:grid-cols-2 gap-6">
+                                {/* Course */}
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold text-slate-300">Course (Optional)</label>
+                                    <input
+                                        type="text"
+                                        placeholder="e.g. Computer Science"
+                                        className="input transition-smooth"
+                                        value={formData.course}
+                                        onChange={(e) => setFormData({ ...formData, course: e.target.value })}
+                                    />
+                                </div>
 
-                            {/* Year of Study */}
-                            <div className="space-y-2">
-                                <label className="text-sm font-semibold text-slate-300">Year of Study (Optional)</label>
-                                <input
-                                    type="number"
-                                    min="1"
-                                    max="7"
-                                    className="input transition-smooth"
-                                    value={formData.yearOfStudy}
-                                    onChange={(e) => setFormData({ ...formData, yearOfStudy: parseInt(e.target.value) })}
-                                />
+                                {/* Year of Study */}
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold text-slate-300">Year of Study (Optional)</label>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        max="7"
+                                        className="input transition-smooth"
+                                        value={formData.yearOfStudy}
+                                        onChange={(e) => setFormData({ ...formData, yearOfStudy: parseInt(e.target.value) })}
+                                    />
+                                </div>
                             </div>
-                        </div>
+                        )}
+
+                        {/* Additional Tags */}
+                        {additionalTags.length > 0 && (
+                            <div className="space-y-2">
+                                <label className="text-sm font-semibold text-slate-300 flex items-center gap-2">
+                                    <TagIcon className="w-4 h-4 text-purple-400" />
+                                    Additional Tags (Optional)
+                                </label>
+                                <div className="flex flex-wrap gap-2">
+                                    {additionalTags.map((tag) => (
+                                        <button
+                                            key={tag.id}
+                                            type="button"
+                                            onClick={() => toggleAdditionalTag(tag.id)}
+                                            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${formData.additionalTagIds.includes(tag.id)
+                                                ? 'text-white shadow-lg'
+                                                : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                                                }`}
+                                            style={formData.additionalTagIds.includes(tag.id) ? { backgroundColor: tag.color } : {}}
+                                        >
+                                            {tag.name.replace(/_/g, ' ')}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
                         <button
                             type="submit"

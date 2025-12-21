@@ -120,6 +120,36 @@ export const deleteTag = async (req: Request, res: Response) => {
     }
 };
 
+// Toggle showOnRegistration for a tag
+export const updateTagRegistrationVisibility = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { showOnRegistration } = req.body;
+
+        if (typeof showOnRegistration !== 'boolean') {
+            return res.status(400).json({ error: 'showOnRegistration must be a boolean' });
+        }
+
+        const tag = await prisma.tag.findUnique({
+            where: { id },
+        });
+
+        if (!tag) {
+            return res.status(404).json({ error: 'Tag not found' });
+        }
+
+        const updatedTag = await prisma.tag.update({
+            where: { id },
+            data: { showOnRegistration },
+        });
+
+        res.json(updatedTag);
+    } catch (error) {
+        console.error('Update tag registration visibility error:', error);
+        res.status(500).json({ error: 'Failed to update tag' });
+    }
+};
+
 // Get all members with a specific tag
 export const getMembersWithTag = async (req: Request, res: Response) => {
     try {

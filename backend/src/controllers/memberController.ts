@@ -9,7 +9,10 @@ const createMemberSchema = z.object({
     email: z.string().email(),
     phoneNumber: z.string(),
     gender: z.enum(['MALE', 'FEMALE']),
+    isMakerereStudent: z.boolean(),
     regionId: z.string().uuid('Invalid region ID'),
+    classificationTagId: z.string().uuid().optional(),
+    additionalTagIds: z.array(z.string().uuid()).optional(),
     course: z.string().optional(),
     yearOfStudy: z.number().min(1).max(7).optional(),
 });
@@ -79,7 +82,44 @@ export const createMember = async (req: Request, res: Response) => {
             },
         });
 
-        res.status(201).json(member);
+        // Auto-assign tags based on student classification
+        const tagsToAssign: string[] = [];
+
+        if (validatedData.isMakerereStudent) {
+            // Auto-assign MAKERERE_STUDENT tag
+            const makTag = await prisma.tag.findFirst({
+                where: { name: 'MAKERERE_STUDENT', isSystem: true },
+            });
+            if (makTag) {
+                tagsToAssign.push(makTag.id);
+            }
+        } else if (validatedData.classificationTagId) {
+            // Assign selected classification tag (Alumni/Other Campus/Other)
+            tagsToAssign.push(validatedData.classificationTagId);
+        }
+
+        // Add any additional tags selected by manager
+        if (validatedData.additionalTagIds && validatedData.additionalTagIds.length > 0) {
+            tagsToAssign.push(...validatedData.additionalTagIds);
+        }
+
+        // Create tag assignments
+        if (tagsToAssign.length > 0 && req.user) {
+            await prisma.memberTag.createMany({
+                data: tagsToAssign.map((tagId) => ({
+                    memberId: member.id,
+                    tagId,
+                    assignedBy: req.user!.id,
+                    notes: 'Auto-assigned during registration',
+                })),
+            });
+        }
+
+        // Return member with default password for UI display
+        res.status(201).json({
+            ...member,
+            defaultPassword: fellowshipNumber,
+        });
     } catch (error) {
         if (error instanceof z.ZodError) {
             return res.status(400).json({ error: 'Invalid data', details: error.issues });

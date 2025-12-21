@@ -12,6 +12,7 @@ interface Tag {
     type: 'SYSTEM' | 'CUSTOM';
     color: string;
     isSystem: boolean;
+    showOnRegistration: boolean;
     createdAt: string;
     memberCount: number;
 }
@@ -118,6 +119,19 @@ const TagManagement = () => {
         setTagMembers([]);
     };
 
+    const handleToggleRegistrationVisibility = async (tagId: string, currentValue: boolean) => {
+        try {
+            await api.patch(`/tags/${tagId}/registration-visibility`, {
+                showOnRegistration: !currentValue,
+            });
+            setTags(tags.map(t => t.id === tagId ? { ...t, showOnRegistration: !currentValue } : t));
+            showToast('success', `Tag ${!currentValue ? 'enabled' : 'disabled'} for registration`);
+        } catch (error: any) {
+            console.error('Failed to update tag:', error);
+            showToast('error', 'Failed to update tag visibility');
+        }
+    };
+
     const filteredTags = tags.filter(tag =>
         tag.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         tag.description?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -189,6 +203,21 @@ const TagManagement = () => {
                                 </div>
 
                                 {tag.description && <p className="text-slate-400 text-sm mb-4">{tag.description}</p>}
+
+                                {/* Show on Registration Toggle */}
+                                <div className="flex items-center justify-between py-3 px-3 rounded-lg bg-slate-800/50 mb-4">
+                                    <span className="text-sm text-slate-300">Show on Registration</span>
+                                    <button
+                                        onClick={() => handleToggleRegistrationVisibility(tag.id, tag.showOnRegistration)}
+                                        className={`relative w-11 h-6 rounded-full transition-colors ${tag.showOnRegistration ? 'bg-teal-600' : 'bg-slate-700'
+                                            }`}
+                                    >
+                                        <span
+                                            className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${tag.showOnRegistration ? 'translate-x-5' : 'translate-x-0'
+                                                }`}
+                                        />
+                                    </button>
+                                </div>
 
                                 <div className="flex items-center justify-between pt-4 border-t border-slate-800">
                                     <div className="flex items-center gap-2 text-slate-400">

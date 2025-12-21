@@ -155,18 +155,20 @@ model EventVolunteer {
 }
 
 model Tag {
-  id          String    @id @default(uuid())
-  name        String    @unique
-  description String?
-  type        TagType   @default(CUSTOM)
-  color       String    @default("#6366f1")
-  isSystem    Boolean   @default(false)
-  createdAt   DateTime  @default(now())
-  createdBy   String?
-  memberTags  MemberTag[]
+  id                  String    @id @default(uuid())
+  name                String    @unique
+  description         String?
+  type                TagType   @default(CUSTOM)
+  color               String    @default("#6366f1")
+  isSystem            Boolean   @default(false)
+  showOnRegistration  Boolean   @default(false)
+  createdAt           DateTime  @default(now())
+  createdBy           String?
+  memberTags          MemberTag[]
 
   @@index([name])
   @@index([isSystem])
+  @@index([showOnRegistration])
 }
 
 model MemberTag {

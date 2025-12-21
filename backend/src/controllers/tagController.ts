@@ -400,6 +400,11 @@ export const getMemberTagHistory = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
 
+        // Security check: Allow if user is manager OR requesting their own history
+        if (req.user!.role !== 'FELLOWSHIP_MANAGER' && req.user!.id !== id) {
+            return res.status(403).json({ error: 'Not authorized to view this tag history' });
+        }
+
         const history = await prisma.memberTag.findMany({
             where: { memberId: id },
             include: {

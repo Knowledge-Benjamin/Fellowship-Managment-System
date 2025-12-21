@@ -16,21 +16,22 @@ import { protect, authorize } from '../middleware/authMiddleware';
 
 const router = Router();
 
-// All tag routes require manager role
-router.use(protect, authorize('FELLOWSHIP_MANAGER'));
 
 // Tag management
-router.get('/', asyncHandler(getAllTags));
-router.post('/', asyncHandler(createTag));
-router.delete('/:id', asyncHandler(deleteTag));
-router.patch('/:id/registration-visibility', asyncHandler(updateTagRegistrationVisibility));
-router.get('/:id/members', asyncHandler(getMembersWithTag));
+router.get('/', protect, authorize('FELLOWSHIP_MANAGER'), asyncHandler(getAllTags));
+router.post('/', protect, authorize('FELLOWSHIP_MANAGER'), asyncHandler(createTag));
+router.delete('/:id', protect, authorize('FELLOWSHIP_MANAGER'), asyncHandler(deleteTag));
+router.patch('/:id/registration-visibility', protect, authorize('FELLOWSHIP_MANAGER'), asyncHandler(updateTagRegistrationVisibility));
+router.get('/:id/members', protect, authorize('FELLOWSHIP_MANAGER'), asyncHandler(getMembersWithTag));
 
 // Member tag operations
-router.post('/members/:id/tags', asyncHandler(assignTagToMember));
-router.delete('/members/:id/tags/:tagId', asyncHandler(removeTagFromMember));
-router.post('/members/bulk-assign', asyncHandler(bulkAssignTags));
-router.post('/members/bulk-remove', asyncHandler(bulkRemoveTags));
-router.get('/members/:id/history', asyncHandler(getMemberTagHistory));
+// Member tag operations
+router.post('/members/:id/tags', protect, authorize('FELLOWSHIP_MANAGER'), asyncHandler(assignTagToMember));
+router.delete('/members/:id/tags/:tagId', protect, authorize('FELLOWSHIP_MANAGER'), asyncHandler(removeTagFromMember));
+router.post('/members/bulk-assign', protect, authorize('FELLOWSHIP_MANAGER'), asyncHandler(bulkAssignTags));
+router.post('/members/bulk-remove', protect, authorize('FELLOWSHIP_MANAGER'), asyncHandler(bulkRemoveTags));
+
+// Get member tag history - Allow self-access or manager access
+router.get('/members/:id/history', protect, asyncHandler(getMemberTagHistory));
 
 export default router;

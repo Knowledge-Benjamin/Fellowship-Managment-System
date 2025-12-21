@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
-import { Calendar, Plus, Trash2, ToggleLeft, ToggleRight, Users, Play, Square, BarChart2, List } from 'lucide-react';
-import VolunteerManager from '../components/VolunteerManager'; interface Event {
+import { Calendar, Plus, Trash2, ToggleLeft, ToggleRight, Users, Play, Square, BarChart2, List, Heart } from 'lucide-react';
+import VolunteerManager from '../components/VolunteerManager';
+import SalvationTrackingModal from '../components/SalvationTrackingModal'; interface Event {
     id: string;
     name: string;
     date: string;
@@ -27,6 +28,7 @@ const EventManagement = () => {
     const [loading, setLoading] = useState(true);
     const [showCreateForm, setShowCreateForm] = useState(false);
     const [selectedEventForVolunteers, setSelectedEventForVolunteers] = useState<string | null>(null);
+    const [selectedEventForSalvation, setSelectedEventForSalvation] = useState<{ id: string; name: string } | null>(null);
     const [formData, setFormData] = useState({
         name: '',
         date: '',
@@ -376,11 +378,31 @@ const EventManagement = () => {
                                         >
                                             <BarChart2 size={20} />
                                         </button>
+
+                                        <button
+                                            onClick={() => setSelectedEventForSalvation({ id: event.id, name: event.name })}
+                                            className="p-2 rounded-lg bg-pink-500/20 text-pink-300 hover:bg-pink-500/30 transition-all"
+                                            title="Record Salvation"
+                                        >
+                                            <Heart size={20} />
+                                        </button>
                                     </div>
                                 </div>
                             </div>
                         ))}
                     </div>
+                )}
+
+                {selectedEventForSalvation && (
+                    <SalvationTrackingModal
+                        isOpen={true}
+                        onClose={() => setSelectedEventForSalvation(null)}
+                        eventId={selectedEventForSalvation.id}
+                        eventName={selectedEventForSalvation.name}
+                        onSaved={() => {
+                            // Optionally refresh stats if we show them
+                        }}
+                    />
                 )}
 
                 {selectedEventForVolunteers && (

@@ -39,6 +39,22 @@ enum TagType {
   CUSTOM
 }
 
+enum DecisionType {
+  SALVATION
+  REDEDICATION
+  BAPTISM_INTEREST
+  PRAYER_REQUEST
+}
+
+enum FollowUpStatus {
+  PENDING
+  FIRST_CONTACT_MADE
+  ONGOING_DISCIPLESHIP
+  BAPTIZED
+  INTEGRATED
+  LOST_CONTACT
+}
+
 model Region {
   id        String   @id @default(uuid())
   name      String   @unique
@@ -69,12 +85,14 @@ model Member {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  attendances       Attendance[]
-  transportBookings TransportBooking[]
-  volunteers        EventVolunteer[]
-  memberTags        MemberTag[]
-  tagsAssigned      MemberTag[]       @relation("TagAssigner")
-  tagsRemoved       MemberTag[]       @relation("TagRemover")
+  attendances         Attendance[]
+  transportBookings   TransportBooking[]
+  volunteers          EventVolunteer[]
+  memberTags          MemberTag[]
+  tagsAssigned        MemberTag[]        @relation("TagAssigner")
+  tagsRemoved         MemberTag[]        @relation("TagRemover")
+  salvations          Salvation[] // Salvations for this member
+  counseledSalvations Salvation[]        @relation("SalvationCounselor") // Salvations counseled by this member
 
   @@index([phoneNumber])
   @@index([email])
@@ -101,6 +119,7 @@ model Event {
   guestAttendances  GuestAttendance[]
   transportBookings TransportBooking[]
   volunteers        EventVolunteer[]
+  salvations        Salvation[]
 
   @@index([date])
   @@index([isActive])
@@ -145,9 +164,9 @@ model GuestAttendance {
 }
 
 model EventVolunteer {
-  id        String   @id @default(uuid())
-  eventId   String
-  memberId  String
+  id         String   @id @default(uuid())
+  eventId    String
+  memberId   String
   assignedAt DateTime @default(now())
 
   event  Event  @relation(fields: [eventId], references: [id])
@@ -177,16 +196,16 @@ model Course {
 }
 
 model Tag {
-  id                  String    @id @default(uuid())
-  name                String    @unique
-  description         String?
-  type                TagType   @default(CUSTOM)
-  color               String    @default("#6366f1")
-  isSystem            Boolean   @default(false)
-  showOnRegistration  Boolean   @default(false)
-  createdAt           DateTime  @default(now())
-  createdBy           String?
-  memberTags          MemberTag[]
+  id                 String      @id @default(uuid())
+  name               String      @unique
+  description        String?
+  type               TagType     @default(CUSTOM)
+  color              String      @default("#6366f1")
+  isSystem           Boolean     @default(false)
+  showOnRegistration Boolean     @default(false)
+  createdAt          DateTime    @default(now())
+  createdBy          String?
+  memberTags         MemberTag[]
 
   @@index([name])
   @@index([isSystem])
@@ -205,9 +224,9 @@ model MemberTag {
   notes      String?
   isActive   Boolean   @default(true)
 
-  member   Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
-  tag      Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
-  assigner Member @relation("TagAssigner", fields: [assignedBy], references: [id])
+  member   Member  @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  tag      Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  assigner Member  @relation("TagAssigner", fields: [assignedBy], references: [id])
   remover  Member? @relation("TagRemover", fields: [removedBy], references: [id])
 
   @@unique([memberId, tagId, isActive])
@@ -215,4 +234,51 @@ model MemberTag {
   @@index([tagId])
   @@index([isActive])
   @@index([expiresAt])
+}
+
+model Salvation {
+  id String @id @default(uuid())
+
+  // Event relationship
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  // Person information (Member or Guest)
+  memberId String?
+  member   Member? @relation(fields: [memberId], references: [id], onDelete: SetNull)
+
+  // Guest information (if not a member)
+  guestName  String?
+  guestPhone String?
+  guestEmail String?
+
+  // Counselor/Minister
+  counselorId String?
+  counselor   Member? @relation("SalvationCounselor", fields: [counselorId], references: [id], onDelete: SetNull)
+
+  // Decision details
+  decisionDate DateTime     @default(now())
+  decisionType DecisionType @default(SALVATION)
+
+  // Follow-up tracking
+  followUpStatus       FollowUpStatus @default(PENDING)
+  firstContactDate     DateTime?
+  baptismInterest      Boolean        @default(false)
+  baptismDate          DateTime?
+  assignedToSmallGroup Boolean        @default(false)
+  smallGroupName       String?
+
+  // Notes and testimony
+  notes     String? @db.Text
+  testimony String? @db.Text
+
+  // Audit
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+
+  @@index([eventId])
+  @@index([memberId])
+  @@index([decisionDate])
+  @@index([followUpStatus])
 }

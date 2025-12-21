@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useCheckInAccess } from '../hooks/useCheckInAccess';
 import {
     Home, QrCode, Bus, Calendar, UserPlus, PieChart, LogIn, LogOut,
-    User, MapPin, Tag, Users, Menu, X, ChevronDown, BookOpen
+    User, MapPin, Tag, Users, Menu, X, ChevronDown, BookOpen, Heart
 } from 'lucide-react';
 import logo from '../assets/logo.jpg';
 import { createPortal } from 'react-dom';
@@ -76,6 +76,7 @@ export default function Navbar() {
         { to: '/regions', label: 'Regions', icon: MapPin },
         { to: '/tags', label: 'Tags', icon: Tag },
         { to: '/guest-check-in', label: 'Guest Check-in', icon: UserPlus },
+        { to: '/salvations', label: 'Salvations', icon: Heart },
     ];
 
     const isManagementActive = managementLinks.some(link => location.pathname === link.to);

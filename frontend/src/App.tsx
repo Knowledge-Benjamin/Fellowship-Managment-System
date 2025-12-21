@@ -13,6 +13,7 @@ import MemberManagement from './pages/MemberManagement';
 import Login from './pages/Login';
 import Profile from './pages/Profile';
 import CourseManagement from './pages/CourseManagement';
+import SalvationManagement from './pages/SalvationManagement';
 import { ToastProvider } from './components/ToastProvider';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -60,6 +61,12 @@ function AppContent() {
             <Route path="/events" element={
               <ProtectedRoute roles={['FELLOWSHIP_MANAGER']}>
                 <EventManagement />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/salvations" element={
+              <ProtectedRoute roles={['FELLOWSHIP_MANAGER']}>
+                <SalvationManagement />
               </ProtectedRoute>
             } />
 

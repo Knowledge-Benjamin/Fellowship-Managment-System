@@ -1,29 +1,49 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
 import { useToast } from '../components/ToastProvider';
-import { BookOpen, Plus, Trash2, Search, X, Loader2, Edit2, GraduationCap } from 'lucide-react';
+import { BookOpen, Plus, Trash2, Search, X, Loader2, Edit2, GraduationCap, Building } from 'lucide-react';
 import EmptyState from '../components/EmptyState';
+
+interface College {
+    id: string;
+    name: string;
+    code?: string;
+}
 
 interface Course {
     id: string;
     name: string;
     code: string;
     memberCount: number;
+    collegeId?: string;
+    college?: College;
 }
 
 const CourseManagement = () => {
     const { showToast } = useToast();
     const [courses, setCourses] = useState<Course[]>([]);
+    const [colleges, setColleges] = useState<College[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingCourse, setEditingCourse] = useState<Course | null>(null);
-    const [formData, setFormData] = useState({ name: '', code: '' });
+    const [formData, setFormData] = useState({ name: '', code: '', collegeId: '' });
     const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
+        fetchColleges();
         fetchCourses();
     }, []);
+
+    const fetchColleges = async () => {
+        try {
+            const response = await api.get('/colleges');
+            setColleges(response.data);
+        } catch (error) {
+            console.error('Failed to fetch colleges:', error);
+            showToast('error', 'Failed to load colleges');
+        }
+    };
 
     const fetchCourses = async () => {
         try {
@@ -41,10 +61,10 @@ const CourseManagement = () => {
     const handleOpenModal = (course?: Course) => {
         if (course) {
             setEditingCourse(course);
-            setFormData({ name: course.name, code: course.code });
+            setFormData({ name: course.name, code: course.code, collegeId: course.collegeId || '' });
         } else {
             setEditingCourse(null);
-            setFormData({ name: '', code: '' });
+            setFormData({ name: '', code: '', collegeId: '' });
         }
         setIsModalOpen(true);
     };
@@ -52,7 +72,7 @@ const CourseManagement = () => {
     const handleCloseModal = () => {
         setIsModalOpen(false);
         setEditingCourse(null);
-        setFormData({ name: '', code: '' });
+        setFormData({ name: '', code: '', collegeId: '' });
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -61,9 +81,10 @@ const CourseManagement = () => {
 
         try {
             setSubmitting(true);
-            const payload = {
+            const payload: any = {
                 name: formData.name.trim(),
-                code: formData.code.trim().toUpperCase()
+                code: formData.code.trim().toUpperCase(),
+                collegeId: formData.collegeId || undefined
             };
 
             if (editingCourse) {
@@ -99,8 +120,25 @@ const CourseManagement = () => {
 
     const filteredCourses = courses.filter(course =>
         course.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        course.code.toLowerCase().includes(searchQuery.toLowerCase())
+        course.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        course.college?.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
+
+    // Group courses by college
+    const unassignedCourses = filteredCourses.filter(c => !c.college);
+    const groupedByCollege = filteredCourses.reduce((acc, course) => {
+        if (course.college) {
+            const collegeId = course.college.id;
+            if (!acc[collegeId]) {
+                acc[collegeId] = {
+                    college: course.college,
+                    courses: []
+                };
+            }
+            acc[collegeId].courses.push(course);
+        }
+        return acc;
+    }, {} as Record<string, { college: College; courses: Course[] }>);
 
     return (
         <div className="min-h-screen bg-[#0a0f1e] text-white p-6">
@@ -110,7 +148,7 @@ const CourseManagement = () => {
                         <h1 className="text-4xl font-bold bg-gradient-to-r from-teal-400 to-blue-500 bg-clip-text text-transparent">
                             Course Management
                         </h1>
-                        <p className="text-slate-400 mt-2">Manage university courses and codes</p>
+                        <p className="text-slate-400 mt-2">Manage university courses and assign them to colleges</p>
                     </div>
                     <button
                         onClick={() => handleOpenModal()}
@@ -125,7 +163,7 @@ const CourseManagement = () => {
                     <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400" size={20} />
                     <input
                         type="text"
-                        placeholder="Search courses by name or code..."
+                        placeholder="Search courses by name, code, or college..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className="w-full pl-12 pr-4 py-3 bg-[#151d30] rounded-xl border border-slate-800 focus:border-teal-500 focus:outline-none text-white placeholder-slate-500 transition-colors"
@@ -144,43 +182,37 @@ const CourseManagement = () => {
                         action={!searchQuery ? { label: "Add Course", onClick: () => handleOpenModal() } : undefined}
                     />
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {filteredCourses.map((course) => (
-                            <div key={course.id} className="glass-card p-6 group hover:border-teal-500/50 transition-colors">
-                                <div className="flex items-start justify-between mb-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 rounded-lg bg-teal-500/10 text-teal-400">
-                                            <BookOpen size={20} />
-                                        </div>
-                                        <div>
-                                            <span className="text-xs font-bold text-teal-400 bg-teal-500/10 px-2 py-0.5 rounded border border-teal-500/20">
-                                                {course.code}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button
-                                            onClick={() => handleOpenModal(course)}
-                                            className="p-2 hover:bg-slate-700 rounded-lg text-slate-400 hover:text-white transition-colors"
-                                        >
-                                            <Edit2 size={16} />
-                                        </button>
-                                        <button
-                                            onClick={() => handleDelete(course)}
-                                            className="p-2 hover:bg-red-500/10 rounded-lg text-slate-400 hover:text-red-400 transition-colors"
-                                        >
-                                            <Trash2 size={16} />
-                                        </button>
-                                    </div>
+                    <div className="space-y-8">
+                        {/* Unassigned Courses */}
+                        {unassignedCourses.length > 0 && (
+                            <div>
+                                <div className="flex items-center gap-2 mb-4">
+                                    <BookOpen className="w-5 h-5 text-slate-400" />
+                                    <h2 className="text-xl font-semibold text-slate-300">Unassigned Courses</h2>
+                                    <span className="text-sm text-slate-500">({unassignedCourses.length})</span>
                                 </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    {unassignedCourses.map((course) => (
+                                        <CourseCard key={course.id} course={course} onEdit={handleOpenModal} onDelete={handleDelete} />
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
-                                <h3 className="text-lg font-semibold text-white mb-2 line-clamp-2 h-14">
-                                    {course.name}
-                                </h3>
-
-                                <div className="flex items-center gap-2 text-sm text-slate-400 border-t border-slate-800 pt-4 mt-2">
-                                    <GraduationCap size={16} />
-                                    <span>{course.memberCount} students enrolled</span>
+                        {/* Grouped by College */}
+                        {Object.values(groupedByCollege).map(({ college, courses }) => (
+                            <div key={college.id}>
+                                <div className="flex items-center gap-2 mb-4">
+                                    <Building className="w-5 h-5 text-teal-400" />
+                                    <h2 className="text-xl font-semibold text-white">
+                                        {college.code ? `${college.code} - ` : ''}{college.name}
+                                    </h2>
+                                    <span className="text-sm text-slate-500">({courses.length} course{courses.length !== 1 && 's'})</span>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    {courses.map((course) => (
+                                        <CourseCard key={course.id} course={course} onEdit={handleOpenModal} onDelete={handleDelete} />
+                                    ))}
                                 </div>
                             </div>
                         ))}
@@ -227,6 +259,23 @@ const CourseManagement = () => {
                                     />
                                 </div>
 
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-300 mb-2">College (Optional)</label>
+                                    <select
+                                        value={formData.collegeId}
+                                        onChange={(e) => setFormData({ ...formData, collegeId: e.target.value })}
+                                        className="w-full px-4 py-3 bg-[#0a0f1e] rounded-xl border border-slate-700 focus:border-teal-500 focus:outline-none text-white transition-colors cursor-pointer"
+                                    >
+                                        <option value="">No College (Unassigned)</option>
+                                        {colleges.map((college) => (
+                                            <option key={college.id} value={college.id}>
+                                                {college.code ? `${college.code} - ` : ''}{college.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <p className="text-xs text-slate-500 mt-1">Assign this course to a Makerere college</p>
+                                </div>
+
                                 <div className="flex gap-3 pt-4">
                                     <button
                                         type="button"
@@ -258,5 +307,53 @@ const CourseManagement = () => {
         </div>
     );
 };
+
+// Course Card Component
+const CourseCard: React.FC<{ course: Course; onEdit: (course: Course) => void; onDelete: (course: Course) => void }> = ({ course, onEdit, onDelete }) => (
+    <div className="glass-card p-6 group hover:border-teal-500/50 transition-colors">
+        <div className="flex items-start justify-between mb-4">
+            <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-teal-500/10 text-teal-400">
+                    <BookOpen size={20} />
+                </div>
+                <div>
+                    <span className="text-xs font-bold text-teal-400 bg-teal-500/10 px-2 py-0.5 rounded border border-teal-500/20">
+                        {course.code}
+                    </span>
+                </div>
+            </div>
+            <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                    onClick={() => onEdit(course)}
+                    className="p-2 hover:bg-slate-700 rounded-lg text-slate-400 hover:text-white transition-colors"
+                >
+                    <Edit2 size={16} />
+                </button>
+                <button
+                    onClick={() => onDelete(course)}
+                    className="p-2 hover:bg-red-500/10 rounded-lg text-slate-400 hover:text-red-400 transition-colors"
+                >
+                    <Trash2 size={16} />
+                </button>
+            </div>
+        </div>
+
+        <h3 className="text-lg font-semibold text-white mb-2 line-clamp-2 h-14">
+            {course.name}
+        </h3>
+
+        {course.college && (
+            <div className="flex items-center gap-2 text-xs text-purple-400 mb-2 bg-purple-500/10 px-2 py-1 rounded border border-purple-500/20">
+                <Building size={12} />
+                <span>{course.college.code || course.college.name}</span>
+            </div>
+        )}
+
+        <div className="flex items-center gap-2 text-sm text-slate-400 border-t border-slate-800 pt-4 mt-2">
+            <GraduationCap size={16} />
+            <span>{course.memberCount} student{course.memberCount !== 1 && 's'} enrolled</span>
+        </div>
+    </div>
+);
 
 export default CourseManagement;

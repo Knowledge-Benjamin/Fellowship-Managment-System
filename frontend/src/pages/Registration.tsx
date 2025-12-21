@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import api from '../api';
 import QRCode from 'react-qr-code';
 import { useToast } from '../components/ToastProvider';
-import { UserPlus, CheckCircle, Download, RotateCcw, Sparkles, Copy, Mail, MapPin, GraduationCap, Tag as TagIcon, BookOpen, Plus, Loader2, X } from 'lucide-react';
+import { UserPlus, CheckCircle, Download, RotateCcw, Sparkles, Copy, Mail, MapPin, GraduationCap, Tag as TagIcon, BookOpen, Plus, Loader2, Building } from 'lucide-react';
+import AddCollegeModal from '../components/AddCollegeModal';
+import AddCourseModal from '../components/AddCourseModal';
 
 interface Region {
     id: string;
@@ -18,10 +20,18 @@ interface Tag {
     showOnRegistration: boolean;
 }
 
+interface College {
+    id: string;
+    name: string;
+    code?: string;
+}
+
 interface Course {
     id: string;
     name: string;
     code: string;
+    collegeId?: string;
+    college?: College;
 }
 
 const Registration = () => {
@@ -31,11 +41,11 @@ const Registration = () => {
     const [classificationTags, setClassificationTags] = useState<Tag[]>([]);
     const [additionalTags, setAdditionalTags] = useState<Tag[]>([]);
     const [courses, setCourses] = useState<Course[]>([]);
+    const [colleges, setColleges] = useState<College[]>([]);
 
-    // Course creation modal state
+    // Modal states
     const [isCourseModalOpen, setIsCourseModalOpen] = useState(false);
-    const [newCourse, setNewCourse] = useState({ name: '', code: '' });
-    const [savingCourse, setSavingCourse] = useState(false);
+    const [isCollegeModalOpen, setIsCollegeModalOpen] = useState(false);
 
     const [formData, setFormData] = useState({
         fullName: '',
@@ -46,6 +56,7 @@ const Registration = () => {
         regionId: '',
         classificationTagId: '',
         additionalTagIds: [] as string[],
+        collegeId: '',
         courseId: '',
         yearOfStudy: 1,
     });
@@ -54,6 +65,7 @@ const Registration = () => {
     useEffect(() => {
         fetchRegions();
         fetchTags();
+        fetchColleges();
         fetchCourses();
     }, []);
 
@@ -62,13 +74,22 @@ const Registration = () => {
         if (!formData.isMakerereStudent) {
             const nonResident = regions.find(r => r.name === 'Non-Resident');
             if (nonResident) {
-                setFormData(prev => ({ ...prev, regionId: nonResident.id }));
+                setFormData(prev => ({ ...prev, regionId: nonResident.id, collegeId: '', courseId: '' }));
             }
         } else {
             // Clear regionId when switching to Makerere student
-            setFormData(prev => ({ ...prev, regionId: '', classificationTagId: '' }));
+            setFormData(prev => ({ ...prev, regionId: '', classificationTagId: '', collegeId: '', courseId: '' }));
         }
     }, [formData.isMakerereStudent, regions]);
+
+    // Auto-fetch courses when college changes (for Makerere students)
+    useEffect(() => {
+        if (formData.isMakerereStudent && formData.collegeId) {
+            fetchCoursesByCollege(formData.collegeId);
+        } else if (!formData.isMakerereStudent) {
+            fetchCourses();
+        }
+    }, [formData.collegeId, formData.isMakerereStudent]);
 
     const fetchRegions = async () => {
         try {
@@ -101,6 +122,16 @@ const Registration = () => {
         }
     };
 
+    const fetchColleges = async () => {
+        try {
+            const response = await api.get('/colleges');
+            setColleges(response.data);
+        } catch (error) {
+            console.error('Failed to fetch colleges:', error);
+            showToast('error', 'Failed to load colleges.');
+        }
+    };
+
     const fetchCourses = async () => {
         try {
             const response = await api.get('/courses');
@@ -108,6 +139,25 @@ const Registration = () => {
         } catch (error) {
             console.error('Failed to fetch courses:', error);
             showToast('error', 'Failed to load courses.');
+        }
+    };
+
+    const fetchCoursesByCollege = async (collegeId: string) => {
+        try {
+            const response = await api.get(`/courses?collegeId=${collegeId}`);
+            setCourses(response.data);
+        } catch (error) {
+            console.error('Failed to fetch courses by college:', error);
+            showToast('error', 'Failed to load courses.');
+        }
+    };
+
+    const handleCollegeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const value = e.target.value;
+        if (value === 'NEW_COLLEGE') {
+            setIsCollegeModalOpen(true);
+        } else {
+            setFormData(prev => ({ ...prev, collegeId: value, courseId: '' }));
         }
     };
 
@@ -120,30 +170,14 @@ const Registration = () => {
         }
     };
 
-    const handleSaveCourse = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!newCourse.name.trim() || !newCourse.code.trim()) return;
+    const handleCollegeSaved = (college: College) => {
+        setColleges(prev => [...prev, college].sort((a, b) => a.name.localeCompare(b.name)));
+        setFormData(prev => ({ ...prev, collegeId: college.id }));
+    };
 
-        try {
-            setSavingCourse(true);
-            const response = await api.post('/courses', {
-                name: newCourse.name.trim(),
-                code: newCourse.code.trim().toUpperCase()
-            });
-
-            const savedCourse = response.data;
-            setCourses(prev => [...prev, savedCourse].sort((a, b) => a.name.localeCompare(b.name)));
-            setFormData(prev => ({ ...prev, courseId: savedCourse.id }));
-
-            setNewCourse({ name: '', code: '' });
-            setIsCourseModalOpen(false);
-            showToast('success', 'Course created and selected');
-        } catch (error: any) {
-            console.error('Failed to create course:', error);
-            showToast('error', error.response?.data?.error || 'Failed to create course');
-        } finally {
-            setSavingCourse(false);
-        }
+    const handleCourseSaved = (course: Course) => {
+        setCourses(prev => [...prev, course].sort((a, b) => a.name.localeCompare(b.name)));
+        setFormData(prev => ({ ...prev, courseId: course.id }));
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -182,6 +216,7 @@ const Registration = () => {
             regionId: '',
             classificationTagId: '',
             additionalTagIds: [],
+            collegeId: '',
             courseId: '',
             yearOfStudy: 1,
         });
@@ -498,6 +533,41 @@ const Registration = () => {
                             )}
                         </div>
 
+                        {/* College - Only for Makerere students */}
+                        {formData.isMakerereStudent && (
+                            <div className="space-y-2">
+                                <label className="text-sm font-semibold text-slate-300 flex items-center justify-between">
+                                    <span className="flex items-center gap-2">
+                                        <Building className="w-4 h-4 text-teal-400" />
+                                        College (Optional)
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsCollegeModalOpen(true)}
+                                        className="text-xs text-teal-400 hover:text-teal-300 flex items-center gap-1"
+                                    >
+                                        <Plus size={12} /> Add New
+                                    </button>
+                                </label>
+                                <select
+                                    className="input transition-smooth cursor-pointer"
+                                    value={formData.collegeId}
+                                    onChange={handleCollegeChange}
+                                >
+                                    <option value="">Select College</option>
+                                    {colleges.map((college) => (
+                                        <option key={college.id} value={college.id}>
+                                            {college.code ? `${college.code} - ${college.name}` : college.name}
+                                        </option>
+                                    ))}
+                                    {colleges.length > 0 && <option disabled>──────────</option>}
+                                    <option value="NEW_COLLEGE" className="font-bold text-teal-400">
+                                        + Add New College...
+                                    </option>
+                                </select>
+                            </div>
+                        )}
+
                         {/* Course and Year - Conditional */}
                         {showCourseAndYear && (
                             <div className="grid md:grid-cols-2 gap-6">
@@ -517,6 +587,7 @@ const Registration = () => {
                                         className="input transition-smooth cursor-pointer"
                                         value={formData.courseId}
                                         onChange={handleCourseChange}
+                                        disabled={formData.isMakerereStudent && !formData.collegeId && courses.length === 0}
                                     >
                                         <option value="">Select Course</option>
                                         {courses.map((course) => (
@@ -524,12 +595,16 @@ const Registration = () => {
                                                 {course.code}
                                             </option>
                                         ))}
-                                        {/* Divider check */}
                                         {courses.length > 0 && <option disabled>──────────</option>}
                                         <option value="NEW_COURSE" className="font-bold text-teal-400">
                                             + Add New Course...
                                         </option>
                                     </select>
+                                    {formData.isMakerereStudent && !formData.collegeId && (
+                                        <p className="text-xs text-amber-400 mt-1">
+                                            Please select a college first
+                                        </p>
+                                    )}
                                 </div>
 
                                 {/* Year of Study */}
@@ -590,67 +665,19 @@ const Registration = () => {
                     </form>
                 </div>
 
-                {/* Quick Add Course Modal */}
-                {isCourseModalOpen && (
-                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-                        <div className="bg-[#151d30] rounded-2xl p-6 max-w-sm w-full border border-slate-800 shadow-xl">
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                                    <BookOpen className="w-5 h-5 text-teal-400" />
-                                    Add New Course
-                                </h3>
-                                <button
-                                    onClick={() => setIsCourseModalOpen(false)}
-                                    className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white"
-                                >
-                                    <X size={18} />
-                                </button>
-                            </div>
+                {/* Modals */}
+                <AddCollegeModal
+                    isOpen={isCollegeModalOpen}
+                    onClose={() => setIsCollegeModalOpen(false)}
+                    onSuccess={handleCollegeSaved}
+                />
 
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-300 mb-1">Course Code</label>
-                                    <input
-                                        type="text"
-                                        value={newCourse.code}
-                                        onChange={(e) => setNewCourse(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
-                                        placeholder="e.g. BSCS"
-                                        className="w-full px-3 py-2 bg-[#0a0f1e] rounded-lg border border-slate-700 focus:border-teal-500 focus:outline-none text-white font-mono"
-                                        maxLength={10}
-                                        autoFocus
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-300 mb-1">Course Name</label>
-                                    <input
-                                        type="text"
-                                        value={newCourse.name}
-                                        onChange={(e) => setNewCourse(prev => ({ ...prev, name: e.target.value }))}
-                                        placeholder="e.g. Bachelor of Science in Computer Science"
-                                        className="w-full px-3 py-2 bg-[#0a0f1e] rounded-lg border border-slate-700 focus:border-teal-500 focus:outline-none text-white"
-                                    />
-                                </div>
-
-                                <button
-                                    type="button"
-                                    onClick={handleSaveCourse}
-                                    disabled={savingCourse || !newCourse.code || !newCourse.name}
-                                    className="w-full mt-2 btn-primary flex items-center justify-center gap-2"
-                                >
-                                    {savingCourse ? (
-                                        <>
-                                            <Loader2 size={16} className="animate-spin" />
-                                            Saving...
-                                        </>
-                                    ) : (
-                                        'Create & Select Course'
-                                    )}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
+                <AddCourseModal
+                    isOpen={isCourseModalOpen}
+                    onClose={() => setIsCourseModalOpen(false)}
+                    onSuccess={handleCourseSaved}
+                    preSelectedCollegeId={formData.isMakerereStudent ? formData.collegeId : undefined}
+                />
             </div>
         </div>
     );

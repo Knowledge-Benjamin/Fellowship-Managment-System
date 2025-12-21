@@ -5,17 +5,28 @@ import { z } from 'zod';
 const createCourseSchema = z.object({
     name: z.string().min(1, 'Course name is required'),
     code: z.string().min(1, 'Course code is required').toUpperCase(),
+    collegeId: z.string().uuid().optional(),
 });
 
 const updateCourseSchema = z.object({
     name: z.string().min(1, 'Course name is required').optional(),
     code: z.string().min(1, 'Course code is required').toUpperCase().optional(),
+    collegeId: z.string().uuid().optional(),
 });
 
 export const getAllCourses = async (req: Request, res: Response) => {
     try {
+        const { collegeId } = req.query;
+
+        const where: any = {};
+        if (collegeId && typeof collegeId === 'string') {
+            where.collegeId = collegeId;
+        }
+
         const courses = await prisma.course.findMany({
+            where,
             include: {
+                college: true,
                 _count: {
                     select: { members: true }
                 }
@@ -58,7 +69,10 @@ export const createCourse = async (req: Request, res: Response) => {
         }
 
         const course = await prisma.course.create({
-            data: validatedData
+            data: validatedData,
+            include: {
+                college: true
+            }
         });
 
         res.status(201).json(course);
@@ -95,7 +109,10 @@ export const updateCourse = async (req: Request, res: Response) => {
 
         const course = await prisma.course.update({
             where: { id },
-            data: validatedData
+            data: validatedData,
+            include: {
+                college: true
+            }
         });
 
         res.json(course);

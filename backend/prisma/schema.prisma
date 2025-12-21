@@ -156,10 +156,21 @@ model EventVolunteer {
   @@unique([eventId, memberId])
 }
 
+model College {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  code      String?  @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  courses   Course[]
+}
+
 model Course {
   id        String   @id @default(uuid())
   name      String   @unique
   code      String   @unique
+  collegeId String?
+  college   College? @relation(fields: [collegeId], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   members   Member[]

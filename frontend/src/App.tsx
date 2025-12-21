@@ -174,7 +174,7 @@ function AppContent() {
             } />
 
             <Route path="/regions" element={
-              <ProtectedRoute requiredRole="FELLOWSHIP_MANAGER">
+              <ProtectedRoute roles={['FELLOWSHIP_MANAGER']}>
                 <RegionManagement />
               </ProtectedRoute>
             } />

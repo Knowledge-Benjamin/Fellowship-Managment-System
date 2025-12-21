@@ -1,6 +1,7 @@
 import PDFDocument from 'pdfkit';
 import ExcelJS from 'exceljs';
 import { Response } from 'express';
+import { generateGenderPieChart, generateRegionBarChart } from '../utils/chartGenerator';
 
 // Define types for report data
 interface EventReportData {
@@ -107,35 +108,42 @@ export const generateEventReportPDF = async (
 
     doc.moveDown(7);
 
-    // GENDER BREAKDOWN SECTION
-    doc.fillColor('#14b8a6').fontSize(14).text('Gender Distribution');
+    // CHARTS SECTION
+    try {
+        // Generate and embed gender pie chart
+        const genderChartBuffer = await generateGenderPieChart(
+            data.stats.genderBreakdown.MALE,
+            data.stats.genderBreakdown.FEMALE
+        );
+        const regionChartBuffer = await generateRegionBarChart(data.stats.regionBreakdown);
+
+        // Position charts side-by-side
+        const chartY = doc.y;
+
+        // Pie chart on the left
+        doc.image(genderChartBuffer, 50, chartY, { width: 240 });
+
+        // Bar chart on the right
+        doc.image(regionChartBuffer, 310, chartY, { width: 250 });
+
+        // Move cursor below charts
+        doc.y = chartY + 320;
+    } catch (error) {
+        console.error('Chart generation error:', error);
+        // Continue without charts if generation fails
+    }
+
+    doc.moveDown(2);
+
+    // STATISTICAL SUMMARY (replacing old text-based section)
+    doc.fillColor('#14b8a6').fontSize(14).text('Statistical Summary');
     doc.moveDown(0.5);
 
     doc.fillColor('#1e293b')
-        .fontSize(12)
-        .text(
-            `Male: ${data.stats.genderBreakdown.MALE} (${(
-                (data.stats.genderBreakdown.MALE / data.stats.memberCount) *
-                100
-            ).toFixed(1)}%)`
-        );
-    doc.text(
-        `Female: ${data.stats.genderBreakdown.FEMALE} (${(
-            (data.stats.genderBreakdown.FEMALE / data.stats.memberCount) *
-            100
-        ).toFixed(1)}%)`
-    );
-    doc.moveDown(1);
-
-    // REGION BREAKDOWN SECTION
-    doc.fillColor('#14b8a6').fontSize(14).text('Region Distribution');
-    doc.moveDown(0.5);
-
-    Object.entries(data.stats.regionBreakdown)
-        .sort((a, b) => b[1] - a[1])
-        .forEach(([region, count]) => {
-            doc.fillColor('#1e293b').fontSize(12).text(`${region}: ${count}`);
-        });
+        .fontSize(11)
+        .text(`Total Attendance: ${data.stats.totalAttendance}`, { continued: true })
+        .text(`  |  Members: ${data.stats.memberCount}  |  Guests: ${data.stats.guestCount}`);
+    doc.text(`First Timers: ${data.stats.firstTimersCount}  (${((data.stats.firstTimersCount / data.stats.totalAttendance) * 100).toFixed(1)}%)`);
     doc.moveDown(1);
 
     // GUEST LIST SECTION (if applicable)
@@ -258,12 +266,77 @@ export const generateEventReportExcel = async (
 
     Object.entries(data.stats.regionBreakdown)
         .sort((a, b) => b[1] - a[1])
-        .forEach(([region, count]) => {
-            summarySheet.addRow([region, count]);
+        .forEach(([region, count], index) => {
+            const row = summarySheet.addRow([region, count]);
+            // Add conditional formatting based on count
+            const maxCount = Math.max(...Object.values(data.stats.regionBreakdown));
+            const percentage = count / maxCount;
+
+            // Color gradient from light to dark teal
+            let bgColor = 'FFFFFFFF';
+            if (percentage > 0.7) {
+                bgColor = 'FF14b8a6'; // High - dark teal
+                row.getCell(2).font = { color: { argb: 'FFFFFFFF' }, bold: true };
+            } else if (percentage > 0.4) {
+                bgColor = 'FF5eead4'; // Medium - medium teal
+            } else {
+                bgColor = 'FFccfbf1'; // Low - light teal
+            }
+
+            row.getCell(2).fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: bgColor },
+            };
+
+            // Add borders to region rows
+            row.eachCell((cell) => {
+                cell.border = {
+                    top: { style: 'thin', color: { argb: 'FFe2e8f0' } },
+                    bottom: { style: 'thin', color: { argb: 'FFe2e8f0' } },
+                };
+            });
         });
+
+    // Add percentage column for metrics
+    summarySheet.getCell('C4').value = 'Percentage';
+    summarySheet.getCell('C4').font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    summarySheet.getCell('C4').fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF475569' },
+    };
+
+    // Add percentages for gender breakdown
+    const totalMembers = data.stats.memberCount;
+    const malePercentage = ((data.stats.genderBreakdown.MALE / totalMembers) * 100).toFixed(1);
+    const femalePercentage = ((data.stats.genderBreakdown.FEMALE / totalMembers) * 100).toFixed(1);
+
+    summarySheet.getCell('C9').value = `${malePercentage}%`;
+    summarySheet.getCell('C10').value = `${femalePercentage}%`;
+
+    // Add first-timer percentage
+    const firstTimerPercentage = ((data.stats.firstTimersCount / data.stats.totalAttendance) * 100).toFixed(1);
+    summarySheet.getCell('C8').value = `${firstTimerPercentage}%`;
 
     // Auto-fit columns
     summarySheet.columns = [{ width: 25 }, { width: 15 }, { width: 15 }, { width: 15 }];
+
+    // Add borders to all cells for better visual separation
+    summarySheet.eachRow((row, rowNumber) => {
+        if (rowNumber > 3) { // Skip title rows
+            row.eachCell((cell) => {
+                if (!cell.border) {
+                    cell.border = {
+                        top: { style: 'thin', color: { argb: 'FFe2e8f0' } },
+                        left: { style: 'thin', color: { argb: 'FFe2e8f0' } },
+                        bottom: { style: 'thin', color: { argb: 'FFe2e8f0' } },
+                        right: { style: 'thin', color: { argb: 'FFe2e8f0' } },
+                    };
+                }
+            });
+        }
+    });
 
     // GUEST LIST SHEET (if applicable)
     if (data.guests.length > 0) {

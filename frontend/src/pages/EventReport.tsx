@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api';
-import { ArrowLeft, Users, UserPlus, Calendar, TrendingUp, UserCheck, Download, MapPin, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Users, UserPlus, Calendar, TrendingUp, UserCheck, Download, MapPin, ChevronDown, Heart, Tag } from 'lucide-react';
 import {
     BarChart,
     Bar,
@@ -34,6 +34,8 @@ interface EventReportData {
         };
         regionBreakdown: Record<string, number>;
         firstTimersCount: number;
+        salvationBreakdown?: Record<string, number>;
+        tagDistribution?: Record<string, number>;
     };
     guests: Array<{
         name: string;
@@ -371,6 +373,69 @@ const EventReport = () => {
                                     <Bar dataKey="value" fill="#2dd4bf" radius={[0, 4, 4, 0]} />
                                 </BarChart>
                             </ResponsiveContainer>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Spiritual Decisions & Tags */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                    {/* Spiritual Decisions */}
+                    <div className="bg-[#151d30] rounded-2xl border border-slate-800 overflow-hidden">
+                        <div className="p-6 border-b border-slate-800 flex justify-between items-center">
+                            <h3 className="text-xl font-bold text-white">Spiritual Decisions</h3>
+                            <div className="bg-pink-500/10 p-2 rounded-lg">
+                                <Heart size={20} className="text-pink-400" />
+                            </div>
+                        </div>
+                        <div className="p-6">
+                            {report.stats.salvationBreakdown && Object.keys(report.stats.salvationBreakdown).length > 0 ? (
+                                <div className="grid grid-cols-2 gap-4">
+                                    {Object.entries(report.stats.salvationBreakdown).map(([type, count]) => (
+                                        <div key={type} className="bg-slate-900/50 p-4 rounded-xl border border-slate-700/50">
+                                            <p className="text-slate-400 text-xs uppercase mb-1">{type.replace(/_/g, ' ')}</p>
+                                            <p className="text-2xl font-bold text-white">{count}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-slate-500 text-center py-4">No decisions recorded.</p>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Tag Distribution */}
+                    <div className="bg-[#151d30] rounded-2xl border border-slate-800 overflow-hidden">
+                        <div className="p-6 border-b border-slate-800 flex justify-between items-center">
+                            <h3 className="text-xl font-bold text-white">Group / Tag Distribution</h3>
+                            <div className="bg-purple-500/10 p-2 rounded-lg">
+                                <Tag size={20} className="text-purple-400" />
+                            </div>
+                        </div>
+                        <div className="p-0">
+                            {report.stats.tagDistribution && Object.keys(report.stats.tagDistribution).length > 0 ? (
+                                <div className="max-h-64 overflow-y-auto custom-scrollbar">
+                                    <table className="w-full text-left">
+                                        <thead className="bg-slate-900/50 text-slate-400 sticky top-0">
+                                            <tr>
+                                                <th className="px-6 py-3 font-medium text-xs uppercase">Tag Name</th>
+                                                <th className="px-6 py-3 font-medium text-xs uppercase text-right">Count</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-800">
+                                            {Object.entries(report.stats.tagDistribution)
+                                                .sort((a, b) => b[1] - a[1])
+                                                .map(([tag, count]) => (
+                                                    <tr key={tag} className="text-slate-300 hover:bg-slate-800/50 transition-colors">
+                                                        <td className="px-6 py-3 text-sm">{tag}</td>
+                                                        <td className="px-6 py-3 text-sm text-right font-medium">{count}</td>
+                                                    </tr>
+                                                ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            ) : (
+                                <p className="text-slate-500 text-center py-8">No tags recorded.</p>
+                            )}
                         </div>
                     </div>
                 </div>

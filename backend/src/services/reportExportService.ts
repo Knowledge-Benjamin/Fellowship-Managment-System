@@ -19,6 +19,8 @@ interface EventReportData {
         genderBreakdown: { MALE: number; FEMALE: number };
         regionBreakdown: Record<string, number>;
         firstTimersCount: number;
+        salvationBreakdown?: Record<string, number>;
+        tagDistribution?: Record<string, number>;
     };
     guests: Array<{ name: string; purpose: string | null }>;
 }
@@ -31,6 +33,8 @@ interface CustomReportData {
         uniqueMembers: number;
         genderBreakdown: { MALE: number; FEMALE: number };
         regionBreakdown: Record<string, number>;
+        salvationBreakdown?: Record<string, number>;
+        tagDistribution?: Record<string, number>;
     };
     chartData: Array<{
         date: string;
@@ -135,7 +139,7 @@ export const generateEventReportPDF = async (
 
     doc.moveDown(2);
 
-    // STATISTICAL SUMMARY (replacing old text-based section)
+    // STATISTICAL SUMMARY
     doc.fillColor('#14b8a6').fontSize(14).text('Statistical Summary');
     doc.moveDown(0.5);
 
@@ -143,8 +147,35 @@ export const generateEventReportPDF = async (
         .fontSize(11)
         .text(`Total Attendance: ${data.stats.totalAttendance}`, { continued: true })
         .text(`  |  Members: ${data.stats.memberCount}  |  Guests: ${data.stats.guestCount}`);
-    doc.text(`First Timers: ${data.stats.firstTimersCount}  (${((data.stats.firstTimersCount / data.stats.totalAttendance) * 100).toFixed(1)}%)`);
+    doc.text(`First Timers: ${data.stats.firstTimersCount}  (${((data.stats.firstTimersCount / (data.stats.totalAttendance || 1)) * 100).toFixed(1)}%)`);
     doc.moveDown(1);
+
+    // SALVATION STATISTICS
+    if (data.stats.salvationBreakdown && Object.keys(data.stats.salvationBreakdown).length > 0) {
+        doc.fillColor('#ec4899').fontSize(14).text('Spiritual Decisions');
+        doc.moveDown(0.5);
+        Object.entries(data.stats.salvationBreakdown).forEach(([type, count]) => {
+            doc.fillColor('#1e293b').fontSize(11)
+                .text(`${type.replace(/_/g, ' ')}: ${count}`);
+        });
+        doc.moveDown(1);
+    }
+
+    // TAG DISTRIBUTION
+    if (data.stats.tagDistribution && Object.keys(data.stats.tagDistribution).length > 0) {
+        doc.fillColor('#8b5cf6').fontSize(14).text('Group/Tag Distribution');
+        doc.moveDown(0.5);
+
+        // Sort by count descending
+        const sortedTags = Object.entries(data.stats.tagDistribution)
+            .sort((a, b) => b[1] - a[1]);
+
+        // Render in two columns if possible, or just list
+        sortedTags.forEach(([tag, count]) => {
+            doc.fillColor('#1e293b').fontSize(11).text(`${tag}: ${count}`);
+        });
+        doc.moveDown(1);
+    }
 
     // GUEST LIST SECTION (if applicable)
     if (data.guests.length > 0) {
@@ -268,19 +299,17 @@ export const generateEventReportExcel = async (
         .sort((a, b) => b[1] - a[1])
         .forEach(([region, count], index) => {
             const row = summarySheet.addRow([region, count]);
-            // Add conditional formatting based on count
-            const maxCount = Math.max(...Object.values(data.stats.regionBreakdown));
+            const maxCount = Math.max(...Object.values(data.stats.regionBreakdown), 1);
             const percentage = count / maxCount;
 
-            // Color gradient from light to dark teal
             let bgColor = 'FFFFFFFF';
             if (percentage > 0.7) {
-                bgColor = 'FF14b8a6'; // High - dark teal
+                bgColor = 'FF14b8a6';
                 row.getCell(2).font = { color: { argb: 'FFFFFFFF' }, bold: true };
             } else if (percentage > 0.4) {
-                bgColor = 'FF5eead4'; // Medium - medium teal
+                bgColor = 'FF5eead4';
             } else {
-                bgColor = 'FFccfbf1'; // Low - light teal
+                bgColor = 'FFccfbf1';
             }
 
             row.getCell(2).fill = {
@@ -288,15 +317,46 @@ export const generateEventReportExcel = async (
                 pattern: 'solid',
                 fgColor: { argb: bgColor },
             };
-
-            // Add borders to region rows
-            row.eachCell((cell) => {
-                cell.border = {
-                    top: { style: 'thin', color: { argb: 'FFe2e8f0' } },
-                    bottom: { style: 'thin', color: { argb: 'FFe2e8f0' } },
-                };
-            });
         });
+
+    summarySheet.addRow([]);
+
+    // Salvation Breakdown
+    if (data.stats.salvationBreakdown && Object.keys(data.stats.salvationBreakdown).length > 0) {
+        summarySheet.addRow(['Spiritual Decisions', 'Count']).font = {
+            bold: true,
+            color: { argb: 'FFFFFFFF' },
+        };
+        summarySheet.lastRow!.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFec4899' }, // Pink header
+        };
+
+        Object.entries(data.stats.salvationBreakdown).forEach(([type, count]) => {
+            summarySheet.addRow([type.replace(/_/g, ' '), count]);
+        });
+        summarySheet.addRow([]);
+    }
+
+    // Tag Distribution
+    if (data.stats.tagDistribution && Object.keys(data.stats.tagDistribution).length > 0) {
+        summarySheet.addRow(['Group / Tag', 'Count']).font = {
+            bold: true,
+            color: { argb: 'FFFFFFFF' },
+        };
+        summarySheet.lastRow!.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FF8b5cf6' }, // Purple header
+        };
+
+        Object.entries(data.stats.tagDistribution)
+            .sort((a, b) => b[1] - a[1])
+            .forEach(([tag, count]) => {
+                summarySheet.addRow([tag, count]);
+            });
+    }
 
     // Add percentage column for metrics
     summarySheet.getCell('C4').value = 'Percentage';
@@ -308,7 +368,7 @@ export const generateEventReportExcel = async (
     };
 
     // Add percentages for gender breakdown
-    const totalMembers = data.stats.memberCount;
+    const totalMembers = data.stats.memberCount || 1;
     const malePercentage = ((data.stats.genderBreakdown.MALE / totalMembers) * 100).toFixed(1);
     const femalePercentage = ((data.stats.genderBreakdown.FEMALE / totalMembers) * 100).toFixed(1);
 
@@ -316,7 +376,7 @@ export const generateEventReportExcel = async (
     summarySheet.getCell('C10').value = `${femalePercentage}%`;
 
     // Add first-timer percentage
-    const firstTimerPercentage = ((data.stats.firstTimersCount / data.stats.totalAttendance) * 100).toFixed(1);
+    const firstTimerPercentage = ((data.stats.firstTimersCount / (data.stats.totalAttendance || 1)) * 100).toFixed(1);
     summarySheet.getCell('C8').value = `${firstTimerPercentage}%`;
 
     // Auto-fit columns
@@ -368,7 +428,7 @@ export const generateEventReportExcel = async (
         guestSheet.columns = [{ width: 30 }, { width: 40 }];
     }
 
-    // Protect Summary sheet (allow filtering only)
+    // Protect Summary sheet
     await summarySheet.protect('fellowship2024', {
         selectLockedCells: true,
         selectUnlockedCells: true,
@@ -458,6 +518,29 @@ export const generateCustomReportPDF = async (
         .forEach(([region, count]) => {
             doc.fillColor('#1e293b').fontSize(12).text(`${region}: ${count}`);
         });
+    doc.moveDown(1);
+
+    // SALVATION STATISTICS
+    if (data.stats.salvationBreakdown && Object.keys(data.stats.salvationBreakdown).length > 0) {
+        doc.fillColor('#ec4899').fontSize(14).text('Spiritual Decisions');
+        doc.moveDown(0.5);
+        Object.entries(data.stats.salvationBreakdown).forEach(([type, count]) => {
+            doc.fillColor('#1e293b').fontSize(12)
+                .text(`${type.replace(/_/g, ' ')}: ${count}`);
+        });
+        doc.moveDown(1);
+    }
+
+    // TAG DISTRIBUTION
+    if (data.stats.tagDistribution && Object.keys(data.stats.tagDistribution).length > 0) {
+        doc.fillColor('#8b5cf6').fontSize(14).text('Group/Tag Distribution');
+        doc.moveDown(0.5);
+        Object.entries(data.stats.tagDistribution)
+            .sort((a, b) => b[1] - a[1])
+            .forEach(([tag, count]) => {
+                doc.fillColor('#1e293b').fontSize(12).text(`${tag}: ${count}`);
+            });
+    }
 
     // FOOTER
     doc.fontSize(8)
@@ -540,6 +623,39 @@ export const generateCustomReportExcel = async (
         .forEach(([region, count]) => {
             sheet.addRow([region, count]);
         });
+
+    sheet.addRow([]);
+
+    // Salvation Breakdown
+    if (data.stats.salvationBreakdown && Object.keys(data.stats.salvationBreakdown).length > 0) {
+        const salvHeader = sheet.addRow(['Spiritual Decisions', 'Count']);
+        salvHeader.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        salvHeader.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFec4899' },
+        };
+        Object.entries(data.stats.salvationBreakdown).forEach(([type, count]) => {
+            sheet.addRow([type.replace(/_/g, ' '), count]);
+        });
+        sheet.addRow([]);
+    }
+
+    // Tag Distribution
+    if (data.stats.tagDistribution && Object.keys(data.stats.tagDistribution).length > 0) {
+        const tagHeader = sheet.addRow(['Group / Tag', 'Count']);
+        tagHeader.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        tagHeader.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FF8b5cf6' },
+        };
+        Object.entries(data.stats.tagDistribution)
+            .sort((a, b) => b[1] - a[1])
+            .forEach(([tag, count]) => {
+                sheet.addRow([tag, count]);
+            });
+    }
 
     sheet.columns = [{ width: 25 }, { width: 15 }];
 

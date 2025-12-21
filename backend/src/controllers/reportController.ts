@@ -39,12 +39,17 @@ export const getEventReport = async (req: Request, res: Response) => {
                     include: {
                         member: {
                             include: {
-                                region: true
+                                region: true,
+                                memberTags: {
+                                    where: { isActive: true },
+                                    include: { tag: true }
+                                }
                             }
                         },
                     },
                 },
                 guestAttendances: true,
+                salvations: true,
             },
         });
 
@@ -67,17 +72,13 @@ export const getEventReport = async (req: Request, res: Response) => {
             { MALE: 0, FEMALE: 0 } as Record<string, number>
         );
 
-        // 3. First Timers (Members whose first attendance is this event)
-        // This is a bit heavier, we need to check if this is their only attendance so far or the earliest one
-        // Optimization: We can do a count of attendances for each member present
+        // 3. First Timers
         const memberIds = event.attendances.map((a) => a.memberId);
-
-        // Find members who have attended events BEFORE this one
         const previousAttendances = await prisma.attendance.findMany({
             where: {
                 memberId: { in: memberIds },
                 event: {
-                    date: { lt: event.date }, // Events strictly before this one
+                    date: { lt: event.date },
                 },
             },
             select: { memberId: true },
@@ -103,6 +104,27 @@ export const getEventReport = async (req: Request, res: Response) => {
             {} as Record<string, number>
         );
 
+        // 6. Salvation Breakdown
+        const salvationBreakdown = event.salvations.reduce(
+            (acc, curr) => {
+                acc[curr.decisionType] = (acc[curr.decisionType] || 0) + 1;
+                return acc;
+            },
+            {} as Record<string, number>
+        );
+
+        // 7. Tag Distribution
+        const tagDistribution = event.attendances.reduce(
+            (acc, curr) => {
+                curr.member.memberTags.forEach(mt => {
+                    const tagName = mt.tag.name;
+                    acc[tagName] = (acc[tagName] || 0) + 1;
+                });
+                return acc;
+            },
+            {} as Record<string, number>
+        );
+
         res.json({
             event: {
                 id: event.id,
@@ -118,6 +140,8 @@ export const getEventReport = async (req: Request, res: Response) => {
                 genderBreakdown,
                 regionBreakdown,
                 firstTimersCount,
+                salvationBreakdown,
+                tagDistribution,
             },
             guests: guestDetails,
         });
@@ -144,13 +168,13 @@ export const getComparativeReport = async (req: Request, res: Response) => {
             return res.status(404).json({ error: 'Event not found' });
         }
 
-        // Find previous event of same type
-        const previousEvent = await prisma.event.findFirst({
+        const events = await prisma.event.findMany({
             where: {
                 type: currentEvent.type,
                 date: { lt: currentEvent.date },
             },
             orderBy: { date: 'desc' },
+            take: 4,
             include: {
                 _count: {
                     select: { attendances: true, guestAttendances: true },
@@ -158,37 +182,12 @@ export const getComparativeReport = async (req: Request, res: Response) => {
             },
         });
 
-        const currentTotal = (currentEvent._count?.attendances || 0) + (currentEvent._count?.guestAttendances || 0);
+        const allEvents = [currentEvent, ...events].reverse(); // Oldest to newest
 
-        let comparison = null;
+        const labels = allEvents.map((e) => new Date(e.date).toLocaleDateString());
+        const data = allEvents.map((e) => (e._count.attendances || 0) + (e._count.guestAttendances || 0));
 
-        if (previousEvent) {
-            const prevTotal = (previousEvent._count?.attendances || 0) + (previousEvent._count?.guestAttendances || 0);
-            const difference = currentTotal - prevTotal;
-            const percentageChange = prevTotal === 0 ? 100 : ((difference / prevTotal) * 100).toFixed(1);
-
-            comparison = {
-                previousEvent: {
-                    id: previousEvent.id,
-                    name: previousEvent.name,
-                    date: previousEvent.date,
-                    totalAttendance: prevTotal,
-                },
-                difference,
-                percentageChange: Number(percentageChange),
-            };
-        }
-
-        res.json({
-            currentEvent: {
-                id: currentEvent.id,
-                name: currentEvent.name,
-                date: currentEvent.date,
-                totalAttendance: currentTotal,
-            },
-            comparison,
-        });
-
+        res.json({ labels, data });
     } catch (error) {
         console.error('Comparative report error:', error);
         res.status(500).json({ error: 'Failed to generate comparative report' });
@@ -204,22 +203,19 @@ export const getDashboardStats = async (req: Request, res: Response) => {
             return res.json(cachedData);
         }
 
-        // Get total members
-        const totalMembers = await prisma.member.count();
-
-        // Get total events
-        const totalEvents = await prisma.event.count();
-
-        // Get average attendance (last 5 events)
-        const recentEvents = await prisma.event.findMany({
-            take: 5,
-            orderBy: { date: 'desc' },
-            include: {
-                _count: {
-                    select: { attendances: true, guestAttendances: true },
+        const [totalMembers, totalEvents, recentEvents] = await Promise.all([
+            prisma.member.count(),
+            prisma.event.count(),
+            prisma.event.findMany({
+                take: 5,
+                orderBy: { date: 'desc' },
+                include: {
+                    _count: {
+                        select: { attendances: true, guestAttendances: true },
+                    },
                 },
-            },
-        });
+            }),
+        ]);
 
         const totalRecentAttendance = recentEvents.reduce((acc, event) => {
             return acc + (event._count?.attendances || 0) + (event._count?.guestAttendances || 0);
@@ -261,7 +257,6 @@ export const getCustomReport = async (req: Request, res: Response) => {
         }
 
         // If regionId is provided, we need to filter attendances
-        // Note: We still fetch the events, but we'll filter the attendance counts
         const events = await prisma.event.findMany({
             where,
             orderBy: { date: 'asc' },
@@ -275,17 +270,17 @@ export const getCustomReport = async (req: Request, res: Response) => {
                     include: {
                         member: {
                             include: {
-                                region: true
+                                region: true,
+                                memberTags: {
+                                    where: { isActive: true },
+                                    include: { tag: true }
+                                }
                             }
                         }
                     },
                 },
-                guestAttendances: true, // Guests don't have regions, so we include them or exclude them? 
-                // Requirement says "organise data or be queried by region". 
-                // If querying by region, we should probably exclude guests or count them separately.
-                // For now, let's include guests but maybe the frontend can decide how to display.
-                // OR: if regionId is present, maybe we shouldn't count guests as they don't belong to a region?
-                // Let's keep guests for now but note they are not in the region.
+                guestAttendances: true,
+                salvations: true,
             },
         });
 
@@ -293,11 +288,6 @@ export const getCustomReport = async (req: Request, res: Response) => {
         const totalEvents = events.length;
 
         const totalAttendance = events.reduce((acc, event) => {
-            // If filtering by region, do we include guests? 
-            // Guests don't have regions. So if I want to see "How many people from Central region attended", 
-            // I probably don't want guests.
-            // But if I want "Total attendance for events filtered by region context", maybe?
-            // Let's exclude guests if regionId is provided, to be precise.
             const memberCount = event.attendances.length;
             const guestCount = regionId ? 0 : event.guestAttendances.length;
             return acc + memberCount + guestCount;
@@ -315,8 +305,10 @@ export const getCustomReport = async (req: Request, res: Response) => {
         // Gender Distribution (Aggregated)
         const genderBreakdown = { MALE: 0, FEMALE: 0 };
 
-        // Region Distribution (Aggregated)
+        // Region & Tag & Salvation Distribution (Aggregated)
         const regionBreakdown: Record<string, number> = {};
+        const tagDistribution: Record<string, number> = {};
+        const salvationBreakdown: Record<string, number> = {};
 
         events.forEach(event => {
             event.attendances.forEach(a => {
@@ -329,6 +321,17 @@ export const getCustomReport = async (req: Request, res: Response) => {
                 // Region
                 const regionName = a.member.region.name;
                 regionBreakdown[regionName] = (regionBreakdown[regionName] || 0) + 1;
+
+                // Tags
+                a.member.memberTags.forEach(mt => {
+                    const tagName = mt.tag.name;
+                    tagDistribution[tagName] = (tagDistribution[tagName] || 0) + 1;
+                });
+            });
+
+            // Salvations
+            event.salvations.forEach(s => {
+                salvationBreakdown[s.decisionType] = (salvationBreakdown[s.decisionType] || 0) + 1;
             });
         });
 
@@ -347,6 +350,8 @@ export const getCustomReport = async (req: Request, res: Response) => {
                 uniqueMembers,
                 genderBreakdown,
                 regionBreakdown,
+                tagDistribution,
+                salvationBreakdown,
             },
             chartData,
         });
@@ -372,12 +377,17 @@ export const exportEventReportPDF = async (req: Request, res: Response) => {
                     include: {
                         member: {
                             include: {
-                                region: true
+                                region: true,
+                                memberTags: {
+                                    where: { isActive: true },
+                                    include: { tag: true }
+                                }
                             }
                         },
                     },
                 },
                 guestAttendances: true,
+                salvations: true,
             },
         });
 
@@ -429,6 +439,25 @@ export const exportEventReportPDF = async (req: Request, res: Response) => {
             {} as Record<string, number>
         );
 
+        const salvationBreakdown = event.salvations.reduce(
+            (acc, curr) => {
+                acc[curr.decisionType] = (acc[curr.decisionType] || 0) + 1;
+                return acc;
+            },
+            {} as Record<string, number>
+        );
+
+        const tagDistribution = event.attendances.reduce(
+            (acc, curr) => {
+                curr.member.memberTags.forEach(mt => {
+                    const tagName = mt.tag.name;
+                    acc[tagName] = (acc[tagName] || 0) + 1;
+                });
+                return acc;
+            },
+            {} as Record<string, number>
+        );
+
         const reportData = {
             event: {
                 id: event.id,
@@ -444,6 +473,8 @@ export const exportEventReportPDF = async (req: Request, res: Response) => {
                 genderBreakdown,
                 regionBreakdown,
                 firstTimersCount,
+                salvationBreakdown,
+                tagDistribution,
             },
             guests: guestDetails,
         };
@@ -470,12 +501,17 @@ export const exportEventReportExcel = async (req: Request, res: Response) => {
                     include: {
                         member: {
                             include: {
-                                region: true
+                                region: true,
+                                memberTags: {
+                                    where: { isActive: true },
+                                    include: { tag: true }
+                                }
                             }
                         },
                     },
                 },
                 guestAttendances: true,
+                salvations: true,
             },
         });
 
@@ -527,6 +563,25 @@ export const exportEventReportExcel = async (req: Request, res: Response) => {
             {} as Record<string, number>
         );
 
+        const salvationBreakdown = event.salvations.reduce(
+            (acc, curr) => {
+                acc[curr.decisionType] = (acc[curr.decisionType] || 0) + 1;
+                return acc;
+            },
+            {} as Record<string, number>
+        );
+
+        const tagDistribution = event.attendances.reduce(
+            (acc, curr) => {
+                curr.member.memberTags.forEach(mt => {
+                    const tagName = mt.tag.name;
+                    acc[tagName] = (acc[tagName] || 0) + 1;
+                });
+                return acc;
+            },
+            {} as Record<string, number>
+        );
+
         const reportData = {
             event: {
                 id: event.id,
@@ -542,6 +597,8 @@ export const exportEventReportExcel = async (req: Request, res: Response) => {
                 genderBreakdown,
                 regionBreakdown,
                 firstTimersCount,
+                salvationBreakdown,
+                tagDistribution,
             },
             guests: guestDetails,
         };
@@ -591,12 +648,17 @@ export const exportCustomReportPDF = async (req: Request, res: Response) => {
                     include: {
                         member: {
                             include: {
-                                region: true
+                                region: true,
+                                memberTags: {
+                                    where: { isActive: true },
+                                    include: { tag: true }
+                                }
                             }
                         }
                     },
                 },
                 guestAttendances: true,
+                salvations: true,
             },
         });
 
@@ -617,6 +679,8 @@ export const exportCustomReportPDF = async (req: Request, res: Response) => {
 
         const genderBreakdown = { MALE: 0, FEMALE: 0 };
         const regionBreakdown: Record<string, number> = {};
+        const tagDistribution: Record<string, number> = {};
+        const salvationBreakdown: Record<string, number> = {};
 
         events.forEach(event => {
             event.attendances.forEach(a => {
@@ -626,6 +690,15 @@ export const exportCustomReportPDF = async (req: Request, res: Response) => {
                 }
                 const regionName = a.member.region.name;
                 regionBreakdown[regionName] = (regionBreakdown[regionName] || 0) + 1;
+
+                a.member.memberTags.forEach(mt => {
+                    const tagName = mt.tag.name;
+                    tagDistribution[tagName] = (tagDistribution[tagName] || 0) + 1;
+                });
+            });
+
+            event.salvations.forEach(s => {
+                salvationBreakdown[s.decisionType] = (salvationBreakdown[s.decisionType] || 0) + 1;
             });
         });
 
@@ -643,6 +716,8 @@ export const exportCustomReportPDF = async (req: Request, res: Response) => {
                 uniqueMembers,
                 genderBreakdown,
                 regionBreakdown,
+                tagDistribution,
+                salvationBreakdown,
             },
             chartData,
         };
@@ -695,12 +770,17 @@ export const exportCustomReportExcel = async (req: Request, res: Response) => {
                     include: {
                         member: {
                             include: {
-                                region: true
+                                region: true,
+                                memberTags: {
+                                    where: { isActive: true },
+                                    include: { tag: true }
+                                }
                             }
                         }
                     },
                 },
                 guestAttendances: true,
+                salvations: true,
             },
         });
 
@@ -721,6 +801,8 @@ export const exportCustomReportExcel = async (req: Request, res: Response) => {
 
         const genderBreakdown = { MALE: 0, FEMALE: 0 };
         const regionBreakdown: Record<string, number> = {};
+        const tagDistribution: Record<string, number> = {};
+        const salvationBreakdown: Record<string, number> = {};
 
         events.forEach(event => {
             event.attendances.forEach(a => {
@@ -730,6 +812,15 @@ export const exportCustomReportExcel = async (req: Request, res: Response) => {
                 }
                 const regionName = a.member.region.name;
                 regionBreakdown[regionName] = (regionBreakdown[regionName] || 0) + 1;
+
+                a.member.memberTags.forEach(mt => {
+                    const tagName = mt.tag.name;
+                    tagDistribution[tagName] = (tagDistribution[tagName] || 0) + 1;
+                });
+            });
+
+            event.salvations.forEach(s => {
+                salvationBreakdown[s.decisionType] = (salvationBreakdown[s.decisionType] || 0) + 1;
             });
         });
 
@@ -747,6 +838,8 @@ export const exportCustomReportExcel = async (req: Request, res: Response) => {
                 uniqueMembers,
                 genderBreakdown,
                 regionBreakdown,
+                tagDistribution,
+                salvationBreakdown,
             },
             chartData,
         };

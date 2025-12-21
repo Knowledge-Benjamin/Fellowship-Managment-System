@@ -5,6 +5,7 @@ import { useToast } from '../components/ToastProvider';
 import { UserPlus, CheckCircle, Download, RotateCcw, Sparkles, Copy, Mail, MapPin, GraduationCap, Tag as TagIcon, BookOpen, Plus, Loader2, Building } from 'lucide-react';
 import AddCollegeModal from '../components/AddCollegeModal';
 import AddCourseModal from '../components/AddCourseModal';
+import AddResidenceModal from '../components/AddResidenceModal';
 
 interface Region {
     id: string;
@@ -34,6 +35,12 @@ interface Course {
     college?: College;
 }
 
+interface Residence {
+    id: string;
+    name: string;
+    type: string;
+}
+
 const Registration = () => {
     const { showToast } = useToast();
     const [loading, setLoading] = useState(false);
@@ -42,10 +49,12 @@ const Registration = () => {
     const [additionalTags, setAdditionalTags] = useState<Tag[]>([]);
     const [courses, setCourses] = useState<Course[]>([]);
     const [colleges, setColleges] = useState<College[]>([]);
+    const [residences, setResidences] = useState<Residence[]>([]);
 
     // Modal states
     const [isCourseModalOpen, setIsCourseModalOpen] = useState(false);
     const [isCollegeModalOpen, setIsCollegeModalOpen] = useState(false);
+    const [isResidenceModalOpen, setIsResidenceModalOpen] = useState(false);
 
     const [formData, setFormData] = useState({
         fullName: '',
@@ -59,6 +68,8 @@ const Registration = () => {
         collegeId: '',
         courseId: '',
         yearOfStudy: 1,
+        residenceId: '',
+        hostelName: '',
     });
     const [createdMember, setCreatedMember] = useState<{ fullName: string; fellowshipNumber: string; defaultPassword?: string; qrCode: string; region?: { name: string } } | null>(null);
 
@@ -67,6 +78,7 @@ const Registration = () => {
         fetchTags();
         fetchColleges();
         fetchCourses();
+        fetchResidences();
     }, []);
 
     // Auto-set Non-Resident region when isMakerereStudent changes to false
@@ -152,6 +164,16 @@ const Registration = () => {
         }
     };
 
+    const fetchResidences = async () => {
+        try {
+            const response = await api.get('/residences');
+            setResidences(response.data);
+        } catch (error) {
+            console.error('Failed to fetch residences:', error);
+            showToast('error', 'Failed to load residences.');
+        }
+    };
+
     const handleCollegeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const value = e.target.value;
         if (value === 'NEW_COLLEGE') {
@@ -180,6 +202,11 @@ const Registration = () => {
         setFormData(prev => ({ ...prev, courseId: course.id }));
     };
 
+    const handleResidenceSaved = (residence: Residence) => {
+        setResidences(prev => [...prev, residence].sort((a, b) => a.name.localeCompare(b.name)));
+        setFormData(prev => ({ ...prev, residenceId: residence.id }));
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
@@ -191,6 +218,8 @@ const Registration = () => {
                 classificationTagId: formData.classificationTagId || undefined,
                 courseId: formData.courseId || undefined,
                 regionId: formData.regionId || undefined, // Must be UUID if present, but required by schema
+                residenceId: formData.residenceId || undefined,
+                hostelName: formData.hostelName || undefined,
             };
 
             const response = await api.post('/members', payload);
@@ -219,6 +248,8 @@ const Registration = () => {
             collegeId: '',
             courseId: '',
             yearOfStudy: 1,
+            residenceId: '',
+            hostelName: '',
         });
     };
 
@@ -533,6 +564,65 @@ const Registration = () => {
                             )}
                         </div>
 
+                        {/* Residence/Hostel - Based on Region */}
+                        {formData.regionId && formData.isMakerereStudent && (() => {
+                            const selectedRegion = regions.find(r => r.id === formData.regionId);
+                            const isCentral = selectedRegion?.name === 'Central';
+                            const isNonResident = selectedRegion?.name === 'Non-Resident';
+
+                            if (isCentral) {
+                                return (
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-semibold text-slate-300 flex items-center justify-between">
+                                            <span className="flex items-center gap-2">
+                                                <Building className="w-4 h-4 text-teal-400" />
+                                                Hall / Residence
+                                                <span className="text-red-400">*</span>
+                                            </span>
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsResidenceModalOpen(true)}
+                                                className="text-xs text-teal-400 hover:text-teal-300 flex items-center gap-1"
+                                            >
+                                                <Plus size={12} /> Add New Hall
+                                            </button>
+                                        </label>
+                                        <select
+                                            className="input transition-smooth cursor-pointer"
+                                            value={formData.residenceId}
+                                            onChange={(e) => setFormData({ ...formData, residenceId: e.target.value })}
+                                            required
+                                        >
+                                            <option value="">Select Hall</option>
+                                            {residences.filter(r => r.type === 'HALL').map((residence) => (
+                                                <option key={residence.id} value={residence.id}>
+                                                    {residence.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                );
+                            } else if (!isNonResident) {
+                                return (
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-semibold text-slate-300 flex items-center gap-2">
+                                            <MapPin className="w-4 h-4 text-teal-400" />
+                                            Hostel Name (Optional)
+                                        </label>
+                                        <input
+                                            type="text"
+                                            placeholder="e.g. Olympia, Dream Land"
+                                            className="input transition-smooth"
+                                            value={formData.hostelName}
+                                            onChange={(e) => setFormData({ ...formData, hostelName: e.target.value })}
+                                        />
+                                        <p className="text-xs text-slate-500">Enter the hostel where they reside</p>
+                                    </div>
+                                );
+                            }
+                            return null;
+                        })()}
+
                         {/* College - Only for Makerere students */}
                         {formData.isMakerereStudent && (
                             <div className="space-y-2">
@@ -677,6 +767,12 @@ const Registration = () => {
                     onClose={() => setIsCourseModalOpen(false)}
                     onSuccess={handleCourseSaved}
                     preSelectedCollegeId={formData.isMakerereStudent ? formData.collegeId : undefined}
+                />
+
+                <AddResidenceModal
+                    isOpen={isResidenceModalOpen}
+                    onClose={() => setIsResidenceModalOpen(false)}
+                    onSuccess={handleResidenceSaved}
                 />
             </div>
         </div>

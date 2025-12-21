@@ -15,6 +15,8 @@ const createMemberSchema = z.object({
     additionalTagIds: z.array(z.string().uuid()).optional(),
     courseId: z.string().uuid().optional(),
     yearOfStudy: z.number().min(1).max(7).optional(),
+    residenceId: z.string().uuid().optional(),
+    hostelName: z.string().optional(),
 });
 
 // Create new member
@@ -58,6 +60,8 @@ export const createMember = async (req: Request, res: Response) => {
                 yearOfStudy: validatedData.yearOfStudy,
                 fellowshipNumber,
                 password: hashedPassword,
+                residenceId: validatedData.residenceId,
+                hostelName: validatedData.hostelName,
             },
             select: {
                 id: true,

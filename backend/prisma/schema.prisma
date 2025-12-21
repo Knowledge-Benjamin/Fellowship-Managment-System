@@ -61,7 +61,8 @@ model Region {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  members Member[]
+  members    Member[]
+  residences Residence[]
 
   @@index([name])
 }
@@ -77,6 +78,9 @@ model Member {
   gender           Gender
   regionId         String
   region           Region   @relation(fields: [regionId], references: [id], onDelete: Restrict)
+  residenceId      String?
+  residence        Residence? @relation(fields: [residenceId], references: [id])
+  hostelName       String?
   courseId         String?
   courseRelation   Course?  @relation(fields: [courseId], references: [id])
   course           String?
@@ -182,6 +186,20 @@ model College {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   courses   Course[]
+}
+
+model Residence {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  type      String   @default("HALL")
+  regionId  String?
+  region    Region?  @relation(fields: [regionId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  members   Member[]
+
+  @@index([name])
+  @@index([regionId])
 }
 
 model Course {

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, Loader2 } from 'lucide-react';
 import api from '../api';
+import { useToast } from './ToastProvider';
 
 interface SalvationTrackingModalProps {
     isOpen: boolean;
@@ -23,6 +24,7 @@ const SalvationTrackingModal: React.FC<SalvationTrackingModalProps> = ({
     eventName,
     onSaved,
 }) => {
+    const { showToast } = useToast();
     const [isMember, setIsMember] = useState<boolean | null>(null);
     const [members, setMembers] = useState<Member[]>([]);
     const [selectedMemberId, setSelectedMemberId] = useState('');
@@ -48,6 +50,7 @@ const SalvationTrackingModal: React.FC<SalvationTrackingModalProps> = ({
             setMembers(response.data);
         } catch (error) {
             console.error('Failed to fetch members:', error);
+            showToast('error', 'Failed to fetch members');
         }
     };
 
@@ -91,10 +94,11 @@ const SalvationTrackingModal: React.FC<SalvationTrackingModalProps> = ({
             setNotes('');
             setSearchTerm('');
 
+            showToast('success', 'Salvation record saved successfully');
             onSaved();
         } catch (error: any) {
             console.error('Failed to save salvation:', error);
-            alert(error.response?.data?.error || 'Failed to save salvation record');
+            showToast('error', error.response?.data?.error || 'Failed to save salvation record');
         } finally {
             setLoading(false);
         }
@@ -103,13 +107,13 @@ const SalvationTrackingModal: React.FC<SalvationTrackingModalProps> = ({
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-200">
+            <div className="bg-[#151d30] rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto border border-slate-800">
                 {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-t-xl">
+                <div className="flex items-center justify-between p-6 border-b border-slate-800 bg-gradient-to-r from-teal-600 to-blue-600 rounded-t-2xl">
                     <div>
                         <h2 className="text-xl font-bold text-white">Record Salvation/Decision</h2>
-                        <p className="text-purple-100 text-sm mt-1">{eventName}</p>
+                        <p className="text-teal-100 text-sm mt-1">{eventName}</p>
                     </div>
                     <button
                         onClick={onClose}
@@ -120,25 +124,25 @@ const SalvationTrackingModal: React.FC<SalvationTrackingModalProps> = ({
                 </div>
 
                 {/* Form */}
-                <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                <form onSubmit={handleSubmit} className="p-6 space-y-5">
                     {/* Member or Guest Selection */}
                     {isMember === null && (
                         <div className="space-y-3">
-                            <label className="block text-sm font-semibold text-gray-700">
+                            <label className="block text-sm font-semibold text-slate-300">
                                 Is this person a registered member?
                             </label>
                             <div className="grid grid-cols-2 gap-3">
                                 <button
                                     type="button"
                                     onClick={() => setIsMember(true)}
-                                    className="px-4 py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-lg font-medium transition-all"
+                                    className="px-4 py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-medium transition-all shadow-lg hover:shadow-teal-500/30"
                                 >
                                     Yes, Member
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => setIsMember(false)}
-                                    className="px-4 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-lg font-medium transition-all"
+                                    className="px-4 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-xl font-medium transition-all shadow-lg hover:shadow-orange-500/30"
                                 >
                                     No, Guest
                                 </button>
@@ -149,93 +153,89 @@ const SalvationTrackingModal: React.FC<SalvationTrackingModalProps> = ({
                     {/* Member Selection */}
                     {isMember === true && (
                         <div className="space-y-3">
-                            <div className="flex items-center justify-between">
-                                <label className="block text-sm font-semibold text-gray-700">
-                                    Select Member
-                                </label>
-                                <button
-                                    type="button"
-                                    onClick={() => setIsMember(null)}
-                                    className="text-xs text-teal-600 hover:text-teal-700"
-                                >
-                                    Change
-                                </button>
-                            </div>
+                            <label className="block text-sm font-semibold text-slate-300">
+                                Search for Member <span className="text-red-400">*</span>
+                            </label>
                             <input
                                 type="text"
                                 placeholder="Search by name or phone..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                                className="w-full px-4 py-3 bg-[#0a0f1e] rounded-xl border border-slate-700 focus:border-teal-500 focus:outline-none text-white placeholder-slate-500 transition-colors"
                             />
-                            <select
-                                value={selectedMemberId}
-                                onChange={(e) => setSelectedMemberId(e.target.value)}
-                                required
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
-                            >
-                                <option value="">-- Select Member --</option>
-                                {filteredMembers.map((member) => (
-                                    <option key={member.id} value={member.id}>
-                                        {member.fullName} ({member.phoneNumber})
-                                    </option>
-                                ))}
-                            </select>
+                            {searchTerm && (
+                                <select
+                                    value={selectedMemberId}
+                                    onChange={(e) => setSelectedMemberId(e.target.value)}
+                                    required
+                                    className="w-full px-4 py-3 bg-[#0a0f1e] rounded-xl border border-slate-700 focus:border-teal-500 focus:outline-none text-white cursor-pointer transition-colors"
+                                >
+                                    <option value="">Select a member</option>
+                                    {filteredMembers.map((member) => (
+                                        <option key={member.id} value={member.id}>
+                                            {member.fullName} - {member.phoneNumber}
+                                        </option>
+                                    ))}
+                                </select>
+                            )}
                         </div>
                     )}
 
                     {/* Guest Information */}
                     {isMember === false && (
                         <div className="space-y-3">
-                            <div className="flex items-center justify-between">
-                                <label className="block text-sm font-semibold text-gray-700">
-                                    Guest Information
+                            <div>
+                                <label className="block text-sm font-semibold text-slate-300 mb-2">
+                                    Guest Name <span className="text-red-400">*</span>
                                 </label>
-                                <button
-                                    type="button"
-                                    onClick={() => setIsMember(null)}
-                                    className="text-xs text-teal-600 hover:text-teal-700"
-                                >
-                                    Change
-                                </button>
+                                <input
+                                    type="text"
+                                    value={guestName}
+                                    onChange={(e) => setGuestName(e.target.value)}
+                                    required
+                                    className="w-full px-4 py-3 bg-[#0a0f1e] rounded-xl border border-slate-700 focus:border-teal-500 focus:outline-none text-white placeholder-slate-500 transition-colors"
+                                    placeholder="Enter guest name"
+                                />
                             </div>
-                            <input
-                                type="text"
-                                placeholder="Full Name *"
-                                value={guestName}
-                                onChange={(e) => setGuestName(e.target.value)}
-                                required
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
-                            />
-                            <input
-                                type="tel"
-                                placeholder="Phone Number *"
-                                value={guestPhone}
-                                onChange={(e) => setGuestPhone(e.target.value)}
-                                required
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
-                            />
-                            <input
-                                type="email"
-                                placeholder="Email (optional)"
-                                value={guestEmail}
-                                onChange={(e) => setGuestEmail(e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
-                            />
+                            <div>
+                                <label className="block text-sm font-semibold text-slate-300 mb-2">
+                                    Phone Number <span className="text-red-400">*</span>
+                                </label>
+                                <input
+                                    type="tel"
+                                    value={guestPhone}
+                                    onChange={(e) => setGuestPhone(e.target.value)}
+                                    required
+                                    className="w-full px-4 py-3 bg-[#0a0f1e] rounded-xl border border-slate-700 focus:border-teal-500 focus:outline-none text-white placeholder-slate-500 transition-colors"
+                                    placeholder="+256 700 000 000"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-semibold text-slate-300 mb-2">
+                                    Email (Optional)
+                                </label>
+                                <input
+                                    type="email"
+                                    value={guestEmail}
+                                    onChange={(e) => setGuestEmail(e.target.value)}
+                                    className="w-full px-4 py-3 bg-[#0a0f1e] rounded-xl border border-slate-700 focus:border-teal-500 focus:outline-none text-white placeholder-slate-500 transition-colors"
+                                    placeholder="guest@example.com"
+                                />
+                            </div>
                         </div>
                     )}
 
-                    {/* Decision Type */}
+                    {/* Decision Details */}
                     {isMember !== null && (
                         <>
-                            <div className="space-y-2">
-                                <label className="block text-sm font-semibold text-gray-700">
-                                    Decision Type
+                            <div>
+                                <label className="block text-sm font-semibold text-slate-300 mb-2">
+                                    Decision Type <span className="text-red-400">*</span>
                                 </label>
                                 <select
                                     value={decisionType}
                                     onChange={(e) => setDecisionType(e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                                    className="w-full px-4 py-3 bg-[#0a0f1e] rounded-xl border border-slate-700 focus:border-teal-500 focus:outline-none text-white cursor-pointer transition-colors"
                                 >
                                     <option value="SALVATION">Salvation</option>
                                     <option value="REDEDICATION">Rededication</option>
@@ -244,17 +244,16 @@ const SalvationTrackingModal: React.FC<SalvationTrackingModalProps> = ({
                                 </select>
                             </div>
 
-                            {/* Counselor */}
-                            <div className="space-y-2">
-                                <label className="block text-sm font-semibold text-gray-700">
+                            <div>
+                                <label className="block text-sm font-semibold text-slate-300 mb-2">
                                     Counselor (Optional)
                                 </label>
                                 <select
                                     value={counselorId}
                                     onChange={(e) => setCounselorId(e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                                    className="w-full px-4 py-3 bg-[#0a0f1e] rounded-xl border border-slate-700 focus:border-teal-500 focus:outline-none text-white cursor-pointer transition-colors"
                                 >
-                                    <option value="">-- Select Counselor (Optional) --</option>
+                                    <option value="">Select counselor</option>
                                     {members.map((member) => (
                                         <option key={member.id} value={member.id}>
                                             {member.fullName}
@@ -263,65 +262,55 @@ const SalvationTrackingModal: React.FC<SalvationTrackingModalProps> = ({
                                 </select>
                             </div>
 
-                            {/* Baptism Interest */}
-                            <div className="flex items-center space-x-2">
+                            <div className="flex items-center gap-3 p-4 bg-slate-900/50 rounded-xl border border-slate-800">
                                 <input
                                     type="checkbox"
                                     id="baptismInterest"
                                     checked={baptismInterest}
                                     onChange={(e) => setBaptismInterest(e.target.checked)}
-                                    className="w-4 h-4 text-teal-600 border-gray-300 rounded focus:ring-teal-500"
+                                    className="w-5 h-5 rounded border-slate-700 bg-slate-900 text-teal-600 focus:ring-2 focus:ring-teal-500 focus:ring-offset-0 cursor-pointer"
                                 />
-                                <label htmlFor="baptismInterest" className="text-sm font-medium text-gray-700">
+                                <label htmlFor="baptismInterest" className="text-sm text-slate-300 cursor-pointer">
                                     Interested in Baptism
                                 </label>
                             </div>
 
-                            {/* Notes */}
-                            <div className="space-y-2">
-                                <label className="block text-sm font-semibold text-gray-700">
+                            <div>
+                                <label className="block text-sm font-semibold text-slate-300 mb-2">
                                     Notes (Optional)
                                 </label>
                                 <textarea
                                     value={notes}
                                     onChange={(e) => setNotes(e.target.value)}
                                     rows={3}
-                                    placeholder="Additional notes..."
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                                    className="w-full px-4 py-3 bg-[#0a0f1e] rounded-xl border border-slate-700 focus:border-teal-500 focus:outline-none text-white placeholder-slate-500 resize-none transition-colors"
+                                    placeholder="Additional notes or testimony..."
                                 />
                             </div>
 
-                            {/* Actions */}
                             <div className="flex gap-3 pt-4">
                                 <button
                                     type="button"
                                     onClick={onClose}
-                                    className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all font-medium"
+                                    className="flex-1 px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-medium transition-colors"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={loading}
-                                    className="flex-1 px-4 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-lg transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="flex-1 px-4 py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                                 >
-                                    {loading ? 'Saving...' : 'Save & Close'}
+                                    {loading ? (
+                                        <>
+                                            <Loader2 size={16} className="animate-spin" />
+                                            Saving...
+                                        </>
+                                    ) : (
+                                        'Save Record'
+                                    )}
                                 </button>
                             </div>
-
-                            <button
-                                type="submit"
-                                disabled={loading}
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    handleSubmit(e).then(() => {
-                                        // Don't close modal, allow adding another
-                                    });
-                                }}
-                                className="w-full px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                Save & Add Another
-                            </button>
                         </>
                     )}
                 </form>

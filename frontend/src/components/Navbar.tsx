@@ -73,6 +73,7 @@ export default function Navbar() {
         { to: '/events', label: 'Events', icon: Calendar },
         { to: '/members', label: 'Members', icon: Users },
         { to: '/courses', label: 'Courses', icon: BookOpen },
+        { to: '/residences', label: 'Residences', icon: Home },
         { to: '/regions', label: 'Regions', icon: MapPin },
         { to: '/tags', label: 'Tags', icon: Tag },
         { to: '/guest-check-in', label: 'Guest Check-in', icon: UserPlus },

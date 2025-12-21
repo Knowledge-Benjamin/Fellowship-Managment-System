@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
-import { ArrowLeft, Filter, Users, TrendingUp, UserCheck, PieChart as PieChartIcon, MapPin } from 'lucide-react';
+import { ArrowLeft, Filter, Users, TrendingUp, UserCheck, PieChart as PieChartIcon, MapPin, Download, ChevronDown } from 'lucide-react';
 import {
     LineChart,
     Line,
@@ -108,6 +108,18 @@ const CustomReport = () => {
         }
     }, [startDate, endDate, type, regionId]);
 
+    const handleExportPDF = () => {
+        if (!startDate || !endDate) return;
+        window.open(`/api/reports/custom/export/pdf?startDate=${startDate}&endDate=${endDate}${type ? `&type=${type}` : ''}${regionId ? `&regionId=${regionId}` : ''}`, '_blank');
+    };
+
+    const handleExportExcel = () => {
+        if (!startDate || !endDate) return;
+        window.open(`/api/reports/custom/export/excel?startDate=${startDate}&endDate=${endDate}${type ? `&type=${type}` : ''}${regionId ? `&regionId=${regionId}` : ''}`, '_blank');
+    };
+
+    const [showExportMenu, setShowExportMenu] = useState(false);
+
     // Prepare region data for chart
     const regionChartData = data?.stats.regionBreakdown
         ? Object.entries(data.stats.regionBreakdown).map(([name, value]) => ({ name, value }))
@@ -128,6 +140,38 @@ const CustomReport = () => {
                         <h1 className="text-3xl font-bold text-white">Custom Reports</h1>
                         <p className="text-slate-400">Generate insights across multiple events</p>
                     </div>
+
+                    {data && (
+                        <div className="relative">
+                            <button
+                                onClick={() => setShowExportMenu(!showExportMenu)}
+                                className="ml-auto flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg transition-all"
+                            >
+                                <Download size={20} />
+                                Export
+                                <ChevronDown size={16} className={`transition-transform ${showExportMenu ? 'rotate-180' : ''}`} />
+                            </button>
+
+                            {showExportMenu && (
+                                <div className="absolute right-0 mt-2 w-48 bg-[#1e293b] border border-slate-700 rounded-lg shadow-xl z-10">
+                                    <button
+                                        onClick={() => { handleExportPDF(); setShowExportMenu(false); }}
+                                        className="w-full px-4 py-2 text-left text-white hover:bg-slate-700 rounded-t-lg transition-colors flex items-center gap-2"
+                                    >
+                                        <Download size={16} />
+                                        Export as PDF
+                                    </button>
+                                    <button
+                                        onClick={() => { handleExportExcel(); setShowExportMenu(false); }}
+                                        className="w-full px-4 py-2 text-left text-white hover:bg-slate-700 rounded-b-lg transition-colors flex items-center gap-2"
+                                    >
+                                        <Download size={16} />
+                                        Export as Excel
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 {/* Filters */}

@@ -1,6 +1,12 @@
 import { Request, Response } from 'express';
 import prisma from '../prisma';
 import NodeCache from 'node-cache';
+import {
+    generateEventReportPDF,
+    generateEventReportExcel,
+    generateCustomReportPDF,
+    generateCustomReportExcel,
+} from '../services/reportExportService';
 
 const cache = new NodeCache({ stdTTL: 300 }); // 5 minutes TTL
 
@@ -348,5 +354,405 @@ export const getCustomReport = async (req: Request, res: Response) => {
     } catch (error) {
         console.error('Custom report error:', error);
         res.status(500).json({ error: 'Failed to generate custom report' });
+    }
+};
+
+/**
+ * Export Event Report as PDF
+ * GET /reports/:eventId/export/pdf
+ */
+export const exportEventReportPDF = async (req: Request, res: Response) => {
+    try {
+        const { eventId } = req.params;
+
+        const event = await prisma.event.findUnique({
+            where: { id: eventId },
+            include: {
+                attendances: {
+                    include: {
+                        member: {
+                            include: {
+                                region: true
+                            }
+                        },
+                    },
+                },
+                guestAttendances: true,
+            },
+        });
+
+        if (!event) {
+            return res.status(404).json({ error: 'Event not found' });
+        }
+
+        const memberCount = event.attendances.length;
+        const guestCount = event.guestAttendances.length;
+        const totalAttendance = memberCount + guestCount;
+
+        const genderBreakdown = event.attendances.reduce(
+            (acc, curr) => {
+                const gender = curr.member.gender;
+                acc[gender] = (acc[gender] ||0) + 1;
+                return acc;
+            },
+            { MALE: 0, FEMALE: 0 } as Record<string, number>
+        );
+
+        const memberIds = event.attendances.map((a) => a.memberId);
+        const previousAttendances = await prisma.attendance.findMany({
+            where: {
+                memberId: { in: memberIds },
+                event: {
+                    date: { lt: event.date },
+                },
+            },
+            select: { memberId: true },
+            distinct: ['memberId'],
+        });
+
+        const returningMemberIds = new Set(previousAttendances.map((a) => a.memberId));
+        const firstTimersCount = memberIds.filter((id) => !returningMemberIds.has(id)).length;
+
+        const guestDetails = event.guestAttendances.map(g => ({
+            name: g.guestName,
+            purpose: g.purpose,
+        }));
+
+        const regionBreakdown = event.attendances.reduce(
+            (acc, curr) => {
+                const regionName = curr.member.region.name;
+                acc[regionName] = (acc[regionName] || 0) + 1;
+                return acc;
+            },
+            {} as Record<string, number>
+        );
+
+        const reportData = {
+            event: {
+                id: event.id,
+                name: event.name,
+                date: event.date,
+                type: event.type,
+                status: getEventStatus(event),
+            },
+            stats: {
+                totalAttendance,
+                memberCount,
+                guestCount,
+                genderBreakdown,
+                regionBreakdown,
+                firstTimersCount,
+            },
+            guests: guestDetails,
+        };
+
+        await generateEventReportPDF(reportData, res);
+    } catch (error) {
+        console.error('PDF export error:', error);
+        res.status(500).json({ error: 'Failed to generate PDF' });
+    }
+};
+
+/**
+ * Export Event Report as Excel
+ * GET /reports/:eventId/export/excel
+ */
+export const exportEventReportExcel = async (req: Request, res: Response) => {
+    try {
+        const { eventId } = req.params;
+
+        const event = await prisma.event.findUnique({
+            where: { id: eventId },
+            include: {
+                attendances: {
+                    include: {
+                        member: {
+                            include: {
+                                region: true
+                            }
+                        },
+                    },
+                },
+                guestAttendances: true,
+            },
+        });
+
+        if (!event) {
+            return res.status(404).json({ error: 'Event not found' });
+        }
+
+        const memberCount = event.attendances.length;
+        const guestCount = event.guestAttendances.length;
+        const totalAttendance = memberCount + guestCount;
+
+        const genderBreakdown = event.attendances.reduce(
+            (acc, curr) => {
+                const gender = curr.member.gender;
+                acc[gender] = (acc[gender] || 0) + 1;
+                return acc;
+            },
+            { MALE: 0, FEMALE: 0 } as Record<string, number>
+        );
+
+        const memberIds = event.attendances.map((a) => a.memberId);
+        const previousAttendances = await prisma.attendance.findMany({
+            where: {
+                memberId: { in: memberIds },
+                event: {
+                    date: { lt: event.date },
+                },
+            },
+            select: { memberId: true },
+            distinct: ['memberId'],
+        });
+
+        const returningMemberIds = new Set(previousAttendances.map((a) => a.memberId));
+        const firstTimersCount = memberIds.filter((id) => !returningMemberIds.has(id)).length;
+
+        const guestDetails = event.guestAttendances.map(g => ({
+            name: g.guestName,
+            purpose: g.purpose,
+        }));
+
+        const regionBreakdown = event.attendances.reduce(
+            (acc, curr) => {
+                const regionName = curr.member.region.name;
+                acc[regionName] = (acc[regionName] || 0) + 1;
+                return acc;
+            },
+            {} as Record<string, number>
+        );
+
+        const reportData = {
+            event: {
+                id: event.id,
+                name: event.name,
+                date: event.date,
+                type: event.type,
+                status: getEventStatus(event),
+            },
+            stats: {
+                totalAttendance,
+                memberCount,
+                guestCount,
+                genderBreakdown,
+                regionBreakdown,
+                firstTimersCount,
+            },
+            guests: guestDetails,
+        };
+
+        await generateEventReportExcel(reportData, res);
+    } catch (error) {
+        console.error('Excel export error:', error);
+        res.status(500).json({ error: 'Failed to generate Excel' });
+    }
+};
+
+/**
+ * Export Custom Report as PDF
+ * GET /reports/custom/export/pdf
+ */
+export const exportCustomReportPDF = async (req: Request, res: Response) => {
+    try {
+        const { startDate, endDate, type, regionId } = req.query;
+
+        if (!startDate || !endDate) {
+            return res.status(400).json({ error: 'Start date and end date are required' });
+        }
+
+        const where: any = {};
+
+        if (startDate && endDate) {
+            where.date = {
+                gte: new Date(startDate as string),
+                lte: new Date(endDate as string),
+            };
+        }
+
+        if (type) {
+            where.type = type;
+        }
+
+        const events = await prisma.event.findMany({
+            where,
+            orderBy: { date: 'asc' },
+            include: {
+                attendances: {
+                    where: regionId ? {
+                        member: {
+                            regionId: regionId as string
+                        }
+                    } : undefined,
+                    include: {
+                        member: {
+                            include: {
+                                region: true
+                            }
+                        }
+                    },
+                },
+                guestAttendances: true,
+            },
+        });
+
+        const totalEvents = events.length;
+        const totalAttendance = events.reduce((acc, event) => {
+            const memberCount = event.attendances.length;
+            const guestCount = regionId ? 0 : event.guestAttendances.length;
+            return acc + memberCount + guestCount;
+        }, 0);
+
+        const averageAttendance = totalEvents > 0 ? Math.round(totalAttendance / totalEvents) : 0;
+
+        const allMemberIds = new Set<string>();
+        events.forEach(event => {
+            event.attendances.forEach(a => allMemberIds.add(a.memberId));
+        });
+        const uniqueMembers = allMemberIds.size;
+
+        const genderBreakdown = { MALE: 0, FEMALE: 0 };
+        const regionBreakdown: Record<string, number> = {};
+
+        events.forEach(event => {
+            event.attendances.forEach(a => {
+                const gender = a.member.gender as 'MALE' | 'FEMALE';
+                if (genderBreakdown[gender] !== undefined) {
+                    genderBreakdown[gender]++;
+                }
+                const regionName = a.member.region.name;
+                regionBreakdown[regionName] = (regionBreakdown[regionName] || 0) + 1;
+            });
+        });
+
+        const chartData = events.map(event => ({
+            date: event.date.toISOString().split('T')[0],
+            name: event.name,
+            attendance: event.attendances.length + (regionId ? 0 : event.guestAttendances.length),
+        }));
+
+        const reportData = {
+            stats: {
+                totalEvents,
+                totalAttendance,
+                averageAttendance,
+                uniqueMembers,
+                genderBreakdown,
+                regionBreakdown,
+            },
+            chartData,
+        };
+
+        await generateCustomReportPDF(reportData, {
+            startDate: startDate as string,
+            endDate: endDate as string,
+        }, res);
+    } catch (error) {
+        console.error('Custom PDF export error:', error);
+        res.status(500).json({ error: 'Failed to generate PDF' });
+    }
+};
+
+/**
+ * Export Custom Report as Excel
+ * GET /reports/custom/export/excel
+ */
+export const exportCustomReportExcel = async (req: Request, res: Response) => {
+    try {
+        const { startDate, endDate, type, regionId } = req.query;
+
+        if (!startDate || !endDate) {
+            return res.status(400).json({ error: 'Start date and end date are required' });
+        }
+
+        const where: any = {};
+
+        if (startDate && endDate) {
+            where.date = {
+                gte: new Date(startDate as string),
+                lte: new Date(endDate as string),
+            };
+        }
+
+        if (type) {
+            where.type = type;
+        }
+
+        const events = await prisma.event.findMany({
+            where,
+            orderBy: { date: 'asc' },
+            include: {
+                attendances: {
+                    where: regionId ? {
+                        member: {
+                            regionId: regionId as string
+                        }
+                    } : undefined,
+                    include: {
+                        member: {
+                            include: {
+                                region: true
+                            }
+                        }
+                    },
+                },
+                guestAttendances: true,
+            },
+        });
+
+        const totalEvents = events.length;
+        const totalAttendance = events.reduce((acc, event) => {
+            const memberCount = event.attendances.length;
+            const guestCount = regionId ? 0 : event.guestAttendances.length;
+            return acc + memberCount + guestCount;
+        }, 0);
+
+        const averageAttendance = totalEvents > 0 ? Math.round(totalAttendance / totalEvents) : 0;
+
+        const allMemberIds = new Set<string>();
+        events.forEach(event => {
+            event.attendances.forEach(a => allMemberIds.add(a.memberId));
+        });
+        const uniqueMembers = allMemberIds.size;
+
+        const genderBreakdown = { MALE: 0, FEMALE: 0 };
+        const regionBreakdown: Record<string, number> = {};
+
+        events.forEach(event => {
+            event.attendances.forEach(a => {
+                const gender = a.member.gender as 'MALE' | 'FEMALE';
+                if (genderBreakdown[gender] !== undefined) {
+                    genderBreakdown[gender]++;
+                }
+                const regionName = a.member.region.name;
+                regionBreakdown[regionName] = (regionBreakdown[regionName] || 0) + 1;
+            });
+        });
+
+        const chartData = events.map(event => ({
+            date: event.date.toISOString().split('T')[0],
+            name: event.name,
+            attendance: event.attendances.length + (regionId ? 0 : event.guestAttendances.length),
+        }));
+
+        const reportData = {
+            stats: {
+                totalEvents,
+                totalAttendance,
+                averageAttendance,
+                uniqueMembers,
+                genderBreakdown,
+                regionBreakdown,
+            },
+            chartData,
+        };
+
+        await generateCustomReportExcel(reportData, {
+            startDate: startDate as string,
+            endDate: endDate as string,
+        }, res);
+    } catch (error) {
+        console.error('Custom Excel export error:', error);
+        res.status(500).json({ error: 'Failed to generate Excel' });
     }
 };

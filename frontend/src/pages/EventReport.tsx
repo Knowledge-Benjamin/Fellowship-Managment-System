@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api';
-import { ArrowLeft, Users, UserPlus, Calendar, TrendingUp, UserCheck, Download, MapPin } from 'lucide-react';
+import { ArrowLeft, Users, UserPlus, Calendar, TrendingUp, UserCheck, Download, MapPin, ChevronDown } from 'lucide-react';
 import {
     BarChart,
     Bar,
@@ -82,7 +82,7 @@ const EventReport = () => {
         }
     };
 
-    const handleExport = () => {
+    const handleExportCSV = () => {
         if (!report) return;
 
         const headers = ['Category', 'Value'];
@@ -98,14 +98,12 @@ const EventReport = () => {
             ['Female Attendees', report.stats.genderBreakdown.FEMALE],
         ];
 
-        // Add region breakdown
         if (report.stats.regionBreakdown) {
             Object.entries(report.stats.regionBreakdown).forEach(([region, count]) => {
                 rows.push([`Region: ${region}`, count]);
             });
         }
 
-        // Add guests
         if (report.guests.length > 0) {
             rows.push(['', '']);
             rows.push(['Guest Name', 'Purpose']);
@@ -129,6 +127,18 @@ const EventReport = () => {
         link.click();
         document.body.removeChild(link);
     };
+
+    const handleExportPDF = () => {
+        if (!report) return;
+        window.open(`/api/reports/${id}/export/pdf`, '_blank');
+    };
+
+    const handleExportExcel = () => {
+        if (!report) return;
+        window.open(`/api/reports/${id}/export/excel`, '_blank');
+    };
+
+    const [showExportMenu, setShowExportMenu] = useState(false);
 
     if (loading) {
         return (
@@ -180,13 +190,42 @@ const EventReport = () => {
                             {new Date(report.event.date).toLocaleDateString()} • {report.event.status}
                         </p>
                     </div>
-                    <button
-                        onClick={handleExport}
-                        className="ml-auto flex items-center gap-2 bg-white/10 text-white px-4 py-2 rounded-lg hover:bg-white/20 transition-all"
-                    >
-                        <Download size={20} />
-                        Export CSV
-                    </button>
+                    <div className="relative">
+                        <button
+                            onClick={() => setShowExportMenu(!showExportMenu)}
+                            className="ml-auto flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg transition-all"
+                        >
+                            <Download size={20} />
+                            Export
+                            <ChevronDown size={16} className={`transition-transform ${showExportMenu ? 'rotate-180' : ''}`} />
+                        </button>
+
+                        {showExportMenu && (
+                            <div className="absolute right-0 mt-2 w-48 bg-[#1e293b] border border-slate-700 rounded-lg shadow-xl z-10">
+                                <button
+                                    onClick={() => { handleExportPDF(); setShowExportMenu(false); }}
+                                    className="w-full px-4 py-2 text-left text-white hover:bg-slate-700 rounded-t-lg transition-colors flex items-center gap-2"
+                                >
+                                    <Download size={16} />
+                                    Export as PDF
+                                </button>
+                                <button
+                                    onClick={() => { handleExportExcel(); setShowExportMenu(false); }}
+                                    className="w-full px-4 py-2 text-left text-white hover:bg-slate-700 transition-colors flex items-center gap-2"
+                                >
+                                    <Download size={16} />
+                                    Export as Excel
+                                </button>
+                                <button
+                                    onClick={() => { handleExportCSV(); setShowExportMenu(false); }}
+                                    className="w-full px-4 py-2 text-left text-white hover:bg-slate-700 rounded-b-lg transition-colors flex items-center gap-2"
+                                >
+                                    <Download size={16} />
+                                    Export as CSV
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* Key Metrics Grid */}

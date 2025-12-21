@@ -52,7 +52,10 @@ export const checkIn = async (req: Request, res: Response) => {
         }
 
         // Check if event is currently ongoing (time-based)
-        const now = new Date();
+        // Usage of EAT (UTC+3) for time comparison
+        const nowUtc = new Date();
+        const now = new Date(nowUtc.getTime() + 3 * 60 * 60 * 1000);
+
         const eventDate = new Date(event.date);
         const [startHour, startMinute] = event.startTime.split(':').map(Number);
         const [endHour, endMinute] = event.endTime.split(':').map(Number);

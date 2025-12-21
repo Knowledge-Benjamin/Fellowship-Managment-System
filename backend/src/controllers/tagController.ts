@@ -46,6 +46,7 @@ export const getAllTags = async (req: Request, res: Response) => {
             type: tag.type,
             color: tag.color,
             isSystem: tag.isSystem,
+            showOnRegistration: tag.showOnRegistration,
             createdAt: tag.createdAt,
             memberCount: tag._count.memberTags,
         }));
@@ -192,7 +193,10 @@ export const getMembersWithTag = async (req: Request, res: Response) => {
                 id: tag.id,
                 name: tag.name,
                 description: tag.description,
+                type: tag.type,
                 color: tag.color,
+                isSystem: tag.isSystem,
+                showOnRegistration: tag.showOnRegistration,
             },
             members,
         });

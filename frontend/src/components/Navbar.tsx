@@ -80,7 +80,7 @@ export default function Navbar() {
     const isManagementActive = managementLinks.some(link => location.pathname === link.to);
 
     return (
-        <nav className="fixed top-0 left-0 right-0 z-50 border-b border-slate-800 bg-[#151d30]/80 backdrop-blur-xl">
+        <nav className="fixed top-0 left-0 right-0 z-[100] border-b border-slate-800 bg-[#151d30]/95 backdrop-blur-xl">
             <div className="max-w-7xl mx-auto px-6 py-4">
                 <div className="flex justify-between items-center">
                     {/* Logo */}
@@ -173,10 +173,10 @@ export default function Navbar() {
                         )}
                     </div>
 
-                    {/* Mobile Menu Button */}
+                    {/* Mobile Menu Button - Ensure High Z-Index */}
                     <button
                         onClick={() => setIsMobileMenuOpen(true)}
-                        className="lg:hidden p-2 rounded-lg text-slate-400 hover:bg-slate-800 transition-colors"
+                        className="lg:hidden p-2 rounded-lg text-slate-400 hover:bg-slate-800 transition-colors relative z-[101]"
                     >
                         <Menu size={24} />
                     </button>
@@ -185,7 +185,7 @@ export default function Navbar() {
 
             {/* Mobile Menu Overlay */}
             {isMobileMenuOpen && (
-                <div className="fixed inset-0 z-50 lg:hidden">
+                <div className="fixed inset-0 z-[150] lg:hidden">
                     {/* Backdrop */}
                     <div
                         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
@@ -193,9 +193,12 @@ export default function Navbar() {
                     />
 
                     {/* Menu Panel */}
-                    <div className="absolute inset-y-0 right-0 w-80 bg-[#151d30] border-l border-slate-800 shadow-2xl p-6 overflow-y-auto animate-in slide-in-from-right duration-300">
+                    <div className="absolute inset-y-0 right-0 w-[85vw] max-w-sm bg-[#151d30] border-l border-slate-800 shadow-2xl p-6 overflow-y-auto animate-in slide-in-from-right duration-300 flex flex-col">
                         <div className="flex items-center justify-between mb-8">
-                            <h2 className="text-xl font-bold text-white">Menu</h2>
+                            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                                <span className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-sm">F</span>
+                                Menu
+                            </h2>
                             <button
                                 onClick={() => setIsMobileMenuOpen(false)}
                                 className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
@@ -204,24 +207,24 @@ export default function Navbar() {
                             </button>
                         </div>
 
-                        <div className="space-y-6">
+                        <div className="flex-1 overflow-y-auto space-y-6">
                             {isAuthenticated ? (
                                 <>
-                                    <div className="space-y-2">
+                                    <div className="space-y-1">
                                         <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-2 mb-2">Main</p>
-                                        {isManager && <NavLink to="/" icon={Home}>Register</NavLink>}
-                                        {hasCheckInAccess && <NavLink to="/check-in" icon={QrCode}>Check-in</NavLink>}
-                                        <NavLink to="/transport" icon={Bus}>Transport</NavLink>
-                                        <NavLink to="/profile" icon={User}>Profile</NavLink>
+                                        {isManager && <NavLink to="/" icon={Home} className="w-full">Register</NavLink>}
+                                        {hasCheckInAccess && <NavLink to="/check-in" icon={QrCode} className="w-full">Check-in</NavLink>}
+                                        <NavLink to="/transport" icon={Bus} className="w-full">Transport</NavLink>
+                                        <NavLink to="/profile" icon={User} className="w-full">Profile</NavLink>
                                     </div>
 
                                     {isManager && (
-                                        <div className="space-y-2">
+                                        <div className="space-y-1">
                                             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-2 mb-2 pt-4 border-t border-slate-800">Management</p>
                                             {managementLinks.map(link => (
-                                                <NavLink key={link.to} to={link.to} icon={link.icon}>{link.label}</NavLink>
+                                                <NavLink key={link.to} to={link.to} icon={link.icon} className="w-full">{link.label}</NavLink>
                                             ))}
-                                            <NavLink to="/reports/custom" icon={PieChart}>Reports</NavLink>
+                                            <NavLink to="/reports/custom" icon={PieChart} className="w-full">Reports</NavLink>
                                         </div>
                                     )}
 
@@ -236,7 +239,7 @@ export default function Navbar() {
                                     </div>
                                 </>
                             ) : (
-                                <NavLink to="/login" icon={LogIn}>Login</NavLink>
+                                <NavLink to="/login" icon={LogIn} className="w-full">Login</NavLink>
                             )}
                         </div>
                     </div>

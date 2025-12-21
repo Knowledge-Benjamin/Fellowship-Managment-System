@@ -110,12 +110,34 @@ const CustomReport = () => {
 
     const handleExportPDF = () => {
         if (!startDate || !endDate) return;
-        window.open(`/api/reports/custom/export/pdf?startDate=${startDate}&endDate=${endDate}${type ? `&type=${type}` : ''}${regionId ? `&regionId=${regionId}` : ''}`, '_blank');
+        const params = new URLSearchParams({
+            startDate,
+            endDate,
+            ...(type && { type }),
+            ...(regionId && { regionId })
+        });
+        const link = document.createElement('a');
+        link.href = `/api/reports/custom/export/pdf?${params.toString()}`;
+        link.download = `Custom_Report_${startDate}_to_${endDate}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     };
 
     const handleExportExcel = () => {
         if (!startDate || !endDate) return;
-        window.open(`/api/reports/custom/export/excel?startDate=${startDate}&endDate=${endDate}${type ? `&type=${type}` : ''}${regionId ? `&regionId=${regionId}` : ''}`, '_blank');
+        const params = new URLSearchParams({
+            startDate,
+            endDate,
+            ...(type && { type }),
+            ...(regionId && { regionId })
+        });
+        const link = document.createElement('a');
+        link.href = `/api/reports/custom/export/excel?${params.toString()}`;
+        link.download = `Custom_Report_${startDate}_to_${endDate}.xlsx`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     };
 
     const [showExportMenu, setShowExportMenu] = useState(false);

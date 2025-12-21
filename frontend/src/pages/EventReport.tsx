@@ -130,12 +130,22 @@ const EventReport = () => {
 
     const handleExportPDF = () => {
         if (!report) return;
-        window.open(`/api/reports/${id}/export/pdf`, '_blank');
+        const link = document.createElement('a');
+        link.href = `/api/reports/${id}/export/pdf`;
+        link.download = `${report.event.name.replace(/\s+/g, '_')}_Report.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     };
 
     const handleExportExcel = () => {
         if (!report) return;
-        window.open(`/api/reports/${id}/export/excel`, '_blank');
+        const link = document.createElement('a');
+        link.href = `/api/reports/${id}/export/excel`;
+        link.download = `${report.event.name.replace(/\s+/g, '_')}_Report.xlsx`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     };
 
     const [showExportMenu, setShowExportMenu] = useState(false);

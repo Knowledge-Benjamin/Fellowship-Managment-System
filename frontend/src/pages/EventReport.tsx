@@ -128,24 +128,46 @@ const EventReport = () => {
         document.body.removeChild(link);
     };
 
-    const handleExportPDF = () => {
+    const handleExportPDF = async () => {
         if (!report) return;
-        const link = document.createElement('a');
-        link.href = `/api/reports/${id}/export/pdf`;
-        link.download = `${report.event.name.replace(/\s+/g, '_')}_Report.pdf`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        try {
+            const response = await api.get(`/reports/${id}/export/pdf`, {
+                responseType: 'blob',
+            });
+            const blob = new Blob([response.data], { type: 'application/pdf' });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${report.event.name.replace(/\s+/g, '_')}_Report.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('PDF export error:', error);
+            alert('Failed to export PDF. Please try again.');
+        }
     };
 
-    const handleExportExcel = () => {
+    const handleExportExcel = async () => {
         if (!report) return;
-        const link = document.createElement('a');
-        link.href = `/api/reports/${id}/export/excel`;
-        link.download = `${report.event.name.replace(/\s+/g, '_')}_Report.xlsx`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        try {
+            const response = await api.get(`/reports/${id}/export/excel`, {
+                responseType: 'blob',
+            });
+            const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${report.event.name.replace(/\s+/g, '_')}_Report.xlsx`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('Excel export error:', error);
+            alert('Failed to export Excel. Please try again.');
+        }
     };
 
     const [showExportMenu, setShowExportMenu] = useState(false);

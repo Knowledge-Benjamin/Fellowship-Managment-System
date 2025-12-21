@@ -108,36 +108,58 @@ const CustomReport = () => {
         }
     }, [startDate, endDate, type, regionId]);
 
-    const handleExportPDF = () => {
+    const handleExportPDF = async () => {
         if (!startDate || !endDate) return;
-        const params = new URLSearchParams({
-            startDate,
-            endDate,
-            ...(type && { type }),
-            ...(regionId && { regionId })
-        });
-        const link = document.createElement('a');
-        link.href = `/api/reports/custom/export/pdf?${params.toString()}`;
-        link.download = `Custom_Report_${startDate}_to_${endDate}.pdf`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        try {
+            const response = await api.get(`/reports/custom/export/pdf`, {
+                params: {
+                    startDate,
+                    endDate,
+                    ...(type && { type }),
+                    ...(regionId && { regionId })
+                },
+                responseType: 'blob',
+            });
+            const blob = new Blob([response.data], { type: 'application/pdf' });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `Custom_Report_${startDate}_to_${endDate}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('PDF export error:', error);
+            alert('Failed to export PDF. Please try again.');
+        }
     };
 
-    const handleExportExcel = () => {
+    const handleExportExcel = async () => {
         if (!startDate || !endDate) return;
-        const params = new URLSearchParams({
-            startDate,
-            endDate,
-            ...(type && { type }),
-            ...(regionId && { regionId })
-        });
-        const link = document.createElement('a');
-        link.href = `/api/reports/custom/export/excel?${params.toString()}`;
-        link.download = `Custom_Report_${startDate}_to_${endDate}.xlsx`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        try {
+            const response = await api.get(`/reports/custom/export/excel`, {
+                params: {
+                    startDate,
+                    endDate,
+                    ...(type && { type }),
+                    ...(regionId && { regionId })
+                },
+                responseType: 'blob',
+            });
+            const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `Custom_Report_${startDate}_to_${endDate}.xlsx`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('Excel export error:', error);
+            alert('Failed to export Excel. Please try again.');
+        }
     };
 
     const [showExportMenu, setShowExportMenu] = useState(false);

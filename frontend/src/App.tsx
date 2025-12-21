@@ -12,6 +12,7 @@ import TagManagement from './pages/TagManagement';
 import MemberManagement from './pages/MemberManagement';
 import Login from './pages/Login';
 import Profile from './pages/Profile';
+import CourseManagement from './pages/CourseManagement';
 import { ToastProvider } from './components/ToastProvider';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -182,6 +183,11 @@ function AppContent() {
             <Route path="/tags" element={
               <ProtectedRoute roles={['FELLOWSHIP_MANAGER']}>
                 <TagManagement />
+              </ProtectedRoute>
+            } />
+            <Route path="/courses" element={
+              <ProtectedRoute roles={['FELLOWSHIP_MANAGER']}>
+                <CourseManagement />
               </ProtectedRoute>
             } />
 

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../api';
 import QRCode from 'react-qr-code';
 import { useToast } from '../components/ToastProvider';
-import { UserPlus, CheckCircle, Download, RotateCcw, Sparkles, Copy, Mail, MapPin, GraduationCap, Tag as TagIcon } from 'lucide-react';
+import { UserPlus, CheckCircle, Download, RotateCcw, Sparkles, Copy, Mail, MapPin, GraduationCap, Tag as TagIcon, BookOpen, Plus, Loader2, X } from 'lucide-react';
 
 interface Region {
     id: string;
@@ -18,12 +18,25 @@ interface Tag {
     showOnRegistration: boolean;
 }
 
+interface Course {
+    id: string;
+    name: string;
+    code: string;
+}
+
 const Registration = () => {
     const { showToast } = useToast();
     const [loading, setLoading] = useState(false);
     const [regions, setRegions] = useState<Region[]>([]);
     const [classificationTags, setClassificationTags] = useState<Tag[]>([]);
     const [additionalTags, setAdditionalTags] = useState<Tag[]>([]);
+    const [courses, setCourses] = useState<Course[]>([]);
+
+    // Course creation modal state
+    const [isCourseModalOpen, setIsCourseModalOpen] = useState(false);
+    const [newCourse, setNewCourse] = useState({ name: '', code: '' });
+    const [savingCourse, setSavingCourse] = useState(false);
+
     const [formData, setFormData] = useState({
         fullName: '',
         email: '',
@@ -33,7 +46,7 @@ const Registration = () => {
         regionId: '',
         classificationTagId: '',
         additionalTagIds: [] as string[],
-        course: '',
+        courseId: '',
         yearOfStudy: 1,
     });
     const [createdMember, setCreatedMember] = useState<{ fullName: string; fellowshipNumber: string; defaultPassword?: string; qrCode: string; region?: { name: string } } | null>(null);
@@ -41,6 +54,7 @@ const Registration = () => {
     useEffect(() => {
         fetchRegions();
         fetchTags();
+        fetchCourses();
     }, []);
 
     // Auto-set Non-Resident region when isMakerereStudent changes to false
@@ -87,6 +101,51 @@ const Registration = () => {
         }
     };
 
+    const fetchCourses = async () => {
+        try {
+            const response = await api.get('/courses');
+            setCourses(response.data);
+        } catch (error) {
+            console.error('Failed to fetch courses:', error);
+            showToast('error', 'Failed to load courses.');
+        }
+    };
+
+    const handleCourseChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const value = e.target.value;
+        if (value === 'NEW_COURSE') {
+            setIsCourseModalOpen(true);
+        } else {
+            setFormData(prev => ({ ...prev, courseId: value }));
+        }
+    };
+
+    const handleSaveCourse = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newCourse.name.trim() || !newCourse.code.trim()) return;
+
+        try {
+            setSavingCourse(true);
+            const response = await api.post('/courses', {
+                name: newCourse.name.trim(),
+                code: newCourse.code.trim().toUpperCase()
+            });
+
+            const savedCourse = response.data;
+            setCourses(prev => [...prev, savedCourse].sort((a, b) => a.name.localeCompare(b.name)));
+            setFormData(prev => ({ ...prev, courseId: savedCourse.id }));
+
+            setNewCourse({ name: '', code: '' });
+            setIsCourseModalOpen(false);
+            showToast('success', 'Course created and selected');
+        } catch (error: any) {
+            console.error('Failed to create course:', error);
+            showToast('error', error.response?.data?.error || 'Failed to create course');
+        } finally {
+            setSavingCourse(false);
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
@@ -115,7 +174,7 @@ const Registration = () => {
             regionId: '',
             classificationTagId: '',
             additionalTagIds: [],
-            course: '',
+            courseId: '',
             yearOfStudy: 1,
         });
     };
@@ -436,14 +495,33 @@ const Registration = () => {
                             <div className="grid md:grid-cols-2 gap-6">
                                 {/* Course */}
                                 <div className="space-y-2">
-                                    <label className="text-sm font-semibold text-slate-300">Course (Optional)</label>
-                                    <input
-                                        type="text"
-                                        placeholder="e.g. Computer Science"
-                                        className="input transition-smooth"
-                                        value={formData.course}
-                                        onChange={(e) => setFormData({ ...formData, course: e.target.value })}
-                                    />
+                                    <label className="text-sm font-semibold text-slate-300 flex items-center justify-between">
+                                        <span>Course (Optional)</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsCourseModalOpen(true)}
+                                            className="text-xs text-teal-400 hover:text-teal-300 flex items-center gap-1"
+                                        >
+                                            <Plus size={12} /> Add New
+                                        </button>
+                                    </label>
+                                    <select
+                                        className="input transition-smooth cursor-pointer"
+                                        value={formData.courseId}
+                                        onChange={handleCourseChange}
+                                    >
+                                        <option value="">Select Course</option>
+                                        {courses.map((course) => (
+                                            <option key={course.id} value={course.id}>
+                                                {course.code}
+                                            </option>
+                                        ))}
+                                        {/* Divider check */}
+                                        {courses.length > 0 && <option disabled>──────────</option>}
+                                        <option value="NEW_COURSE" className="font-bold text-teal-400">
+                                            + Add New Course...
+                                        </option>
+                                    </select>
                                 </div>
 
                                 {/* Year of Study */}
@@ -503,6 +581,68 @@ const Registration = () => {
                         </button>
                     </form>
                 </div>
+
+                {/* Quick Add Course Modal */}
+                {isCourseModalOpen && (
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+                        <div className="bg-[#151d30] rounded-2xl p-6 max-w-sm w-full border border-slate-800 shadow-xl">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                                    <BookOpen className="w-5 h-5 text-teal-400" />
+                                    Add New Course
+                                </h3>
+                                <button
+                                    onClick={() => setIsCourseModalOpen(false)}
+                                    className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white"
+                                >
+                                    <X size={18} />
+                                </button>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-300 mb-1">Course Code</label>
+                                    <input
+                                        type="text"
+                                        value={newCourse.code}
+                                        onChange={(e) => setNewCourse(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
+                                        placeholder="e.g. BSCS"
+                                        className="w-full px-3 py-2 bg-[#0a0f1e] rounded-lg border border-slate-700 focus:border-teal-500 focus:outline-none text-white font-mono"
+                                        maxLength={10}
+                                        autoFocus
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-300 mb-1">Course Name</label>
+                                    <input
+                                        type="text"
+                                        value={newCourse.name}
+                                        onChange={(e) => setNewCourse(prev => ({ ...prev, name: e.target.value }))}
+                                        placeholder="e.g. Bachelor of Science in Computer Science"
+                                        className="w-full px-3 py-2 bg-[#0a0f1e] rounded-lg border border-slate-700 focus:border-teal-500 focus:outline-none text-white"
+                                    />
+                                </div>
+
+                                <button
+                                    type="button"
+                                    onClick={handleSaveCourse}
+                                    disabled={savingCourse || !newCourse.code || !newCourse.name}
+                                    className="w-full mt-2 btn-primary flex items-center justify-center gap-2"
+                                >
+                                    {savingCourse ? (
+                                        <>
+                                            <Loader2 size={16} className="animate-spin" />
+                                            Saving...
+                                        </>
+                                    ) : (
+                                        'Create & Select Course'
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

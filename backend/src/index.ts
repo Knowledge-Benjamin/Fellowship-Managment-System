@@ -13,6 +13,7 @@ import reportRoutes from './routes/reportRoutes';
 import volunteerRoutes from './routes/volunteerRoutes';
 import regionRoutes from './routes/regionRoutes';
 import tagRoutes from './routes/tagRoutes';
+import courseRoutes from './routes/courseRoutes';
 
 dotenv.config();
 
@@ -44,6 +45,7 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/volunteers', volunteerRoutes);
 app.use('/api/regions', regionRoutes);
 app.use('/api/tags', tagRoutes);
+app.use('/api/courses', courseRoutes);
 
 app.get('/', (req, res) => {
     res.send('Fellowship Information Management System API');

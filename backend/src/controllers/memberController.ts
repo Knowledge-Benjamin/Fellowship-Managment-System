@@ -13,7 +13,7 @@ const createMemberSchema = z.object({
     regionId: z.string().uuid('Invalid region ID'),
     classificationTagId: z.string().uuid().optional(),
     additionalTagIds: z.array(z.string().uuid()).optional(),
-    course: z.string().optional(),
+    courseId: z.string().uuid().optional(),
     yearOfStudy: z.number().min(1).max(7).optional(),
 });
 
@@ -54,11 +54,10 @@ export const createMember = async (req: Request, res: Response) => {
                 phoneNumber: validatedData.phoneNumber,
                 gender: validatedData.gender,
                 regionId: validatedData.regionId,
-                course: validatedData.course,
+                courseId: validatedData.courseId,
                 yearOfStudy: validatedData.yearOfStudy,
                 fellowshipNumber,
                 password: hashedPassword,
-                role: 'MEMBER',
             },
             select: {
                 id: true,
@@ -170,6 +169,13 @@ export const getMembers = async (req: Request, res: Response) => {
                 gender: true,
                 role: true,
                 course: true,
+                courseRelation: {
+                    select: {
+                        id: true,
+                        name: true,
+                        code: true
+                    }
+                },
                 yearOfStudy: true,
                 createdAt: true,
                 region: {

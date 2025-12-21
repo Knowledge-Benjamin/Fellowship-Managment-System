@@ -7,6 +7,7 @@ import {
     User, MapPin, Tag, Users, Menu, X, ChevronDown, BookOpen
 } from 'lucide-react';
 import logo from '../assets/logo.jpg';
+import { createPortal } from 'react-dom';
 
 interface NavLinkProps {
     to: string;
@@ -79,116 +80,121 @@ export default function Navbar() {
 
     const isManagementActive = managementLinks.some(link => location.pathname === link.to);
 
+    // ... (inside Navbar component, replace return statement logic)
+
     return (
-        <nav className="fixed top-0 left-0 right-0 z-[100] border-b border-slate-800 bg-[#151d30]/95 backdrop-blur-xl">
-            <div className="max-w-7xl mx-auto px-6 py-4">
-                <div className="flex justify-between items-center">
-                    {/* Logo */}
-                    <div className="flex items-center gap-3">
-                        <Link to="/" className="flex items-center gap-3 group">
-                            <div className="relative">
-                                <img
-                                    src={logo}
-                                    alt="Fellowship Logo"
-                                    className="w-11 h-11 rounded-lg shadow-lg group-hover:scale-105 transition-transform object-cover"
-                                />
-                                <div className="absolute -top-1 -right-1 w-3 h-3 bg-teal-500 rounded-full animate-pulse border-2 border-[#151d30]"></div>
-                            </div>
-                            <div>
-                                <h1 className="text-lg font-bold text-white group-hover:text-indigo-400 transition-colors">Fellowship Manager</h1>
-                                <p className="text-xs text-slate-500">Digital Registration System</p>
-                            </div>
-                        </Link>
-                    </div>
+        <>
+            <nav className="fixed top-0 left-0 right-0 z-[100] border-b border-slate-800 bg-[#151d30]/95 backdrop-blur-xl">
+                {/* ... existing navbar content ... */}
+                <div className="max-w-7xl mx-auto px-6 py-4">
+                    <div className="flex justify-between items-center">
+                        {/* Logo */}
+                        <div className="flex items-center gap-3">
+                            <Link to="/" className="flex items-center gap-3 group">
+                                <div className="relative">
+                                    <img
+                                        src={logo}
+                                        alt="Fellowship Logo"
+                                        className="w-11 h-11 rounded-lg shadow-lg group-hover:scale-105 transition-transform object-cover"
+                                    />
+                                    <div className="absolute -top-1 -right-1 w-3 h-3 bg-teal-500 rounded-full animate-pulse border-2 border-[#151d30]"></div>
+                                </div>
+                                <div>
+                                    <h1 className="text-lg font-bold text-white group-hover:text-indigo-400 transition-colors">Fellowship Manager</h1>
+                                    <p className="text-xs text-slate-500">Digital Registration System</p>
+                                </div>
+                            </Link>
+                        </div>
 
-                    {/* Desktop Navigation */}
-                    <div className="hidden lg:flex items-center gap-2">
-                        {isAuthenticated ? (
-                            <>
-                                {isManager && <NavLink to="/" icon={Home}>Register</NavLink>}
-                                {hasCheckInAccess && <NavLink to="/check-in" icon={QrCode}>Check-in</NavLink>}
+                        {/* Desktop Navigation */}
+                        <div className="hidden lg:flex items-center gap-2">
+                            {isAuthenticated ? (
+                                <>
+                                    {isManager && <NavLink to="/" icon={Home}>Register</NavLink>}
+                                    {hasCheckInAccess && <NavLink to="/check-in" icon={QrCode}>Check-in</NavLink>}
 
-                                {isManager && (
-                                    <div className="relative" ref={dropdownRef}>
-                                        <button
-                                            onClick={() => setIsManagementOpen(!isManagementOpen)}
-                                            className={`
-                                                relative flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium
-                                                transition-all duration-300 ease-out
-                                                ${isManagementActive || isManagementOpen
-                                                    ? 'bg-indigo-600/10 text-indigo-400'
-                                                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                                                }
-                                            `}
-                                        >
-                                            <div className="flex items-center gap-2">
-                                                <PieChart size={18} />
-                                                <span>Management</span>
-                                                <ChevronDown size={14} className={`transition-transform duration-200 ${isManagementOpen ? 'rotate-180' : ''}`} />
-                                            </div>
-                                        </button>
-
-                                        {/* Dropdown Menu */}
-                                        {isManagementOpen && (
-                                            <div className="absolute top-full right-0 mt-2 w-56 rounded-xl bg-[#1a233b] border border-slate-700 shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                                                <div className="p-1">
-                                                    {managementLinks.map((link) => (
-                                                        <Link
-                                                            key={link.to}
-                                                            to={link.to}
-                                                            className={`
-                                                                flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
-                                                                ${location.pathname === link.to
-                                                                    ? 'bg-indigo-600 text-white'
-                                                                    : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-                                                                }
-                                                            `}
-                                                        >
-                                                            <link.icon size={16} />
-                                                            {link.label}
-                                                        </Link>
-                                                    ))}
+                                    {isManager && (
+                                        <div className="relative" ref={dropdownRef}>
+                                            <button
+                                                onClick={() => setIsManagementOpen(!isManagementOpen)}
+                                                className={`
+                                                    relative flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium
+                                                    transition-all duration-300 ease-out
+                                                    ${isManagementActive || isManagementOpen
+                                                        ? 'bg-indigo-600/10 text-indigo-400'
+                                                        : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                                                    }
+                                                `}
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    <PieChart size={18} />
+                                                    <span>Management</span>
+                                                    <ChevronDown size={14} className={`transition-transform duration-200 ${isManagementOpen ? 'rotate-180' : ''}`} />
                                                 </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
+                                            </button>
 
-                                {isManager && <NavLink to="/reports/custom" icon={PieChart}>Reports</NavLink>}
-                                <NavLink to="/transport" icon={Bus}>Transport</NavLink>
-                                <NavLink to="/profile" icon={User}>Profile</NavLink>
+                                            {/* Dropdown Menu */}
+                                            {isManagementOpen && (
+                                                <div className="absolute top-full right-0 mt-2 w-56 rounded-xl bg-[#1a233b] border border-slate-700 shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                                                    <div className="p-1">
+                                                        {managementLinks.map((link) => (
+                                                            <Link
+                                                                key={link.to}
+                                                                to={link.to}
+                                                                className={`
+                                                                    flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
+                                                                    ${location.pathname === link.to
+                                                                        ? 'bg-indigo-600 text-white'
+                                                                        : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                                                                    }
+                                                                `}
+                                                            >
+                                                                <link.icon size={16} />
+                                                                {link.label}
+                                                            </Link>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
 
-                                <div className="w-px h-6 bg-slate-800 mx-2"></div>
+                                    {isManager && <NavLink to="/reports/custom" icon={PieChart}>Reports</NavLink>}
+                                    <NavLink to="/transport" icon={Bus}>Transport</NavLink>
+                                    <NavLink to="/profile" icon={User}>Profile</NavLink>
 
-                                <button
-                                    onClick={logout}
-                                    className="flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium text-slate-400 hover:text-red-400 hover:bg-slate-800 transition-all"
-                                    title="Logout"
-                                >
-                                    <LogOut size={18} />
-                                </button>
-                            </>
-                        ) : (
-                            <NavLink to="/login" icon={LogIn}>Login</NavLink>
-                        )}
+                                    <div className="w-px h-6 bg-slate-800 mx-2"></div>
+
+                                    <button
+                                        onClick={logout}
+                                        className="flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium text-slate-400 hover:text-red-400 hover:bg-slate-800 transition-all"
+                                        title="Logout"
+                                    >
+                                        <LogOut size={18} />
+                                    </button>
+                                </>
+                            ) : (
+                                <NavLink to="/login" icon={LogIn}>Login</NavLink>
+                            )}
+                        </div>
+
+                        {/* Mobile Menu Button */}
+                        <button
+                            onClick={() => setIsMobileMenuOpen(true)}
+                            className="lg:hidden p-2 rounded-lg text-slate-400 hover:bg-slate-800 transition-colors relative z-[101]"
+                        >
+                            <Menu size={24} />
+                        </button>
                     </div>
-
-                    {/* Mobile Menu Button - Ensure High Z-Index */}
-                    <button
-                        onClick={() => setIsMobileMenuOpen(true)}
-                        className="lg:hidden p-2 rounded-lg text-slate-400 hover:bg-slate-800 transition-colors relative z-[101]"
-                    >
-                        <Menu size={24} />
-                    </button>
                 </div>
-            </div>
+            </nav>
 
-            {/* Mobile Menu Overlay */}
-            {isMobileMenuOpen && (
-                <div className="fixed inset-0 z-[150] lg:hidden">
+            {/* Mobile Menu Portal */}
+            {isMobileMenuOpen && createPortal(
+                <div className="fixed inset-0 z-[9999] lg:hidden">
                     {/* Backdrop */}
                     <div
-                        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                        className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
                         onClick={() => setIsMobileMenuOpen(false)}
                     />
 
@@ -243,8 +249,9 @@ export default function Navbar() {
                             )}
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
-        </nav>
+        </>
     );
 }

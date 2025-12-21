@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { LogIn, User, Lock } from 'lucide-react';
 import api from '../api';
+import logo from '../assets/logo.jpg';
 
 const Login = () => {
     const [email, setEmail] = useState('');
@@ -37,9 +38,11 @@ const Login = () => {
         <div className="min-h-screen flex items-center justify-center p-4">
             <div className="max-w-md w-full bg-slate-800/50 backdrop-blur-xl rounded-2xl p-8 border border-slate-700 shadow-2xl animate-fade-in">
                 <div className="text-center mb-8">
-                    <div className="w-16 h-16 bg-teal-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-teal-900/20">
-                        <LogIn size={32} className="text-white" />
-                    </div>
+                    <img
+                        src={logo}
+                        alt="Fellowship Logo"
+                        className="w-20 h-20 rounded-2xl mx-auto mb-4 shadow-lg shadow-teal-900/20 object-cover"
+                    />
                     <h1 className="text-3xl font-bold text-white mb-2">Welcome Back</h1>
                     <p className="text-slate-400">Sign in to access your account</p>
                 </div>

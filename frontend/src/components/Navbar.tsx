@@ -6,6 +6,7 @@ import {
     Home, QrCode, Bus, Calendar, UserPlus, PieChart, LogIn, LogOut,
     User, MapPin, Tag, Users, Menu, X, ChevronDown, BookOpen
 } from 'lucide-react';
+import logo from '../assets/logo.jpg';
 
 interface NavLinkProps {
     to: string;
@@ -86,10 +87,12 @@ export default function Navbar() {
                     <div className="flex items-center gap-3">
                         <Link to="/" className="flex items-center gap-3 group">
                             <div className="relative">
-                                <div className="w-11 h-11 rounded-xl bg-indigo-600 flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform">
-                                    <span className="text-xl font-bold text-white">F</span>
-                                </div>
-                                <div className="absolute -top-1 -right-1 w-3 h-3 bg-teal-500 rounded-full animate-pulse"></div>
+                                <img
+                                    src={logo}
+                                    alt="Fellowship Logo"
+                                    className="w-11 h-11 rounded-lg shadow-lg group-hover:scale-105 transition-transform object-cover"
+                                />
+                                <div className="absolute -top-1 -right-1 w-3 h-3 bg-teal-500 rounded-full animate-pulse border-2 border-[#151d30]"></div>
                             </div>
                             <div>
                                 <h1 className="text-lg font-bold text-white group-hover:text-indigo-400 transition-colors">Fellowship Manager</h1>

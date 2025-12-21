@@ -151,7 +151,15 @@ const Registration = () => {
         setLoading(true);
 
         try {
-            const response = await api.post('/members', formData);
+            // Sanitize payload: valid UUIDs or undefined, no empty strings
+            const payload = {
+                ...formData,
+                classificationTagId: formData.classificationTagId || undefined,
+                courseId: formData.courseId || undefined,
+                regionId: formData.regionId || undefined, // Must be UUID if present, but required by schema
+            };
+
+            const response = await api.post('/members', payload);
             setCreatedMember(response.data);
             showToast('success', 'Member registered successfully!');
         } catch (error: any) {

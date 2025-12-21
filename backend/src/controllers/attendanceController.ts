@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import prisma from '../prisma';
+import { getNowInEAT, getEventTimeInEAT } from '../utils/timezone';
 
 // Validation schemas
 const checkInSchema = z.object({
@@ -52,19 +53,12 @@ export const checkIn = async (req: Request, res: Response) => {
         }
 
         // Check if event is currently ongoing (time-based)
-        // Usage of EAT (UTC+3) for time comparison
-        const nowUtc = new Date();
-        const now = new Date(nowUtc.getTime() + 3 * 60 * 60 * 1000);
+        // Using EAT (UTC+3) for time comparison
+        const now = getNowInEAT();
 
         const eventDate = new Date(event.date);
-        const [startHour, startMinute] = event.startTime.split(':').map(Number);
-        const [endHour, endMinute] = event.endTime.split(':').map(Number);
-
-        const eventStart = new Date(eventDate);
-        eventStart.setHours(startHour, startMinute, 0);
-
-        const eventEnd = new Date(eventDate);
-        eventEnd.setHours(endHour, endMinute, 0);
+        const eventStart = getEventTimeInEAT(eventDate, event.startTime);
+        const eventEnd = getEventTimeInEAT(eventDate, event.endTime);
 
         if (now < eventStart || now > eventEnd) {
             return res.status(403).json({ error: 'Check-in not available. Event is not currently ongoing.' });

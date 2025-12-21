@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import prisma from '../prisma';
+import { getEventStatus } from '../utils/timezone';
 
 // Validation schemas
 const createEventSchema = z.object({
@@ -17,26 +18,7 @@ const createEventSchema = z.object({
 
 const updateEventSchema = createEventSchema.partial();
 
-// Helper to calculate event status
-const getEventStatus = (event: any) => {
-    // Usage of EAT (UTC+3) for time comparison
-    const nowUtc = new Date();
-    const now = new Date(nowUtc.getTime() + 3 * 60 * 60 * 1000);
 
-    const eventDate = new Date(event.date);
-    const [startHour, startMinute] = event.startTime.split(':').map(Number);
-    const [endHour, endMinute] = event.endTime.split(':').map(Number);
-
-    const eventStart = new Date(eventDate);
-    eventStart.setHours(startHour, startMinute, 0);
-
-    const eventEnd = new Date(eventDate);
-    eventEnd.setHours(endHour, endMinute, 0);
-
-    if (now < eventStart) return 'UPCOMING';
-    if (now >= eventStart && now <= eventEnd) return 'ONGOING';
-    return 'PAST';
-};
 
 // Create a new event
 export const createEvent = async (req: Request, res: Response) => {

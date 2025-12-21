@@ -137,7 +137,7 @@ model Attendance {
   checkedInAt DateTime      @default(now())
 
   member Member @relation(fields: [memberId], references: [id])
-  event  Event  @relation(fields: [eventId], references: [id])
+  event  Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   @@unique([memberId, eventId])
 }
@@ -151,7 +151,7 @@ model TransportBooking {
   bookedAt    DateTime        @default(now())
 
   member Member @relation(fields: [memberId], references: [id])
-  event  Event  @relation(fields: [eventId], references: [id])
+  event  Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   @@unique([memberId, eventId])
 }
@@ -164,7 +164,7 @@ model GuestAttendance {
   purpose     String?
   checkedInAt DateTime @default(now())
 
-  event Event @relation(fields: [eventId], references: [id])
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
 }
 
 model EventVolunteer {
@@ -173,7 +173,7 @@ model EventVolunteer {
   memberId   String
   assignedAt DateTime @default(now())
 
-  event  Event  @relation(fields: [eventId], references: [id])
+  event  Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
   member Member @relation(fields: [memberId], references: [id])
 
   @@unique([eventId, memberId])

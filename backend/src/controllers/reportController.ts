@@ -1,5 +1,7 @@
 import { Request, Response } from 'express';
+import { z } from 'zod';
 import prisma from '../prisma';
+import { getEventStatus } from '../utils/timezone';
 import NodeCache from 'node-cache';
 import {
     generateEventReportPDF,
@@ -11,22 +13,7 @@ import {
 const cache = new NodeCache({ stdTTL: 300 }); // 5 minutes TTL
 
 // Helper to calculate event status
-const getEventStatus = (event: any) => {
-    const now = new Date();
-    const eventDate = new Date(event.date);
-    const [startHour, startMinute] = event.startTime.split(':').map(Number);
-    const [endHour, endMinute] = event.endTime.split(':').map(Number);
 
-    const eventStart = new Date(eventDate);
-    eventStart.setHours(startHour, startMinute, 0);
-
-    const eventEnd = new Date(eventDate);
-    eventEnd.setHours(endHour, endMinute, 0);
-
-    if (now < eventStart) return 'UPCOMING';
-    if (now >= eventStart && now <= eventEnd) return 'ONGOING';
-    return 'PAST';
-};
 
 export const getEventReport = async (req: Request, res: Response) => {
     try {

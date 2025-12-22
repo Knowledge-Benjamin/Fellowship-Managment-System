@@ -37,16 +37,22 @@ export const useCheckInAccess = () => {
                     return;
                 }
 
-                // Check permission for first event (if volunteer for ANY active event, grant access)
-                const eventId = events[0]?.id;
-                if (!eventId) {
-                    setHasAccess(false);
-                    setLoading(false);
-                    return;
+                // Check permission for ANY active event (volunteer for any event grants access)
+                let hasPermissionForAny = false;
+                for (const event of events) {
+                    try {
+                        const permissionResponse = await api.get(`/volunteers/${event.id}/check-permission`);
+                        if (permissionResponse.data.hasPermission === true) {
+                            hasPermissionForAny = true;
+                            break; // Found one, can stop checking
+                        }
+                    } catch (error) {
+                        // Continue checking other events
+                        continue;
+                    }
                 }
 
-                const permissionResponse = await api.get(`/volunteers/${eventId}/check-permission`);
-                setHasAccess(permissionResponse.data.hasPermission === true);
+                setHasAccess(hasPermissionForAny);
             } catch (error) {
                 setHasAccess(false);
             } finally {

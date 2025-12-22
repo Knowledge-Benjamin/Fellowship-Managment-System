@@ -15,6 +15,8 @@ import Profile from './pages/Profile';
 import CourseManagement from './pages/CourseManagement';
 import ResidenceManagement from './pages/ResidenceManagement';
 import SalvationManagement from './pages/SalvationManagement';
+import LeadershipOverview from './pages/Leadership/Overview';
+import TeamsManagement from './pages/Leadership/Teams';
 import { ToastProvider } from './components/ToastProvider';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -102,6 +104,18 @@ function AppContent() {
             <Route path="/residences" element={
               <ProtectedRoute roles={['FELLOWSHIP_MANAGER']}>
                 <ResidenceManagement />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/leadership" element={
+              <ProtectedRoute roles={['FELLOWSHIP_MANAGER']}>
+                <LeadershipOverview />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/leadership/teams" element={
+              <ProtectedRoute roles={['FELLOWSHIP_MANAGER']}>
+                <TeamsManagement />
               </ProtectedRoute>
             } />
 

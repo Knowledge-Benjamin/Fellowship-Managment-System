@@ -32,10 +32,18 @@ const CheckInPermissionGuard: React.FC<CheckInPermissionGuardProps> = ({ childre
             // For members, check if there's an active event and if they have permission
             try {
                 const eventResponse = await api.get('/events/active');
-                const eventId = eventResponse.data?.id;
+                const events = Array.isArray(eventResponse.data) ? eventResponse.data : [eventResponse.data];
 
+                // No events
+                if (events.length === 0) {
+                    setHasPermission(false);
+                    setLoading(false);
+                    return;
+                }
+
+                // Use first event for permission check (if volunteer for ANY event, grant access)
+                const eventId = events[0]?.id;
                 if (!eventId) {
-                    // No active event
                     setHasPermission(false);
                     setLoading(false);
                     return;

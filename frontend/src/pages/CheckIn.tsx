@@ -2,15 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import api from '../api';
 import { Scan, CheckCircle, XCircle, Zap, Camera, AlertTriangle, Loader2, RefreshCw, Hash, User } from 'lucide-react';
-
-interface Event {
-    id: string;
-    name: string;
-    date: string;
-    startTime: string;
-    endTime: string;
-    allowGuestCheckin: boolean;
-}
+import EventSelector from '../components/EventSelector';
+import type { Event } from '../types/event';
 
 interface MemberData {
     id: string;
@@ -24,7 +17,8 @@ interface MemberData {
 }
 
 const CheckIn = () => {
-    const [activeEvent, setActiveEvent] = useState<Event | null>(null);
+    const [activeEvents, setActiveEvents] = useState<Event[]>([]);
+    const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
     const [result, setResult] = useState('');
     const [scanning, setScanning] = useState(false);
     const [status, setStatus] = useState<'idle' | 'success' | 'error' | 'loading'>('idle');
@@ -56,9 +50,12 @@ const CheckIn = () => {
     const fetchActiveEvent = async () => {
         try {
             const response = await api.get('/events/active');
-            setActiveEvent(response.data);
-            if (response.data) {
-                checkPermission(response.data.id);
+            const events = Array.isArray(response.data) ? response.data : [response.data];
+            setActiveEvents(events);
+            // Auto-select first event if only one
+            if (events.length === 1) {
+                setSelectedEvent(events[0]);
+                checkPermission(events[0].id);
             }
         } catch (error: any) {
             if (error.response?.status === 404) {
@@ -74,7 +71,7 @@ const CheckIn = () => {
     }, []);
 
     useEffect(() => {
-        if (scanning && activeEvent && !accessDenied) {
+        if (scanning && selectedEvent && !accessDenied) {
             setPermissionDenied(false);
 
             const scanner = new Html5QrcodeScanner(
@@ -102,7 +99,7 @@ const CheckIn = () => {
                         const response = await api.post('/attendance/check-in', {
                             qrCode: decodedText,
                             method: 'QR',
-                            eventId: activeEvent.id,
+                            eventId: selectedEvent.id,
                         });
                         setStatus('success');
                         setMessage(`${response.data.member.fullName} checked in successfully!`);
@@ -132,7 +129,7 @@ const CheckIn = () => {
                 });
             };
         }
-    }, [scanning, activeEvent, accessDenied]);
+    }, [scanning, selectedEvent, accessDenied]);
 
     const handleStartScan = () => {
         setPermissionDenied(false);
@@ -152,7 +149,7 @@ const CheckIn = () => {
     };
 
     const handleFellowshipLookup = async () => {
-        if (!fellowshipNumber || fellowshipNumber.length !== 6 || !activeEvent) return;
+        if (!fellowshipNumber || fellowshipNumber.length !== 6 || !selectedEvent) return;
 
         setFellowshipLookupLoading(true);
         setMemberData(null);
@@ -162,7 +159,7 @@ const CheckIn = () => {
             const response = await api.post('/attendance/check-in', {
                 fellowshipNumber: fellowshipNumber.toUpperCase(),
                 method: 'FELLOWSHIP_NUMBER',
-                eventId: activeEvent.id,
+                eventId: selectedEvent.id,
             });
 
             // Success - member lookup and check-in was successful
@@ -262,8 +259,18 @@ const CheckIn = () => {
                     </div>
                 )}
 
+                {/* Event Selector */}
+                <EventSelector
+                    events={activeEvents}
+                    selectedEvent={selectedEvent}
+                    onEventChange={(event: Event) => {
+                        setSelectedEvent(event);
+                        checkPermission(event.id);
+                    }}
+                />
+
                 {/* Main Content - Only show if access is granted */}
-                {!accessDenied && (
+                {!accessDenied && selectedEvent && (
                     <>
                         {/* QR Scanner Section */}
                         {!scanning && status === 'idle' && !permissionDenied && !showConfirmation && (

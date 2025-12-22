@@ -3,24 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import api from '../api';
 import { Calendar, Plus, Trash2, ToggleLeft, ToggleRight, Users, Play, Square, BarChart2, List, Heart } from 'lucide-react';
 import VolunteerManager from '../components/VolunteerManager';
-import SalvationTrackingModal from '../components/SalvationTrackingModal'; interface Event {
-    id: string;
-    name: string;
-    date: string;
-    startTime: string;
-    endTime: string;
-    type: 'TUESDAY_FELLOWSHIP' | 'THURSDAY_PHANEROO';
-    venue?: string;
-    isRecurring: boolean;
-    recurrenceRule?: string;
-    isActive: boolean;
-    allowGuestCheckin: boolean;
-    status?: string;
-    _count?: {
-        attendances: number;
-        guestAttendances: number;
-    };
-}
+import SalvationTrackingModal from '../components/SalvationTrackingModal';
+import type { Event } from '../types/event';
 
 const EventManagement = () => {
     const [events, setEvents] = useState<Event[]>([]);
@@ -313,7 +297,7 @@ const EventManagement = () => {
                                             </div>
                                             <div>
                                                 <p className="text-sm text-white/60">Type</p>
-                                                <p className="font-semibold">{event.type.replace('_', ' ')}</p>
+                                                <p className="font-semibold">{event.type?.replace('_', ' ') || 'N/A'}</p>
                                             </div>
                                             <div>
                                                 <p className="text-sm text-white/60">Attendance</p>

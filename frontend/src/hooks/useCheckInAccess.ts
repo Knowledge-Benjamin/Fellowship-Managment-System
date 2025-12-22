@@ -28,8 +28,17 @@ export const useCheckInAccess = () => {
             // For members, check if there's an active event and if they have permission
             try {
                 const eventResponse = await api.get('/events/active');
-                const eventId = eventResponse.data?.id;
+                const events = Array.isArray(eventResponse.data) ? eventResponse.data : [eventResponse.data];
 
+                // No events
+                if (events.length === 0) {
+                    setHasAccess(false);
+                    setLoading(false);
+                    return;
+                }
+
+                // Check permission for first event (if volunteer for ANY active event, grant access)
+                const eventId = events[0]?.id;
                 if (!eventId) {
                     setHasAccess(false);
                     setLoading(false);

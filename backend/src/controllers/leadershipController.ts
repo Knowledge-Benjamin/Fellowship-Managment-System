@@ -185,6 +185,9 @@ export const removeRegionalHead = async (req: Request, res: Response) => {
             return res.status(404).json({ message: 'Regional head not found' });
         }
 
+        // Store the regionalHeadId (we verified it's not null above)
+        const regionalHeadId = region.regionalHeadId;
+
         // Get REGIONAL_HEAD tag
         const regionalHeadTag = await prisma.tag.findFirst({
             where: { name: 'REGIONAL_HEAD' },
@@ -202,7 +205,7 @@ export const removeRegionalHead = async (req: Request, res: Response) => {
             if (regionalHeadTag) {
                 await tx.memberTag.updateMany({
                     where: {
-                        memberId: region.regionalHeadId,
+                        memberId: regionalHeadId,
                         tagId: regionalHeadTag.id,
                         isActive: true,
                     },

@@ -94,7 +94,7 @@ export const createTeam = async (req: Request, res: Response) => {
         });
     } catch (error) {
         if (error instanceof z.ZodError) {
-            return res.status(400).json({ message: 'Validation error', errors: error.errors });
+            return res.status(400).json({ message: 'Validation error', errors: error.issues });
         }
         console.error('Error creating team:', error);
         res.status(500).json({ message: 'Failed to create team' });
@@ -242,7 +242,7 @@ export const updateTeam = async (req: Request, res: Response) => {
         res.json({ message: 'Team updated successfully', team });
     } catch (error) {
         if (error instanceof z.ZodError) {
-            return res.status(400).json({ message: 'Validation error', errors: error.errors });
+            return res.status(400).json({ message: 'Validation error', errors: error.issues });
         }
         console.error('Error updating team:', error);
         res.status(500).json({ message: 'Failed to update team' });

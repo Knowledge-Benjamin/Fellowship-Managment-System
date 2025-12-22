@@ -1,5 +1,5 @@
 import express from 'express';
-import { protect, authorize } from '../middleware/auth';
+import { protect, authorize } from '../middleware/authMiddleware';
 import * as teamController from '../controllers/teamController';
 
 const router = express.Router();

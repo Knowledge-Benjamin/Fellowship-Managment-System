@@ -61,10 +61,16 @@ model Region {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Regional Head (one-to-one: one region has one head, one member can only head one region)
+  regionalHeadId String? @unique
+  regionalHead   Member? @relation("RegionalHead", fields: [regionalHeadId], references: [id])
+
   members    Member[]
   residences Residence[]
+  families   FamilyGroup[]
 
   @@index([name])
+  @@index([regionalHeadId])
 }
 
 model Member {
@@ -98,6 +104,26 @@ model Member {
   salvations          Salvation[] // Salvations for this member
   counseledSalvations Salvation[]        @relation("SalvationCounselor") // Salvations counseled by this member
 
+  // Leadership roles
+  headsRegion              Region?               @relation("RegionalHead")
+  headsFamilies            FamilyGroup[]         @relation("FamilyHead")
+  assistsInFamilies        FamilyGroup[]         @relation("FamilyAssistant")
+  leadsMinistryTeams       MinistryTeam[]        @relation("TeamLeader")
+  assistsMinistryTeams     MinistryTeam[]        @relation("TeamAssistant")
+  createdTeams             MinistryTeam[]        @relation("TeamCreator")
+
+  // Memberships
+  familyMemberships        FamilyMember[]
+  ministryMemberships      MinistryTeamMember[]
+
+  // Assignments
+  familyMembersAssigned    FamilyMember[]        @relation("FamilyMemberAssigner")
+  ministryMembersAssigned  MinistryTeamMember[]  @relation("MinistryTeamAssigner")
+
+  // Created records
+  familyMeetingsCreated    FamilyMeeting[]
+  schedulesCreated         MinistrySchedule[]
+
   @@index([phoneNumber])
   @@index([email])
   @@index([fellowshipNumber])
@@ -124,6 +150,7 @@ model Event {
   transportBookings TransportBooking[]
   volunteers        EventVolunteer[]
   salvations        Salvation[]
+  ministrySchedules MinistrySchedule[]
 
   @@index([date])
   @@index([isActive])
@@ -299,4 +326,159 @@ model Salvation {
   @@index([memberId])
   @@index([decisionDate])
   @@index([followUpStatus])
+}
+
+// ============================================
+// LEADERSHIP & TEAMS SYSTEM
+// ============================================
+
+model FamilyGroup {
+  id                 String          @id @default(uuid())
+  name               String
+  regionId           String
+  region             Region          @relation(fields: [regionId], references: [id])
+  
+  // Family Head
+  familyHeadId       String?
+  familyHead         Member?         @relation("FamilyHead", fields: [familyHeadId], references: [id])
+  
+  // Assistant (optional)
+  assistantId        String?
+  assistant          Member?         @relation("FamilyAssistant", fields: [assistantId], references: [id])
+  
+  // Flexible Meeting Schedule
+  meetingDayLocked   Boolean         @default(false)
+  meetingDay         String?         // "Sunday", "Monday", etc.
+  meetingTimeLocked  Boolean         @default(false)
+  meetingTime        String?         // "17:00" in 24hr format
+  meetingVenueLocked Boolean         @default(false)
+  meetingVenue       String?         // "Olympia", "MSH Common Room"
+  
+  isActive           Boolean         @default(true)
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  
+  members            FamilyMember[]
+  meetings           FamilyMeeting[]
+  
+  @@index([regionId])
+  @@index([familyHeadId])
+}
+
+model FamilyMember {
+  id         String      @id @default(uuid())
+  familyId   String
+  family     FamilyGroup @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  memberId   String
+  member     Member      @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  
+  joinedAt   DateTime    @default(now())
+  leftAt     DateTime?
+  isActive   Boolean     @default(true)
+  
+  assignedBy String
+  assigner   Member      @relation("FamilyMemberAssigner", fields: [assignedBy], references: [id])
+  
+  notes      String?
+  
+  @@unique([familyId, memberId, isActive])
+  @@index([familyId])
+  @@index([memberId])
+}
+
+model MinistryTeam {
+  id             String                @id @default(uuid())
+  name           String                @unique
+  description    String?
+  
+  // Auto-generated tag names
+  leaderTagName  String
+  memberTagName  String
+  
+  // Team Leader
+  leaderId       String?
+  leader         Member?               @relation("TeamLeader", fields: [leaderId], references: [id])
+  
+  // Assistant Leader (optional)
+  assistantId    String?
+  assistant      Member?               @relation("TeamAssistant", fields: [assistantId], references: [id])
+  
+  isActive       Boolean               @default(true)
+  createdAt      DateTime              @default(now())
+  createdBy      String
+  creator        Member                @relation("TeamCreator", fields: [createdBy], references: [id])
+  updatedAt      DateTime              @updatedAt
+  
+  members        MinistryTeamMember[]
+  schedules      MinistrySchedule[]
+  
+  @@index([name])
+  @@index([leaderId])
+  @@index([createdBy])
+}
+
+model MinistryTeamMember {
+  id         String       @id @default(uuid())
+  teamId     String
+  team       MinistryTeam @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  memberId   String
+  member     Member       @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  
+  // Specific role (optional, free text)
+  role       String?      // "Lead Vocalist", "Keyboardist", "Door 1", etc.
+  
+  joinedAt   DateTime     @default(now())
+  leftAt     DateTime?
+  isActive   Boolean      @default(true)
+  
+  assignedBy String
+  assigner   Member       @relation("MinistryTeamAssigner", fields: [assignedBy], references: [id])
+  
+  notes      String?
+  
+  @@unique([teamId, memberId, isActive])
+  @@index([teamId])
+  @@index([memberId])
+}
+
+model FamilyMeeting {
+  id        String      @id @default(uuid())
+  familyId  String
+  family    FamilyGroup @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  
+  date      DateTime
+  venue     String?
+  topic     String?
+  notes     String?     @db.Text
+  attendees String[]    // Member IDs who attended
+  
+  createdBy String
+  creator   Member      @relation(fields: [createdBy], references: [id])
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  
+  @@index([familyId])
+  @@index([date])
+}
+
+model MinistrySchedule {
+  id        String       @id @default(uuid())
+  teamId    String
+  team      MinistryTeam @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  eventId   String?
+  event     Event?       @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  
+  date      DateTime
+  memberIds String[]     // Who's scheduled to serve
+  
+  notes     String?      @db.Text
+  
+  createdBy String
+  creator   Member       @relation(fields: [createdBy], references: [id])
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  
+  @@index([teamId])
+  @@index([eventId])
+  @@index([date])
 }

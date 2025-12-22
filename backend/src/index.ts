@@ -17,6 +17,8 @@ import courseRoutes from './routes/courseRoutes';
 import collegeRoutes from './routes/collegeRoutes';
 import salvationRoutes from './routes/salvationRoutes';
 import residenceRoutes from './routes/residenceRoutes';
+import teamRoutes from './routes/teamRoutes';
+import leadershipRoutes from './routes/leadershipRoutes';
 
 dotenv.config();
 
@@ -52,6 +54,8 @@ app.use('/api/courses', courseRoutes);
 app.use('/api/colleges', collegeRoutes);
 app.use('/api/salvations', salvationRoutes);
 app.use('/api/residences', residenceRoutes);
+app.use('/api/teams', teamRoutes);
+app.use('/api/leadership', leadershipRoutes);
 
 app.get('/', (req, res) => {
     res.send('Fellowship Information Management System API');

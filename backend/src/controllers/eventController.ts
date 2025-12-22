@@ -103,10 +103,10 @@ export const getEvents = async (req: Request, res: Response) => {
     }
 };
 
-// Get active event (currently running)
-export const getActiveEvent = async (req: Request, res: Response) => {
+// Get active events (currently running) - supports multiple concurrent events
+export const getActiveEvents = async (req: Request, res: Response) => {
     try {
-        const activeEvent = await prisma.event.findFirst({
+        const activeEvents = await prisma.event.findMany({
             where: { isActive: true },
             include: {
                 _count: {
@@ -116,19 +116,22 @@ export const getActiveEvent = async (req: Request, res: Response) => {
                     },
                 },
             },
+            orderBy: { date: 'desc' },
         });
 
-        if (!activeEvent) {
-            return res.status(404).json({ error: 'No active event found' });
+        if (activeEvents.length === 0) {
+            return res.status(404).json({ error: 'No active events found' });
         }
 
-        res.json({
-            ...activeEvent,
-            status: getEventStatus(activeEvent),
-        });
+        const eventsWithStatus = activeEvents.map(event => ({
+            ...event,
+            status: getEventStatus(event),
+        }));
+
+        res.json(eventsWithStatus);
     } catch (error) {
-        console.error('Get active event error:', error);
-        res.status(500).json({ error: 'Failed to fetch active event' });
+        console.error('Get active events error:', error);
+        res.status(500).json({ error: 'Failed to fetch active events' });
     }
 };
 

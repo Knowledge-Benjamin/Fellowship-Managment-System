@@ -2,7 +2,7 @@ import { Router } from 'express';
 import {
     createEvent,
     getEvents,
-    getActiveEvent,
+    getActiveEvents,
     getEventById,
     updateEvent,
     deleteEvent,
@@ -19,7 +19,7 @@ router.use(protect);
 
 // Public routes (authenticated users)
 router.get('/', asyncHandler(getEvents));
-router.get('/active', asyncHandler(getActiveEvent));
+router.get('/active', asyncHandler(getActiveEvents));
 router.get('/:id', asyncHandler(getEventById));
 
 // Manager-only routes

@@ -41,19 +41,27 @@ const CheckInPermissionGuard: React.FC<CheckInPermissionGuardProps> = ({ childre
                     return;
                 }
 
-                // Use first event for permission check (if volunteer for ANY event, grant access)
-                const eventId = events[0]?.id;
-                if (!eventId) {
-                    setHasPermission(false);
-                    setLoading(false);
-                    return;
+                // Check permission for ANY active event (volunteer for any event grants access)
+                let hasPermissionForAny = false;
+                let firstEventId = null;
+
+                for (const event of events) {
+                    if (!firstEventId) firstEventId = event.id; // Remember first event for state
+
+                    try {
+                        const permissionResponse = await api.get(`/volunteers/${event.id}/check-permission`);
+                        if (permissionResponse.data.hasPermission === true) {
+                            hasPermissionForAny = true;
+                            setActiveEventId(event.id); // Store which event granted permission
+                            break; // Found one, can stop checking
+                        }
+                    } catch (error) {
+                        // Continue checking other events
+                        continue;
+                    }
                 }
 
-                setActiveEventId(eventId);
-
-                // Check permission for this event
-                const permissionResponse = await api.get(`/volunteers/${eventId}/check-permission`);
-                setHasPermission(permissionResponse.data.hasPermission === true);
+                setHasPermission(hasPermissionForAny);
             } catch (error) {
                 console.error('Permission check failed:', error);
                 // On error, deny access (fail secure)

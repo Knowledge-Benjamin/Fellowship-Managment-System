@@ -63,8 +63,12 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
         throw new Error('Invalid email or password');
     }
 
-    // Extract tag names for easy access
-    const tags = user.memberTags.map(mt => mt.tag.name);
+    // Extract tags with full information for frontend
+    const tags = user.memberTags.map(mt => ({
+        name: mt.tag.name,
+        isActive: mt.isActive,
+        color: mt.tag.color
+    }));
 
     // Successful login
     res.json({
@@ -74,7 +78,7 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
         role: user.role,
         fellowshipNumber: user.fellowshipNumber,
         qrCode: user.qrCode,
-        tags, // Array of active tag names
+        tags, // Array of tag objects with name, isActive, color
         token: generateToken(user.id),
     });
 });

@@ -4,15 +4,16 @@ import * as leadershipController from '../controllers/leadershipController';
 
 const router = express.Router();
 
-// All routes require manager authorization
-router.use(protect, authorize('FELLOWSHIP_MANAGER'));
+router.use(protect);
 
-// Organizational structure
+// Org structure - accessible to all authenticated users (FM sees all, RH sees their region)
 router.get('/structure', leadershipController.getOrgStructure);
-router.get('/stats', leadershipController.getLeadershipStats);
 
-// Regional head management
-router.post('/regional-head', leadershipController.assignRegionalHead);
-router.delete('/regional-head/:regionId', leadershipController.removeRegionalHead);
+// Stats - FM only for now
+router.get('/stats', authorize('FELLOWSHIP_MANAGER'), leadershipController.getLeadershipStats);
+
+// Regional head management - FM only
+router.post('/regional-heads/assign', authorize('FELLOWSHIP_MANAGER'), leadershipController.assignRegionalHead);
+router.delete('/regional-heads/:regionId/remove', authorize('FELLOWSHIP_MANAGER'), leadershipController.removeRegionalHead);
 
 export default router;

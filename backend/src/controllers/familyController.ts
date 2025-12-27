@@ -247,13 +247,45 @@ export const updateFamily = async (req: Request, res: Response) => {
             }
         }
 
-        const updatedFamily = await prisma.familyGroup.update({
-            where: { id },
-            data: validatedData,
-            include: {
-                region: { select: { name: true } },
-                familyHead: { select: { id: true, fullName: true } },
-            },
+        const updatedFamily = await prisma.$transaction(async (tx) => {
+            // Get current family data
+            const currentFamily = await tx.familyGroup.findUnique({
+                where: { id },
+                select: { name: true, memberTagName: true },
+            });
+
+            if (!currentFamily) {
+                throw new Error('Family not found');
+            }
+
+            // Update the family
+            const family = await tx.familyGroup.update({
+                where: { id },
+                data: validatedData,
+                include: {
+                    region: { select: { name: true } },
+                    familyHead: { select: { id: true, fullName: true } },
+                },
+            });
+
+            // If name changed, update the member tag name
+            if (validatedData.name && validatedData.name !== currentFamily.name) {
+                const newMemberTagName = generateMemberTagName(validatedData.name);
+
+                // Update the tag name in the Tag table
+                await tx.tag.updateMany({
+                    where: { name: currentFamily.memberTagName },
+                    data: { name: newMemberTagName },
+                });
+
+                // Update the family's memberTagName reference
+                await tx.familyGroup.update({
+                    where: { id },
+                    data: { memberTagName: newMemberTagName },
+                });
+            }
+
+            return family;
         });
 
         res.json({ message: 'Family updated successfully', family: updatedFamily });

@@ -215,28 +215,69 @@ export const updateTeam = async (req: Request, res: Response) => {
             }
         }
 
-        const team = await prisma.ministryTeam.update({
-            where: { id },
-            data: {
-                ...(validatedData.name && { name: validatedData.name }),
-                ...(validatedData.description !== undefined && { description: validatedData.description }),
-                ...(validatedData.leaderId !== undefined && { leaderId: validatedData.leaderId }),
-                ...(validatedData.assistantId !== undefined && { assistantId: validatedData.assistantId }),
-            },
-            include: {
-                leader: {
-                    select: {
-                        id: true,
-                        fullName: true,
+        const team = await prisma.$transaction(async (tx) => {
+            // Get current team data
+            const currentTeam = await tx.ministryTeam.findUnique({
+                where: { id },
+                select: { name: true, leaderTagName: true, memberTagName: true },
+            });
+
+            if (!currentTeam) {
+                throw new Error('Team not found');
+            }
+
+            // Update the team
+            const updatedTeam = await tx.ministryTeam.update({
+                where: { id },
+                data: {
+                    ...(validatedData.name && { name: validatedData.name }),
+                    ...(validatedData.description !== undefined && { description: validatedData.description }),
+                    ...(validatedData.leaderId !== undefined && { leaderId: validatedData.leaderId }),
+                    ...(validatedData.assistantId !== undefined && { assistantId: validatedData.assistantId }),
+                },
+                include: {
+                    leader: {
+                        select: {
+                            id: true,
+                            fullName: true,
+                        },
+                    },
+                    assistant: {
+                        select: {
+                            id: true,
+                            fullName: true,
+                        },
                     },
                 },
-                assistant: {
-                    select: {
-                        id: true,
-                        fullName: true,
+            });
+
+            // If name changed, update the tag names
+            if (validatedData.name && validatedData.name !== currentTeam.name) {
+                const { leaderTag: newLeaderTagName, memberTag: newMemberTagName } = generateTagNames(validatedData.name);
+
+                // Update leader tag name
+                await tx.tag.updateMany({
+                    where: { name: currentTeam.leaderTagName },
+                    data: { name: newLeaderTagName },
+                });
+
+                // Update member tag name
+                await tx.tag.updateMany({
+                    where: { name: currentTeam.memberTagName },
+                    data: { name: newMemberTagName },
+                });
+
+                // Update the team's tag name references
+                await tx.ministryTeam.update({
+                    where: { id },
+                    data: {
+                        leaderTagName: newLeaderTagName,
+                        memberTagName: newMemberTagName,
                     },
-                },
-            },
+                });
+            }
+
+            return updatedTeam;
         });
 
         res.json({ message: 'Team updated successfully', team });

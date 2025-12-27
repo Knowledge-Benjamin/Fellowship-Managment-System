@@ -78,17 +78,14 @@ const LeadershipOverview = () => {
         }
     };
 
-    const handleRemoveHead = async (regionId: string, regionName: string) => {
-        if (!confirm(`Remove regional head from ${regionName}?\n\nThis will deactivate their REGIONAL_HEAD tag.`)) {
-            return;
-        }
+    const handleRemoveRegionalHead = async (regionId: string) => {
+        if (!confirm('Remove this regional head?')) return;
 
         try {
-            await api.delete(`/leadership/regional-head/${regionId}`);
-            toast.success(`Regional head removed from ${regionName}`);
+            await api.delete(`/leadership/regional-heads/${regionId}/remove`);
+            toast.success('Regional head removed successfully');
             fetchOrgStructure();
         } catch (error: any) {
-            console.error('Error removing regional head:', error);
             toast.error(error.response?.data?.message || 'Failed to remove regional head');
         }
     };
@@ -208,7 +205,7 @@ const LeadershipOverview = () => {
                                                     Change
                                                 </button>
                                                 <button
-                                                    onClick={() => handleRemoveHead(region.id, region.name)}
+                                                    onClick={() => handleRemoveRegionalHead(region.id)}
                                                     className="text-xs px-2 py-1 bg-red-500/20 text-red-400 rounded hover:bg-red-500/30 transition-colors"
                                                     title="Remove Regional Head"
                                                 >

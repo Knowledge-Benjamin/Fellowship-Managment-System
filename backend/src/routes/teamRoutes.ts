@@ -19,4 +19,8 @@ router.delete('/:id', authorize('FELLOWSHIP_MANAGER'), teamController.deleteTeam
 router.post('/:id/members', authorize('FELLOWSHIP_MANAGER'), teamController.addTeamMember);
 router.delete('/:id/members/:memberId', authorize('FELLOWSHIP_MANAGER'), teamController.removeTeamMember);
 
+// Team leader management
+router.post('/:id/assign-leader', authorize('FELLOWSHIP_MANAGER'), teamController.assignTeamLeader);
+router.delete('/:id/remove-leader', authorize('FELLOWSHIP_MANAGER'), teamController.removeTeamLeader);
+
 export default router;

@@ -65,13 +65,11 @@ const AssignRegionalHeadModal: React.FC<AssignRegionalHeadModalProps> = ({
 
         setLoading(true);
         try {
-            await api.post('/leadership/regional-head', {
+            await api.post('/leadership/regional-heads/assign', {
                 regionId: region.id,
                 memberId: selectedMemberId,
             });
-
-            const selectedMember = members.find(m => m.id === selectedMemberId);
-            toast.success(`${selectedMember?.fullName} assigned as Regional Head of ${region.name}`);
+            toast.success('Regional head assigned successfully');
             onSuccess();
             handleClose();
         } catch (error: any) {

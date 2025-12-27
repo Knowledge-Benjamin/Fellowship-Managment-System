@@ -475,6 +475,134 @@ export const removeTeamMember = async (req: Request, res: Response) => {
     }
 };
 
+// Assign team leader
+export const assignTeamLeader = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { memberId } = req.body;
+        const assignerId = req.user?.id;
+
+        if (!assignerId) {
+            return res.status(401).json({ message: 'Unauthorized' });
+        }
+
+        const team = await prisma.ministryTeam.findUnique({
+            where: { id },
+        });
+
+        if (!team) {
+            return res.status(404).json({ message: 'Team not found' });
+        }
+
+        // Get leader tag
+        const leaderTag = await prisma.tag.findUnique({
+            where: { name: team.leaderTagName },
+        });
+
+        if (!leaderTag) {
+            return res.status(404).json({ message: 'Leader tag not found' });
+        }
+
+        await prisma.$transaction(async (tx) => {
+            // Remove old leader if exists
+            if (team.leaderId) {
+                await tx.memberTag.updateMany({
+                    where: {
+                        memberId: team.leaderId,
+                        tagId: leaderTag.id,
+                        isActive: true,
+                    },
+                    data: {
+                        isActive: false,
+                        removedAt: new Date(),
+                        notes: 'Replaced as team leader',
+                    },
+                });
+            }
+
+            // Update team
+            await tx.ministryTeam.update({
+                where: { id },
+                data: { leaderId: memberId },
+            });
+
+            // Assign new leader tag
+            await tx.memberTag.create({
+                data: {
+                    memberId,
+                    tagId: leaderTag.id,
+                    assignedBy: assignerId,
+                    notes: `Leader of ${team.name}`,
+                },
+            });
+        });
+
+        res.json({ message: 'Team leader assigned successfully' });
+    } catch (error) {
+        console.error('Error assigning team leader:', error);
+        res.status(500).json({ message: 'Failed to assign team leader' });
+    }
+};
+
+// Remove team leader
+export const removeTeamLeader = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const removerId = req.user?.id;
+
+        if (!removerId) {
+            return res.status(401).json({ message: 'Unauthorized' });
+        }
+
+        const team = await prisma.ministryTeam.findUnique({
+            where: { id },
+        });
+
+        if (!team) {
+            return res.status(404).json({ message: 'Team not found' });
+        }
+
+        if (!team.leaderId) {
+            return res.status(400).json({ message: 'Team has no leader assigned' });
+        }
+
+        // Get leader tag
+        const leaderTag = await prisma.tag.findUnique({
+            where: { name: team.leaderTagName },
+        });
+
+        if (!leaderTag) {
+            return res.status(404).json({ message: 'Leader tag not found' });
+        }
+
+        await prisma.$transaction(async (tx) => {
+            // Deactivate leader tag
+            await tx.memberTag.updateMany({
+                where: {
+                    memberId: team.leaderId!,
+                    tagId: leaderTag.id,
+                    isActive: true,
+                },
+                data: {
+                    isActive: false,
+                    removedAt: new Date(),
+                },
+            });
+
+            // Remove leader from team
+            await tx.ministryTeam.update({
+                where: { id },
+                data: { leaderId: null },
+            });
+        });
+
+        res.json({ message: 'Team leader removed successfully' });
+    } catch (error) {
+        console.error('Error removing team leader:', error);
+        res.status(500).json({ message: 'Failed to remove team leader' });
+    }
+};
+
 // Get team where current user is team leader
 export const getMyTeam = async (req: Request, res: Response) => {
     try {

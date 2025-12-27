@@ -63,17 +63,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     // Helper: Check if user has a specific tag
     const hasTag = (tagName: string): boolean => {
-        return user?.tags?.some(tag => tag.name === tagName && tag.isActive) || false;
+        if (!user?.tags || !Array.isArray(user.tags)) return false;
+        return user.tags.some(tag => tag?.name === tagName && tag?.isActive) || false;
     };
 
     // Helper: Check if user has any team leader tag (ends with _LEADER)
     const hasTeamLeaderTag = (): boolean => {
-        return user?.tags?.some(tag => tag.name.endsWith('_LEADER') && tag.isActive) || false;
+        if (!user?.tags || !Array.isArray(user.tags)) return false;
+        return user.tags.some(tag => tag?.name?.endsWith?.('_LEADER') && tag?.isActive) || false;
     };
 
     // Helper: Check if user has any of the specified tags
     const hasAnyTag = (tagNames: string[]): boolean => {
-        return tagNames.some(name => user?.tags?.some(tag => tag.name === name && tag.isActive)) || false;
+        if (!user?.tags || !Array.isArray(user.tags)) return false;
+        return tagNames.some(name => user.tags.some(tag => tag?.name === name && tag?.isActive)) || false;
     };
 
     return (

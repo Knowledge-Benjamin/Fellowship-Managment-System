@@ -18,14 +18,17 @@ const Login = () => {
 
         try {
             const response = await api.post('/auth/login', { email, password });
+            const { token, ...userData } = response.data;
 
-            login(response.data.token, {
-                id: response.data.id,
-                fullName: response.data.fullName,
-                email: response.data.email,
-                role: response.data.role,
-                fellowshipNumber: response.data.fellowshipNumber,
-                qrCode: response.data.qrCode,
+            // Login with user data including tags
+            login(token, {
+                id: userData.id,
+                fullName: userData.fullName,
+                email: userData.email,
+                role: userData.role,
+                fellowshipNumber: userData.fellowshipNumber,
+                qrCode: userData.qrCode,
+                tags: userData.tags || [], // Tags from backend
             });
         } catch (err: any) {
             setError(err.response?.data?.message || err.message || 'Login failed');

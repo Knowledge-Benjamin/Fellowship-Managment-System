@@ -108,6 +108,7 @@ model Member {
   headsRegion              Region?               @relation("RegionalHead")
   headsFamilies            FamilyGroup[]         @relation("FamilyHead")
   assistsInFamilies        FamilyGroup[]         @relation("FamilyAssistant")
+  familiesCreated          FamilyGroup[]         @relation("FamilyCreator")
   leadsMinistryTeams       MinistryTeam[]        @relation("TeamLeader")
   assistsMinistryTeams     MinistryTeam[]        @relation("TeamAssistant")
   createdTeams             MinistryTeam[]        @relation("TeamCreator")
@@ -354,8 +355,13 @@ model FamilyGroup {
   meetingVenueLocked Boolean         @default(false)
   meetingVenue       String?         // "Olympia", "MSH Common Room"
   
+  // Auto-generated tag name for family members
+  memberTagName      String          // e.g., "GRACE_FAMILY_MEMBER"
+  
   isActive           Boolean         @default(true)
   createdAt          DateTime        @default(now())
+  createdBy          String
+  creator            Member          @relation("FamilyCreator", fields: [createdBy], references: [id])
   updatedAt          DateTime        @updatedAt
   
   members            FamilyMember[]
@@ -363,6 +369,7 @@ model FamilyGroup {
   
   @@index([regionId])
   @@index([familyHeadId])
+  @@index([createdBy])
 }
 
 model FamilyMember {

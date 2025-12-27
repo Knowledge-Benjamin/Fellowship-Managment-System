@@ -30,3 +30,4 @@ router.patch('/:id/toggle-active', authorize('FELLOWSHIP_MANAGER'), asyncHandler
 router.patch('/:id/toggle-guest-checkin', authorize('FELLOWSHIP_MANAGER'), asyncHandler(toggleGuestCheckin));
 
 export default router;
+

@@ -199,7 +199,7 @@ export const checkPermission = async (req: Request, res: Response) => {
             return res.json({ hasPermission: true, role: 'MANAGER' });
         }
 
-        // Check if user is a volunteer for this event
+        //  Check if user is a volunteer for this event
         const volunteer = await prisma.eventVolunteer.findUnique({
             where: {
                 eventId_memberId: {
@@ -207,9 +207,49 @@ export const checkPermission = async (req: Request, res: Response) => {
                     memberId: userId,
                 },
             },
+            include: {
+                event: true, // Include event to check if it's ended
+            },
         });
 
         if (volunteer) {
+            // Check if event has ended
+            const now = new Date();
+            const eventDate = new Date(volunteer.event.date);
+            const [endHours, endMinutes] = volunteer.event.endTime.split(':').map(Number);
+            const eventEndTime = new Date(eventDate);
+            eventEndTime.setHours(endHours, endMinutes, 0, 0);
+
+            // Event has ended - auto-cleanup volunteer tag
+            if (eventEndTime < now) {
+                // Generate volunteer tag name
+                const volunteerTagName = `${volunteer.event.name.toUpperCase().replace(/\s+/g, '_')}_VOLUNTEER`;
+
+                // Find and deactivate the tag
+                const volunteerTag = await prisma.tag.findFirst({
+                    where: { name: volunteerTagName },
+                });
+
+                if (volunteerTag) {
+                    await prisma.memberTag.updateMany({
+                        where: {
+                            memberId: userId,
+                            tagId: volunteerTag.id,
+                            isActive: true,
+                        },
+                        data: {
+                            isActive: false,
+                            removedAt: now,
+                            removedBy: 'SYSTEM', // Auto-removed by system
+                        },
+                    });
+                }
+
+                // Event ended, no permission
+                return res.json({ hasPermission: false, reason: 'Event has ended' });
+            }
+
+            // Event still active, has permission
             return res.json({ hasPermission: true, role: 'VOLUNTEER' });
         }
 

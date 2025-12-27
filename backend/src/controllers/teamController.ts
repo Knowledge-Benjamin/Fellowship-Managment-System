@@ -633,16 +633,8 @@ export const getMyTeam = async (req: Request, res: Response) => {
                     },
                 });
 
-                // Auto-deactivate if expired
+                // Check expiry without updating (avoids unique constraint violation)
                 if (memberTag?.expiresAt && new Date() > new Date(memberTag.expiresAt)) {
-                    await prisma.memberTag.update({
-                        where: { id: memberTag.id },
-                        data: {
-                            isActive: false,
-                            removedAt: new Date(),
-                            notes: (memberTag.notes || '') + ' [Auto-expired]',
-                        },
-                    });
                     return res.status(403).json({ message: 'Your team leader access has expired' });
                 }
             }

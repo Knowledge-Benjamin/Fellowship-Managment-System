@@ -24,15 +24,7 @@ export const hasActiveTag = async (memberId: string, tagName: string): Promise<b
 
     // Check if tag has expired
     if (memberTag.expiresAt && new Date() > new Date(memberTag.expiresAt)) {
-        // Auto-deactivate expired tag
-        await prisma.memberTag.update({
-            where: { id: memberTag.id },
-            data: {
-                isActive: false,
-                removedAt: new Date(),
-                notes: (memberTag.notes || '') + ' [Auto-expired]',
-            },
-        });
+        // Expired - return false without updating (avoids unique constraint violation)
         return false;
     }
 
@@ -60,19 +52,11 @@ export const getActiveTags = async (memberId: string): Promise<string[]> => {
     const now = new Date();
 
     for (const mt of memberTags) {
+        // Skip expired tags without updating (avoids unique constraint violation)
         if (mt.expiresAt && now > new Date(mt.expiresAt)) {
-            // Auto-deactivate expired tag
-            await prisma.memberTag.update({
-                where: { id: mt.id },
-                data: {
-                    isActive: false,
-                    removedAt: now,
-                    notes: (mt.notes || '') + ' [Auto-expired]',
-                },
-            });
-        } else {
-            validTags.push(mt.tag.name);
+            continue; // Skip expired
         }
+        validTags.push(mt.tag.name);
     }
 
     return validTags;

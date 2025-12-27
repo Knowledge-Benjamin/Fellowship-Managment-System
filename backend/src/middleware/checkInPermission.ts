@@ -80,16 +80,7 @@ export const checkInPermission = async (
 
             // Check if tag has expired
             if (memberTag.expiresAt && new Date() > new Date(memberTag.expiresAt)) {
-                // Auto-deactivate expired tag
-                await prisma.memberTag.update({
-                    where: { id: memberTag.id },
-                    data: {
-                        isActive: false,
-                        removedAt: new Date(),
-                        notes: 'Auto-expired',
-                    },
-                });
-
+                // Tag expired - reject without updating (avoids unique constraint violation)
                 res.status(403).json({
                     error: 'Check-in volunteer access has expired'
                 });

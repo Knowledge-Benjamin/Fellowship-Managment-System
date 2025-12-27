@@ -36,20 +36,17 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
         include: {
             memberTags: {
                 where: { isActive: true },
-                include: {
+                select: {
+                    id: true,
+                    expiresAt: true,
+                    isActive: true,
+                    notes: true,
                     tag: {
                         select: {
                             name: true,
                             color: true,
                         },
                     },
-                },
-                select: {
-                    id: true,
-                    expiresAt: true,
-                    isActive: true,
-                    notes: true,
-                    tag: true,
                 },
             },
         },

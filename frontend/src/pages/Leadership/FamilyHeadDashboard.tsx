@@ -89,7 +89,7 @@ const FamilyHeadDashboard = () => {
                         </p>
                         <Link
                             to="/profile"
-                            className="inline-block px-6 py-3 bg-gradient-to-r from-teal-500 to-cyan-600 text-white rounded-lg hover:from-teal-600 hover:to-cyan-700 transition-all"
+                            className="inline-block px-6 py-3 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition-all font-medium"
                         >
                             Go to Profile
                         </Link>
@@ -109,7 +109,7 @@ const FamilyHeadDashboard = () => {
             <div className="max-w-7xl mx-auto">
                 {/* Header */}
                 <div className="mb-8">
-                    <h1 className="text-4xl font-bold gradient-text mb-2">My Family Dashboard</h1>
+                    <h1 className="text-4xl font-bold text-white mb-2">My Family Dashboard</h1>
                     <p className="text-gray-400">
                         {family.name} • {family.region.name}
                     </p>

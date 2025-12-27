@@ -110,7 +110,7 @@ const SalvationTrackingModal: React.FC<SalvationTrackingModalProps> = ({
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-200">
             <div className="bg-[#151d30] rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto border border-slate-800">
                 {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b border-slate-800 bg-gradient-to-r from-teal-600 to-blue-600 rounded-t-2xl">
+                <div className="flex items-center justify-between p-6 border-b border-slate-800 bg-teal-600 rounded-t-2xl">
                     <div>
                         <h2 className="text-xl font-bold text-white">Record Salvation/Decision</h2>
                         <p className="text-teal-100 text-sm mt-1">{eventName}</p>

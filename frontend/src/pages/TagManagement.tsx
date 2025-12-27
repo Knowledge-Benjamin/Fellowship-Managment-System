@@ -148,7 +148,7 @@ const TagManagement = () => {
                 {/* Header */}
                 <div className="flex items-center justify-between mb-8">
                     <div>
-                        <h1 className="text-4xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+                        <h1 className="text-4xl font-bold text-purple-400">
                             Tag Management
                         </h1>
                         <p className="text-slate-400 mt-2">Manage member tags and categories</p>

@@ -107,7 +107,7 @@ const LeadershipOverview = () => {
             <div className="mb-8">
                 <div className="flex items-center justify-between mb-6">
                     <div>
-                        <h1 className="text-4xl font-bold gradient-text mb-2">Leadership Structure</h1>
+                        <h1 className="text-4xl font-bold text-teal-400 mb-2">Leadership Structure</h1>
                         <p className="text-gray-400">Organizational hierarchy and team overview</p>
                     </div>
                     <div className="flex gap-3">

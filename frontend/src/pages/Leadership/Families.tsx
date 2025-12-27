@@ -95,7 +95,7 @@ const FamiliesManagement = () => {
             <div className="mb-8">
                 <div className="flex items-center justify-between mb-4">
                     <div>
-                        <h1 className="text-4xl font-bold gradient-text mb-2">Families</h1>
+                        <h1 className="text-4xl font-bold text-teal-400 mb-2">Families</h1>
                         <p className="text-gray-400">
                             Manage small groups and discipleship families
                         </p>
@@ -103,7 +103,7 @@ const FamiliesManagement = () => {
                     {isFellowshipManager && (
                         <button
                             onClick={() => setShowCreateModal(true)}
-                            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-500 to-cyan-600 text-white rounded-lg hover:from-teal-600 hover:to-cyan-700 transition-all shadow-lg hover:shadow-teal-500/50"
+                            className="flex items-center gap-2 px-6 py-3 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-all shadow-lg hover:shadow-teal-500/50"
                         >
                             <Plus size={20} />
                             Create Family
@@ -162,7 +162,7 @@ const FamiliesManagement = () => {
                     {isFellowshipManager && (
                         <button
                             onClick={() => setShowCreateModal(true)}
-                            className="px-6 py-3 bg-gradient-to-r from-teal-500 to-cyan-600 text-white rounded-lg hover:from-teal-600 hover:to-cyan-700 transition-all inline-flex items-center gap-2"
+                            className="px-6 py-3 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-all inline-flex items-center gap-2"
                         >
                             <Plus size={20} />
                             Create Family

@@ -101,7 +101,7 @@ const AssignRegionalHeadModal: React.FC<AssignRegionalHeadModalProps> = ({
             <div className="glass-card p-6 w-full max-w-lg">
                 <div className="flex justify-between items-center mb-6">
                     <div>
-                        <h2 className="text-2xl font-bold gradient-text">
+                        <h2 className="text-2xl font-bold text-teal-400">
                             {region.regionalHead ? 'Change' : 'Assign'} Regional Head
                         </h2>
                         <p className="text-gray-400 text-sm mt-1">{region.name} Region</p>
@@ -210,7 +210,7 @@ const AssignRegionalHeadModal: React.FC<AssignRegionalHeadModalProps> = ({
                         <button
                             type="submit"
                             disabled={loading || !selectedMemberId || fetchingMembers}
-                            className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-lg hover:from-purple-600 hover:to-pink-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                            className="flex-1 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium"
                         >
                             {loading ? 'Assigning...' : region.regionalHead ? 'Change Head' : 'Assign Head'}
                         </button>

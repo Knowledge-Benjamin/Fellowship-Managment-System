@@ -290,7 +290,7 @@ const Registration = () => {
                     <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-teal-500/10 text-teal-400 mb-4 ring-1 ring-teal-500/20">
                         <CheckCircle className="w-8 h-8" />
                     </div>
-                    <h2 className="text-3xl font-bold bg-gradient-to-r from-white via-teal-200 to-teal-400 bg-clip-text text-transparent">
+                    <h2 className="text-3xl font-bold text-teal-300">
                         Registration Successful!
                     </h2>
                     <p className="text-slate-400">
@@ -301,7 +301,7 @@ const Registration = () => {
                 <div className="grid md:grid-cols-2 gap-6">
                     {/* Member Details Card */}
                     <div className="glass-card p-6 space-y-6 relative overflow-hidden group">
-                        <div className="absolute inset-0 bg-gradient-to-br from-teal-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                        <div className="absolute inset-0 bg-teal-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
                         <div className="relative space-y-4">
                             <h3 className="text-lg font-semibold text-white flex items-center gap-2">
@@ -355,7 +355,7 @@ const Registration = () => {
 
                     {/* QR Code Card */}
                     <div className="glass-card p-6 flex flex-col items-center justify-center space-y-6 relative overflow-hidden group">
-                        <div className="absolute inset-0 bg-gradient-to-bl from-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                        <div className="absolute inset-0 bg-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
                         <div className="relative w-full flex flex-col items-center space-y-6">
                             <h3 className="text-lg font-semibold text-white flex items-center gap-2 self-start">

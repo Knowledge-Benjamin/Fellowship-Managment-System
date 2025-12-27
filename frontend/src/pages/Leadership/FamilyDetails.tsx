@@ -136,7 +136,7 @@ const FamilyDetailsPage = () => {
 
                 <div className="flex items-start justify-between">
                     <div>
-                        <h1 className="text-4xl font-bold gradient-text mb-2">{family.name}</h1>
+                        <h1 className="text-4xl font-bold text-teal-400 mb-2">{family.name}</h1>
                         <p className="text-gray-400">{family.region.name} Region</p>
                     </div>
                 </div>
@@ -266,7 +266,7 @@ const FamilyDetailsPage = () => {
                             </div>
                             <button
                                 onClick={() => setShowAddMemberModal(true)}
-                                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-lg hover:from-cyan-600 hover:to-blue-700 transition-all"
+                                className="flex items-center gap-2 px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-all"
                             >
                                 <UserPlus size={18} />
                                 Add Member

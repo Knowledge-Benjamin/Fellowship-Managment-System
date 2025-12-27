@@ -110,7 +110,7 @@ const AssignFamilyHeadModal: React.FC<AssignFamilyHeadModalProps> = ({
             <div className="glass-card p-6 w-full max-w-lg">
                 <div className="flex justify-between items-center mb-6">
                     <div>
-                        <h2 className="text-2xl font-bold gradient-text">
+                        <h2 className="text-2xl font-bold text-teal-400">
                             {family.familyHead ? 'Change' : 'Assign'} Family Head
                         </h2>
                         <p className="text-gray-400 text-sm mt-1">
@@ -226,7 +226,7 @@ const AssignFamilyHeadModal: React.FC<AssignFamilyHeadModalProps> = ({
                         <button
                             type="submit"
                             disabled={loading || !selectedMemberId || fetchingMembers}
-                            className="flex-1 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg hover:from-green-600 hover:to-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                            className="flex-1 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium"
                         >
                             {loading ? 'Assigning...' : family.familyHead ? 'Change Head' : 'Assign Head'}
                         </button>

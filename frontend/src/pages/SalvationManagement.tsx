@@ -110,7 +110,7 @@ const SalvationManagement = () => {
             <div className="max-w-7xl mx-auto space-y-6">
                 <div className="flex justify-between items-center">
                     <div>
-                        <h1 className="text-4xl font-bold bg-gradient-to-r from-teal-400 to-blue-500 bg-clip-text text-transparent">
+                        <h1 className="text-4xl font-bold text-teal-400">
                             Salvation & Follow-up
                         </h1>
                         <p className="text-slate-400 mt-2">Track spiritual decisions and discipleship progress</p>

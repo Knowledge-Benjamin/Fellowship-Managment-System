@@ -106,7 +106,7 @@ const AddFamilyMemberModal: React.FC<AddFamilyMemberModalProps> = ({
             <div className="glass-card p-6 w-full max-w-lg">
                 <div className="flex justify-between items-center mb-6">
                     <div>
-                        <h2 className="text-2xl font-bold gradient-text">Add Member</h2>
+                        <h2 className="text-2xl font-bold text-teal-400">Add Member</h2>
                         <p className="text-gray-400 text-sm mt-1">
                             {family.name} • {family.region.name}
                         </p>
@@ -195,7 +195,7 @@ const AddFamilyMemberModal: React.FC<AddFamilyMemberModalProps> = ({
                         <button
                             type="submit"
                             disabled={loading || !selectedMemberId || fetchingMembers}
-                            className="flex-1 px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-lg hover:from-cyan-600 hover:to-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                            className="flex-1 px-6 py-3 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium"
                         >
                             {loading ? 'Adding...' : 'Add Member'}
                         </button>

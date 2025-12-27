@@ -188,7 +188,7 @@ function AppContent() {
       </main>
 
       {/* Footer Decoration */}
-      <div className="fixed bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-slate-700 to-transparent pointer-events-none"></div>
+      <div className="fixed bottom-0 left-0 right-0 h-px bg-slate-700/50 pointer-events-none"></div>
     </div>
   );
 }

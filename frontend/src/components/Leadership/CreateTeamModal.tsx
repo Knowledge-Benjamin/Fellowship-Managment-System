@@ -56,7 +56,7 @@ const CreateTeamModal: React.FC<CreateTeamModalProps> = ({ isOpen, onClose, onSu
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
             <div className="glass-card p-6 w-full max-w-md mx-4">
                 <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-2xl font-bold gradient-text">Create Ministry Team</h2>
+                    <h2 className="text-2xl font-bold text-teal-400">Create Ministry Team</h2>
                     {!loading && (
                         <button
                             onClick={handleClose}
@@ -126,7 +126,7 @@ const CreateTeamModal: React.FC<CreateTeamModalProps> = ({ isOpen, onClose, onSu
                         <button
                             type="submit"
                             disabled={loading || !name.trim()}
-                            className="flex-1 px-6 py-3 bg-gradient-to-r from-teal-500 to-cyan-600 text-white rounded-lg hover:from-teal-600 hover:to-cyan-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                            className="flex-1 px-6 py-3 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium"
                         >
                             {loading ? 'Creating...' : 'Create Team'}
                         </button>

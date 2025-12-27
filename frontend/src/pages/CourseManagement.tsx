@@ -145,7 +145,7 @@ const CourseManagement = () => {
             <div className="max-w-7xl mx-auto">
                 <div className="flex items-center justify-between mb-8">
                     <div>
-                        <h1 className="text-4xl font-bold bg-gradient-to-r from-teal-400 to-blue-500 bg-clip-text text-transparent">
+                        <h1 className="text-4xl font-bold text-teal-400">
                             Course Management
                         </h1>
                         <p className="text-slate-400 mt-2">Manage university courses and assign them to colleges</p>

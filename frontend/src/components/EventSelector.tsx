@@ -45,7 +45,7 @@ const EventSelector: React.FC<EventSelectorProps> = ({
     if (events.length === 1) {
         const event = events[0];
         return (
-            <div className="glass-card accent-border p-6 mb-6 bg-gradient-to-r from-teal-600/10 to-blue-600/10">
+            <div className="glass-card accent-border p-6 mb-6 bg-teal-600/10">
                 <div className="flex items-start gap-4">
                     <div className="w-12 h-12 rounded-xl bg-teal-600 flex items-center justify-center shadow-lg glow-primary shrink-0">
                         <Calendar className="text-white" size={24} />

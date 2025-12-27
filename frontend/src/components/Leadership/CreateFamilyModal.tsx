@@ -85,7 +85,7 @@ const CreateFamilyModal: React.FC<CreateFamilyModalProps> = ({ isOpen, onClose, 
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
             <div className="glass-card p-6 w-full max-w-md">
                 <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-2xl font-bold gradient-text">Create Family</h2>
+                    <h2 className="text-2xl font-bold text-teal-400">Create Family</h2>
                     {!loading && (
                         <button
                             onClick={handleClose}
@@ -160,7 +160,7 @@ const CreateFamilyModal: React.FC<CreateFamilyModalProps> = ({ isOpen, onClose, 
                         <button
                             type="submit"
                             disabled={loading || !name.trim() || !regionId}
-                            className="flex-1 px-6 py-3 bg-gradient-to-r from-teal-500 to-cyan-600 text-white rounded-lg hover:from-teal-600 hover:to-cyan-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                            className="flex-1 px-6 py-3 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium"
                         >
                             {loading ? 'Creating...' : 'Create Family'}
                         </button>

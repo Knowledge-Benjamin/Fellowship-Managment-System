@@ -173,6 +173,9 @@ export default function Navbar() {
                                             My Region
                                         </NavLink>
                                     )}
+                                    {hasTag('FAMILY_HEAD') && (
+                                        <NavLink to="/leadership/my-family" icon={Users}>My Family</NavLink>
+                                    )}
 
                                     <div className="w-px h-6 bg-slate-800 mx-2"></div>
 
@@ -233,6 +236,8 @@ export default function Navbar() {
                                         {hasCheckInAccess && <NavLink to="/check-in" icon={QrCode} className="w-full">Check-in</NavLink>}
                                         <NavLink to="/transport" icon={Bus} className="w-full">Transport</NavLink>
                                         <NavLink to="/profile" icon={User} className="w-full">Profile</NavLink>
+                                        {hasTag('REGIONAL_HEAD') && <NavLink to="/leadership/my-region" icon={MapPin} className="w-full">My Region</NavLink>}
+                                        {hasTag('FAMILY_HEAD') && <NavLink to="/leadership/my-family" icon={Users} className="w-full">My Family</NavLink>}
                                     </div>
 
                                     {isManager && (

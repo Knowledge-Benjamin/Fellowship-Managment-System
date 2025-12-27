@@ -7,19 +7,22 @@ const router = express.Router();
 // All routes require authentication
 router.use(protect);
 
+// Family head dashboard - must be before /:id to avoid conflict
+router.get('/my-family', familyController.getMyFamily);
+
 // Family CRUD
+router.get('/', authorize('FELLOWSHIP_MANAGER', 'REGIONAL_HEAD'), familyController.getAllFamilies);
 router.post('/', authorize('FELLOWSHIP_MANAGER'), familyController.createFamily);
-router.get('/', familyController.getAllFamilies); // FM sees all, RH filtered by region
-router.get('/:id', familyController.getFamilyById);
-router.put('/:id', familyController.updateFamily); // FM or RH of that region
+router.get('/:id', authorize('FELLOWSHIP_MANAGER', 'REGIONAL_HEAD'), familyController.getFamilyById);
+router.put('/:id', authorize('FELLOWSHIP_MANAGER'), familyController.updateFamily);
 router.delete('/:id', authorize('FELLOWSHIP_MANAGER'), familyController.deleteFamily);
 
 // Family head management
-router.post('/:id/assign-head', familyController.assignFamilyHead); // FM or RH
-router.delete('/:id/remove-head', familyController.removeFamilyHead); // FM or RH
+router.post('/:id/assign-head', authorize('FELLOWSHIP_MANAGER'), familyController.assignFamilyHead);
+router.delete('/:id/remove-head', authorize('FELLOWSHIP_MANAGER'), familyController.removeFamilyHead);
 
 // Family member management
-router.post('/:id/members', familyController.addFamilyMember); // FM or RH
-router.delete('/:id/members/:memberId', familyController.removeFamilyMember); // FM or RH
+router.post('/:id/members', authorize('FELLOWSHIP_MANAGER', 'REGIONAL_HEAD'), familyController.addFamilyMember);
+router.delete('/:id/members/:memberId', authorize('FELLOWSHIP_MANAGER', 'REGIONAL_HEAD'), familyController.removeFamilyMember);
 
 export default router;

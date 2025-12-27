@@ -642,3 +642,91 @@ export const removeFamilyMember = async (req: Request, res: Response) => {
         res.status(500).json({ message: 'Failed to remove family member' });
     }
 };
+
+// Get family where current user is family head
+export const getMyFamily = async (req: Request, res: Response) => {
+    try {
+        const userId = req.user?.id;
+
+        if (!userId) {
+            return res.status(401).json({ message: 'Unauthorized' });
+        }
+
+        // Find family where user is the family head
+        const family = await prisma.familyGroup.findFirst({
+            where: {
+                familyHeadId: userId,
+                isActive: true,
+            },
+            include: {
+                region: {
+                    select: {
+                        id: true,
+                        name: true,
+                    },
+                },
+                familyHead: {
+                    select: {
+                        id: true,
+                        fullName: true,
+                        email: true,
+                        phoneNumber: true,
+                    },
+                },
+                members: {
+                    where: { isActive: true },
+                    select: {
+                        id: true,
+                        member: {
+                            select: {
+                                id: true,
+                                fullName: true,
+                                email: true,
+                                phoneNumber: true,
+                                fellowshipNumber: true,
+                                gender: true,
+                            },
+                        },
+                        joinedAt: true,
+                    },
+                    orderBy: {
+                        joinedAt: 'asc',
+                    },
+                },
+            },
+        });
+
+        if (!family) {
+            return res.status(404).json({ message: 'You are not assigned as a family head' });
+        }
+
+        // Calculate stats
+        const members = family.members.map(m => m.member);
+        const stats = {
+            totalMembers: members.length,
+            maleCount: members.filter(m => m.gender === 'MALE').length,
+            femaleCount: members.filter(m => m.gender === 'FEMALE').length,
+        };
+
+        // Format response
+        const response = {
+            id: family.id,
+            name: family.name,
+            region: family.region,
+            familyHead: family.familyHead,
+            meetingDay: family.meetingDay,
+            meetingTime: family.meetingTime,
+            meetingVenue: family.meetingVenue,
+            members: family.members.map(m => ({
+                ...m.member,
+                joinedAt: m.joinedAt,
+            })),
+            stats,
+        };
+
+        res.json(response);
+    } catch (error) {
+        console.error('Error fetching my family:', error);
+        res.status(500).json({ message: 'Failed to fetch family' });
+    }
+};

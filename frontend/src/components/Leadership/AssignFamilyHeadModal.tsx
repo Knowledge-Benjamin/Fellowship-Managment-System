@@ -51,9 +51,16 @@ const AssignFamilyHeadModal: React.FC<AssignFamilyHeadModalProps> = ({
         try {
             // Fetch all members, then filter by region client-side
             const response = await api.get('/members');
+            console.log('All members:', response.data);
+            console.log('Family region ID:', family.region.id);
+
             const filteredMembers = response.data.filter(
-                (m: Member & { regionId: string }) => m.regionId === family.region.id
+                (m: any) => {
+                    console.log(`Member ${m.fullName} regionId:`, m.regionId, 'vs', family.region.id);
+                    return m.regionId === family.region.id;
+                }
             );
+            console.log('Filtered members:', filteredMembers);
             setMembers(filteredMembers);
         } catch (error) {
             console.error('Error fetching members:', error);

@@ -19,6 +19,10 @@ interface FamilyData {
 interface RegionData {
     id: string;
     name: string;
+    regionalHead?: {
+        id: string;
+        fullName: string;
+    } | null;
     families: FamilyData[];
     _count: {
         members: number;

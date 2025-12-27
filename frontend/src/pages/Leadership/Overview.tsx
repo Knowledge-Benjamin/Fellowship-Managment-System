@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Users, TrendingUp, Building2, UserCheck, Loader } from 'lucide-react';
+import { Users, TrendingUp, Building2, UserCheck, Loader, UserPlus, UserMinus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import api from '../../api';
+import AssignRegionalHeadModal from '../../components/Leadership/AssignRegionalHeadModal';
 
 interface Region {
     id: string;
@@ -56,6 +57,8 @@ const LeadershipOverview = () => {
         totalTeams: 0,
     });
     const [loading, setLoading] = useState(true);
+    const [selectedRegion, setSelectedRegion] = useState<Region | null>(null);
+    const [showAssignModal, setShowAssignModal] = useState(false);
 
     useEffect(() => {
         fetchOrgStructure();
@@ -72,6 +75,21 @@ const LeadershipOverview = () => {
             toast.error('Failed to load organizational structure');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleRemoveHead = async (regionId: string, regionName: string) => {
+        if (!confirm(`Remove regional head from ${regionName}?\n\nThis will deactivate their REGIONAL_HEAD tag.`)) {
+            return;
+        }
+
+        try {
+            await api.delete(`/leadership/regional-head/${regionId}`);
+            toast.success(`Regional head removed from ${regionName}`);
+            fetchOrgStructure();
+        } catch (error: any) {
+            console.error('Error removing regional head:', error);
+            toast.error(error.response?.data?.message || 'Failed to remove regional head');
         }
     };
 
@@ -163,14 +181,49 @@ const LeadershipOverview = () => {
 
                                 {region.regionalHead ? (
                                     <div className="bg-purple-500/10 border border-purple-500/30 rounded px-3 py-2 mb-3">
-                                        <p className="text-xs text-gray-400">Regional Head</p>
-                                        <p className="text-sm text-purple-400 font-medium">
-                                            {region.regionalHead.fullName}
-                                        </p>
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <p className="text-xs text-gray-400">Regional Head</p>
+                                                <p className="text-sm text-purple-400 font-medium">
+                                                    {region.regionalHead.fullName}
+                                                </p>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => {
+                                                        setSelectedRegion(region);
+                                                        setShowAssignModal(true);
+                                                    }}
+                                                    className="text-xs px-2 py-1 bg-blue-500/20 text-blue-400 rounded hover:bg-blue-500/30 transition-colors"
+                                                    title="Change Regional Head"
+                                                >
+                                                    Change
+                                                </button>
+                                                <button
+                                                    onClick={() => handleRemoveHead(region.id, region.name)}
+                                                    className="text-xs px-2 py-1 bg-red-500/20 text-red-400 rounded hover:bg-red-500/30 transition-colors"
+                                                    title="Remove Regional Head"
+                                                >
+                                                    <UserMinus size={14} />
+                                                </button>
+                                            </div>
+                                        </div>
                                     </div>
                                 ) : (
                                     <div className="bg-gray-700/30 border border-gray-600 rounded px-3 py-2 mb-3">
-                                        <p className="text-xs text-gray-500 italic">No regional head assigned</p>
+                                        <div className="flex items-center justify-between">
+                                            <p className="text-xs text-gray-500 italic">No regional head assigned</p>
+                                            <button
+                                                onClick={() => {
+                                                    setSelectedRegion(region);
+                                                    setShowAssignModal(true);
+                                                }}
+                                                className="text-xs px-3 py-1 bg-purple-500/20 text-purple-400 rounded hover:bg-purple-500/30 transition-colors flex items-center gap-1"
+                                            >
+                                                <UserPlus size={14} />
+                                                Assign Head
+                                            </button>
+                                        </div>
                                     </div>
                                 )}
 
@@ -260,6 +313,21 @@ const LeadershipOverview = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Assign Regional Head Modal */}
+            {selectedRegion && (
+                <AssignRegionalHeadModal
+                    isOpen={showAssignModal}
+                    onClose={() => {
+                        setShowAssignModal(false);
+                        setSelectedRegion(null);
+                    }}
+                    onSuccess={() => {
+                        fetchOrgStructure();
+                    }}
+                    region={selectedRegion}
+                />
+            )}
         </div>
     );
 };

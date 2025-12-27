@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Building2, Loader, AlertCircle } from 'lucide-react';
+import { Users, Building2, AlertCircle, MapPin, UserPlus, Phone, Hash } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import api from '../../api';
 import { useAuth } from '../../context/AuthContext';
+import LoadingSpinner from '../../components/LoadingSpinner';
 
 interface FamilyData {
     id: string;
@@ -59,14 +60,7 @@ const RegionalDashboard = () => {
     };
 
     if (loading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center">
-                <div className="text-center">
-                    <Loader className="animate-spin text-teal-500 mx-auto mb-4" size={48} />
-                    <p className="text-gray-400">Loading your region...</p>
-                </div>
-            </div>
-        );
+        return <LoadingSpinner message="Loading your region..." />;
     }
 
     if (error || !region) {
@@ -160,7 +154,7 @@ const RegionalDashboard = () => {
                             {region.families.map((family) => (
                                 <Link
                                     key={family.id}
-                                    to={`/leadership/families/${family.id}`}
+                                    to={`/ leadership / families / ${family.id} `}
                                     className="bg-gray-800/30 border border-gray-700 rounded-lg p-4 hover:border-teal-500/50 transition-all group"
                                 >
                                     <h3 className="text-white font-bold group-hover:text-teal-400 transition-colors mb-3">
@@ -220,7 +214,7 @@ const RegionalDashboard = () => {
                             <div className="w-full h-3 bg-gray-800 rounded-full overflow-hidden">
                                 <div
                                     className="h-full bg-blue-500 transition-all duration-500"
-                                    style={{ width: `${(region.stats.maleCount / region.stats.totalMembers) * 100}%` }}
+                                    style={{ width: `${(region.stats.maleCount / region.stats.totalMembers) * 100}% ` }}
                                 />
                             </div>
                         </div>
@@ -234,7 +228,7 @@ const RegionalDashboard = () => {
                             <div className="w-full h-3 bg-gray-800 rounded-full overflow-hidden">
                                 <div
                                     className="h-full bg-pink-500 transition-all duration-500"
-                                    style={{ width: `${(region.stats.femaleCount / region.stats.totalMembers) * 100}%` }}
+                                    style={{ width: `${(region.stats.femaleCount / region.stats.totalMembers) * 100}% ` }}
                                 />
                             </div>
                         </div>

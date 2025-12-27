@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Users, TrendingUp, Building2, UserCheck, Loader, UserPlus, UserMinus } from 'lucide-react';
+import { Users, UserCheck, Building2, Briefcase, ChevronRight, Plus, TrendingUp, UserPlus, UserMinus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import api from '../../api';
 import AssignRegionalHeadModal from '../../components/Leadership/AssignRegionalHeadModal';
+import LoadingSpinner from '../../components/LoadingSpinner';
 
 interface Region {
     id: string;
@@ -91,14 +92,7 @@ const LeadershipOverview = () => {
     };
 
     if (loading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center">
-                <div className="text-center">
-                    <Loader className="animate-spin text-teal-500 mx-auto mb-4" size={48} />
-                    <p className="text-gray-400">Loading structure...</p>
-                </div>
-            </div>
-        );
+        return <LoadingSpinner message="Loading structure..." />;
     }
 
     return (

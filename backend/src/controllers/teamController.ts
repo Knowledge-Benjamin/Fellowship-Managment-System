@@ -443,6 +443,42 @@ export const getMyTeam = async (req: Request, res: Response) => {
             return res.status(401).json({ message: 'Unauthorized' });
         }
 
+        // First, get the team to find the leader tag name
+        const userTeam = await prisma.ministryTeam.findFirst({
+            where: { leaderId: userId, isActive: true },
+            select: { leaderTagName: true },
+        });
+
+        if (userTeam) {
+            // Check if the leader tag is still active and not expired
+            const leaderTag = await prisma.tag.findFirst({
+                where: { name: userTeam.leaderTagName },
+            });
+
+            if (leaderTag) {
+                const memberTag = await prisma.memberTag.findFirst({
+                    where: {
+                        memberId: userId,
+                        tagId: leaderTag.id,
+                        isActive: true,
+                    },
+                });
+
+                // Auto-deactivate if expired
+                if (memberTag?.expiresAt && new Date() > new Date(memberTag.expiresAt)) {
+                    await prisma.memberTag.update({
+                        where: { id: memberTag.id },
+                        data: {
+                            isActive: false,
+                            removedAt: new Date(),
+                            notes: (memberTag.notes || '') + ' [Auto-expired]',
+                        },
+                    });
+                    return res.status(403).json({ message: 'Your team leader access has expired' });
+                }
+            }
+        }
+
         // Find team where user is the leader
         const team = await prisma.ministryTeam.findFirst({
             where: {

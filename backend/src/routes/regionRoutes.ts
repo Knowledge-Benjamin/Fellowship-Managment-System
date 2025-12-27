@@ -1,11 +1,14 @@
 import { Router } from 'express';
-import { getRegions, createRegion, deleteRegion } from '../controllers/regionController';
+import { getRegions, createRegion, deleteRegion, getMyRegion } from '../controllers/regionController';
 import { protect, authorize } from '../middleware/authMiddleware';
 
 const router = Router();
 
 // All routes require authentication
 router.use(protect);
+
+// Regional Head dashboard - must be before /:id to avoid conflict
+router.get('/my-region', getMyRegion);
 
 // Get all regions (any authenticated user)
 router.get('/', getRegions);

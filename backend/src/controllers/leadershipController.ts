@@ -1,11 +1,30 @@
 import { Request, Response } from 'express';
 import prisma from '../prisma';
 
-// Get organizational structure
+// Get organizational structure  
 export const getOrgStructure = async (req: Request, res: Response) => {
     try {
-        // Fetch all regions with their regional heads and families
+        const userId = req.user?.id;
+        const userRole = req.user?.role;
+
+        // Check if user is a Regional Head
+        let regionalHeadRegionId: string | null = null;
+        if (userRole !== 'FELLOWSHIP_MANAGER') {
+            const regionalHeadRegion = await prisma.region.findFirst({
+                where: { regionalHeadId: userId },
+                select: { id: true },
+            });
+            if (regionalHeadRegion) {
+                regionalHeadRegionId = regionalHeadRegion.id;
+            }
+        }
+
+        // Build filter based on user role
+        const regionFilter = regionalHeadRegionId ? { id: regionalHeadRegionId } : {};
+
+        // Fetch regions (all for FM, only their region for Regional Head)
         const regions = await prisma.region.findMany({
+            where: regionFilter,
             include: {
                 regionalHead: {
                     select: {
@@ -42,8 +61,8 @@ export const getOrgStructure = async (req: Request, res: Response) => {
             orderBy: { name: 'asc' },
         });
 
-        // Fetch all ministry teams
-        const teams = await prisma.ministryTeam.findMany({
+        // Fetch all ministry teams (only FM should see teams)
+        const teams = userRole === 'FELLOWSHIP_MANAGER' ? await prisma.ministryTeam.findMany({
             where: { isActive: true },
             include: {
                 leader: {
@@ -62,10 +81,11 @@ export const getOrgStructure = async (req: Request, res: Response) => {
                 },
             },
             orderBy: { name: 'asc' },
-        });
+        }) : [];
 
-        // Get total member count
-        const totalMembers = await prisma.member.count();
+        // Get total member count (filtered by region if Regional Head)
+        const memberFilter = regionalHeadRegionId ? { regionId: regionalHeadRegionId } : {};
+        const totalMembers = await prisma.member.count({ where: memberFilter });
 
         res.json({
             regions,

@@ -106,13 +106,29 @@ export const createFamily = async (req: Request, res: Response) => {
 export const getAllFamilies = async (req: Request, res: Response) => {
     try {
         const { regionId } = req.query;
-        const user = req.user;
+        const userId = req.user?.id;
+        const userRole = req.user?.role;
 
         // Build filter
         const where: any = { isActive: true };
 
-        // If region filter provided or user is regional head, filter by region
-        if (regionId) {
+        // Auto-filter for Regional Heads
+        if (userRole !== 'FELLOWSHIP_MANAGER') {
+            // Check if user is a Regional Head
+            const regionalHeadRegion = await prisma.region.findFirst({
+                where: { regionalHeadId: userId },
+                select: { id: true },
+            });
+
+            if (regionalHeadRegion) {
+                // Regional Head - filter to their region
+                where.regionId = regionalHeadRegion.id;
+            } else if (regionId) {
+                // Not a Regional Head, but region filter provided
+                where.regionId = regionId as string;
+            }
+        } else if (regionId) {
+            // Fellowship Manager with explicit region filter
             where.regionId = regionId as string;
         }
 

@@ -116,3 +116,70 @@ export const deleteRegion = async (req: Request, res: Response) => {
         res.status(500).json({ error: 'Failed to delete region' });
     }
 };
+
+// Get region for current Regional Head
+export const getMyRegion = async (req: Request, res: Response) => {
+    try {
+        const userId = req.user?.id;
+
+        if (!userId) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+
+        // Find region where this user is the regional head
+        const region = await prisma.region.findFirst({
+            where: { regionalHeadId: userId },
+            include: {
+                families: {
+                    where: { isActive: true },
+                    include: {
+                        familyHead: {
+                            select: {
+                                id: true,
+                                fullName: true,
+                            },
+                        },
+                        _count: {
+                            select: {
+                                members: {
+                                    where: { isActive: true },
+                                },
+                            },
+                        },
+                    },
+                },
+                _count: {
+                    select: {
+                        members: true,
+                    },
+                },
+            },
+        });
+
+        if (!region) {
+            return res.status(404).json({ error: 'You are not assigned as a regional head' });
+        }
+
+        // Calculate stats
+        const members = await prisma.member.findMany({
+            where: { regionId: region.id },
+            select: { gender: true },
+        });
+
+        const stats = {
+            totalMembers: members.length,
+            maleCount: members.filter(m => m.gender === 'MALE').length,
+            femaleCount: members.filter(m => m.gender === 'FEMALE').length,
+            totalFamilies: region.families.length,
+        };
+
+        res.json({
+            ...region,
+            stats,
+        });
+    } catch (error) {
+        console.error('Get my region error:', error);
+        res.status(500).json({ error: 'Failed to fetch region data' });
+    }
+};
+

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Building2, Loader, AlertCircle } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import api from '../../api';
 import { useAuth } from '../../context/AuthContext';
@@ -157,32 +158,44 @@ const RegionalDashboard = () => {
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {region.families.map((family) => (
-                            <div
+                            <Link
                                 key={family.id}
-                                className="bg-gray-800/30 border border-gray-700 rounded-lg p-4 hover:border-teal-500/50 transition-colors"
+                                to={`/leadership/families/${family.id}`}
+                                className="bg-gray-800/30 border border-gray-700 rounded-lg p-4 hover:border-teal-500/50 transition-all group"
                             >
-                                <h3 className="text-white font-bold mb-3">{family.name}</h3>
+                                <h3 className="text-white font-bold group-hover:text-teal-400 transition-colors mb-3">
+                                    {family.name}
+                                </h3>
 
-                                {family.familyHead ? (
+                                {/* Status Indicator */}
+                                <div className="flex items-center gap-2 mb-3">
+                                    {family.familyHead ? (
+                                        <span className="text-xs px-2 py-1 bg-green-500/20 text-green-400 rounded border border-green-500/30">
+                                            ✓ Has Head
+                                        </span>
+                                    ) : (
+                                        <span className="text-xs px-2 py-1 bg-yellow-500/20 text-yellow-400 rounded border border-yellow-500/30">
+                                            ! No Head
+                                        </span>
+                                    )}
+                                </div>
+
+                                {family.familyHead && (
                                     <div className="bg-teal-500/10 border border-teal-500/30 rounded px-3 py-2 mb-3">
                                         <p className="text-xs text-gray-400 mb-1">Family Head</p>
                                         <p className="text-sm text-teal-400 font-medium">
                                             {family.familyHead.fullName}
                                         </p>
                                     </div>
-                                ) : (
-                                    <div className="bg-gray-700/30 border border-gray-600 rounded px-3 py-2 mb-3">
-                                        <p className="text-xs text-gray-500 italic">No family head assigned</p>
-                                    </div>
                                 )}
 
-                                <div className="flex items-center justify-between text-sm">
+                                <div className="flex items-center justify-between text-sm pt-2 border-t border-gray-700">
                                     <span className="text-gray-400">Members</span>
                                     <span className="text-teal-400 font-bold text-lg">
                                         {family._count.members}
                                     </span>
                                 </div>
-                            </div>
+                            </Link>
                         ))}
                     </div>
                 )}

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Users, Calendar, MapPin, Mail, Phone, Hash, Loader2, User2, AlertCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
+import { formatDistanceToNow } from 'date-fns';
 import api from '../../api';
 
 interface Member {
@@ -128,7 +129,7 @@ const FamilyHeadDashboard = () => {
                     </div>
 
                     <div className="glass-card p-6">
-                        <div className="flex items-center justify-between mb- 4">
+                        <div className="flex items-center justify-between mb-4">
                             <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center">
                                 <User2 className="text-blue-400" size={24} />
                             </div>
@@ -213,24 +214,29 @@ const FamilyHeadDashboard = () => {
                     {family.members.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {family.members.map((member) => (
-                                <Link
+                                <div
                                     key={member.id}
-                                    to={`/members/${member.id}`}
-                                    className="p-4 bg-gray-800/40 rounded-lg border border-gray-700 hover:border-teal-500/50 transition-all group"
+                                    className="p-4 bg-gray-800/40 rounded-lg border border-gray-700 hover:border-teal-500/50 transition-all"
                                 >
                                     <div className="flex items-start justify-between mb-3">
-                                        <div>
-                                            <h3 className="text-white font-bold group-hover:text-teal-400 transition-colors">
+                                        <div className="flex-1">
+                                            <Link
+                                                to={`/members/${member.id}`}
+                                                className="text-white font-bold hover:text-teal-400 transition-colors"
+                                            >
                                                 {member.fullName}
-                                            </h3>
+                                            </Link>
                                             <p className="text-gray-500 text-xs">#{member.fellowshipNumber}</p>
+                                            <p className="text-gray-600 text-xs mt-1">
+                                                Joined {formatDistanceToNow(new Date(member.joinedAt), { addSuffix: true })}
+                                            </p>
                                         </div>
                                         <span className={`text-xs px-2 py-1 rounded ${member.gender === 'MALE' ? 'bg-blue-500/20 text-blue-400' : 'bg-pink-500/20 text-pink-400'
                                             }`}>
                                             {member.gender}
                                         </span>
                                     </div>
-                                    <div className="space-y-1.5">
+                                    <div className="space-y-1.5 mb-3">
                                         <div className="flex items-center gap-2 text-gray-400 text-sm">
                                             <Mail size={14} />
                                             <span className="truncate">{member.email}</span>
@@ -240,7 +246,22 @@ const FamilyHeadDashboard = () => {
                                             <span>{member.phoneNumber}</span>
                                         </div>
                                     </div>
-                                </Link>
+                                    {/* Quick Actions */}
+                                    <div className="flex items-center gap-2">
+                                        <a
+                                            href={`tel:${member.phoneNumber}`}
+                                            className="flex-1 text-center text-xs px-3 py-2 bg-teal-500/20 text-teal-400 rounded hover:bg-teal-500/30 transition-colors"
+                                        >
+                                            📞 Call
+                                        </a>
+                                        <a
+                                            href={`mailto:${member.email}`}
+                                            className="flex-1 text-center text-xs px-3 py-2 bg-blue-500/20 text-blue-400 rounded hover:bg-blue-500/30 transition-colors"
+                                        >
+                                            ✉️ Email
+                                        </a>
+                                    </div>
+                                </div>
                             ))}
                         </div>
                     ) : (
@@ -249,6 +270,41 @@ const FamilyHeadDashboard = () => {
                             <p>No members in this family yet</p>
                         </div>
                     )}
+                </div>
+
+                {/* Gender Distribution */}
+                <div className="glass-card p-6 mt-8">
+                    <h2 className="text-2xl font-bold text-white mb-6">Member Distribution</h2>
+                    <div className="space-y-4">
+                        <div>
+                            <div className="flex justify-between mb-2">
+                                <span className="text-sm text-gray-400">Male</span>
+                                <span className="text-sm text-white font-medium">
+                                    {family.stats.maleCount} ({Math.round((family.stats.maleCount / family.stats.totalMembers) * 100)}%)
+                                </span>
+                            </div>
+                            <div className="w-full h-3 bg-gray-800 rounded-full overflow-hidden">
+                                <div
+                                    className="h-full bg-blue-500 transition-all duration-500"
+                                    style={{ width: `${(family.stats.maleCount / family.stats.totalMembers) * 100}%` }}
+                                />
+                            </div>
+                        </div>
+                        <div>
+                            <div className="flex justify-between mb-2">
+                                <span className="text-sm text-gray-400">Female</span>
+                                <span className="text-sm text-white font-medium">
+                                    {family.stats.femaleCount} ({Math.round((family.stats.femaleCount / family.stats.totalMembers) * 100)}%)
+                                </span>
+                            </div>
+                            <div className="w-full h-3 bg-gray-800 rounded-full overflow-hidden">
+                                <div
+                                    className="h-full bg-pink-500 transition-all duration-500"
+                                    style={{ width: `${(family.stats.femaleCount / family.stats.totalMembers) * 100}%` }}
+                                />
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

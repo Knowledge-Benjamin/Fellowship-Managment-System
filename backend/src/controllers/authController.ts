@@ -87,19 +87,16 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
             continue;
         }
 
+        // Check if expired
         if (mt.expiresAt && now > new Date(mt.expiresAt)) {
-            // Auto-deactivate expired tag
-            await prisma.memberTag.update({
-                where: { id: mt.id },
-                data: {
-                    isActive: false,
-                    removedAt: now,
-                    notes: (mt.notes || '') + ' [Auto-expired on login]',
-                },
-            });
+            console.log('[LOGIN] Tag expired, skipping:', mt.tag.name);
             expiredTagNames.push(mt.tag.name);
-        } else if (mt.isActive) {
-            // Tag is valid (either no expiry or not yet expired)
+            // Don't try to update - just skip. Background job should handle deactivation.
+            continue;
+        }
+
+        // Tag is valid and active
+        if (mt.isActive) {
             validTags.push({
                 name: mt.tag.name,
                 isActive: mt.isActive,

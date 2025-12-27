@@ -3,19 +3,20 @@ import { protect, authorize } from '../middleware/authMiddleware';
 import * as teamController from '../controllers/teamController';
 
 const router = express.Router();
+router.use(protect);
 
-// All routes require manager authorization
-router.use(protect, authorize('FELLOWSHIP_MANAGER'));
+// Team leader dashboard - must be before /:id to avoid conflict
+router.get('/my-team', teamController.getMyTeam);
 
-// Ministry team routes
-router.post('/', teamController.createTeam);
-router.get('/', teamController.getAllTeams);
-router.get('/:id', teamController.getTeamById);
-router.put('/:id', teamController.updateTeam);
-router.delete('/:id', teamController.deleteTeam);
+// Team CRUD (Fellowship Manager only)
+router.post('/', authorize('FELLOWSHIP_MANAGER'), teamController.createTeam);
+router.get('/', authorize('FELLOWSHIP_MANAGER'), teamController.getAllTeams);
+router.get('/:id', authorize('FELLOWSHIP_MANAGER'), teamController.getTeamById);
+router.put('/:id', authorize('FELLOWSHIP_MANAGER'), teamController.updateTeam);
+router.delete('/:id', authorize('FELLOWSHIP_MANAGER'), teamController.deleteTeam);
 
 // Team member management
-router.post('/:id/members', teamController.addTeamMember);
-router.delete('/:id/members/:memberId', teamController.removeTeamMember);
+router.post('/:id/members', authorize('FELLOWSHIP_MANAGER'), teamController.addTeamMember);
+router.delete('/:id/members/:memberId', authorize('FELLOWSHIP_MANAGER'), teamController.removeTeamMember);
 
 export default router;

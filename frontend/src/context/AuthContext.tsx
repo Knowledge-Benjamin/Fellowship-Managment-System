@@ -10,7 +10,7 @@ interface User {
     role: 'MEMBER' | 'FELLOWSHIP_MANAGER';
     fellowshipNumber: string;
     qrCode: string;
-    tags: string[]; // Array of active tag names
+    tags: Array<{ name: string; isActive: boolean }>;
 }
 
 interface AuthContextType {
@@ -20,13 +20,14 @@ interface AuthContextType {
     logout: () => void;
     isAuthenticated: boolean;
     isManager: boolean;
-    hasTag: (tagName: string) => boolean; // Check if user has specific tag
-    hasAnyTag: (tagNames: string[]) => boolean; // Check if user has any of these tags
+    hasTag: (tagName: string) => boolean;
+    hasTeamLeaderTag: () => boolean;
+    hasAnyTag: (tagNames: string[]) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider = ({ children }: { children: ReactNode }) => {
+export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null);
     const [token, setToken] = useState<string | null>(null);
     const navigate = useNavigate();
@@ -62,12 +63,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     // Helper: Check if user has a specific tag
     const hasTag = (tagName: string): boolean => {
-        return user?.tags?.includes(tagName) || false;
+        return user?.tags?.some(tag => tag.name === tagName && tag.isActive) || false;
+    };
+
+    // Helper: Check if user has any team leader tag (ends with _LEADER)
+    const hasTeamLeaderTag = (): boolean => {
+        return user?.tags?.some(tag => tag.name.endsWith('_LEADER') && tag.isActive) || false;
     };
 
     // Helper: Check if user has any of the specified tags
     const hasAnyTag = (tagNames: string[]): boolean => {
-        return tagNames.some(tag => user?.tags?.includes(tag)) || false;
+        return tagNames.some(name => user?.tags?.some(tag => tag.name === name && tag.isActive)) || false;
     };
 
     return (
@@ -80,6 +86,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 isAuthenticated: !!token,
                 isManager: user?.role === 'FELLOWSHIP_MANAGER',
                 hasTag,
+                hasTeamLeaderTag,
                 hasAnyTag,
             }}
         >

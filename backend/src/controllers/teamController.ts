@@ -433,3 +433,91 @@ export const removeTeamMember = async (req: Request, res: Response) => {
         res.status(500).json({ message: 'Failed to remove team member' });
     }
 };
+
+// Get team where current user is team leader
+export const getMyTeam = async (req: Request, res: Response) => {
+    try {
+        const userId = req.user?.id;
+
+        if (!userId) {
+            return res.status(401).json({ message: 'Unauthorized' });
+        }
+
+        // Find team where user is the leader
+        const team = await prisma.ministryTeam.findFirst({
+            where: {
+                leaderId: userId,
+                isActive: true,
+            },
+            include: {
+                leader: {
+                    select: {
+                        id: true,
+                        fullName: true,
+                        email: true,
+                        phoneNumber: true,
+                    },
+                },
+                assistant: {
+                    select: {
+                        id: true,
+                        fullName: true,
+                    },
+                },
+                members: {
+                    where: { isActive: true },
+                    select: {
+                        id: true,
+                        member: {
+                            select: {
+                                id: true,
+                                fullName: true,
+                                email: true,
+                                phoneNumber: true,
+                                fellowshipNumber: true,
+                                gender: true,
+                            },
+                        },
+                        joinedAt: true,
+                    },
+                    orderBy: {
+                        joinedAt: 'asc',
+                    },
+                },
+            },
+        });
+
+        if (!team) {
+            return res.status(404).json({ message: 'You are not assigned as a team leader' });
+        }
+
+        // Calculate stats
+        const members = team.members.map(m => m.member);
+        const stats = {
+            totalMembers: members.length,
+            maleCount: members.filter(m => m.gender === 'MALE').length,
+            femaleCount: members.filter(m => m.gender === 'FEMALE').length,
+        };
+
+        // Format response
+        const response = {
+            id: team.id,
+            name: team.name,
+            description: team.description,
+            leader: team.leader,
+            assistant: team.assistant,
+            leaderTagName: team.leaderTagName,
+            memberTagName: team.memberTagName,
+            members: team.members.map(m => ({
+                ...m.member,
+                joinedAt: m.joinedAt,
+            })),
+            stats,
+        };
+
+        res.json(response);
+    } catch (error) {
+        console.error('Error fetching my team:', error);
+        res.status(500).json({ message: 'Failed to fetch team' });
+    }
+};

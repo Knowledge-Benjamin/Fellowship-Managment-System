@@ -21,6 +21,7 @@ import RegionalDashboard from './pages/Leadership/RegionalDashboard';
 import Families from './pages/Leadership/Families';
 import FamilyDetails from './pages/Leadership/FamilyDetails';
 import FamilyHeadDashboard from './pages/Leadership/FamilyHeadDashboard';
+import TeamLeaderDashboard from './pages/Leadership/TeamLeaderDashboard';
 import { ToastProvider } from './components/ToastProvider';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -144,6 +145,12 @@ function AppContent() {
             <Route path="/leadership/my-family" element={
               <ProtectedRoute>
                 <FamilyHeadDashboard />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/leadership/my-team" element={
+              <ProtectedRoute>
+                <TeamLeaderDashboard />
               </ProtectedRoute>
             } />
 

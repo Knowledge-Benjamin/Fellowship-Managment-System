@@ -45,7 +45,7 @@ function NavLink({ to, children, icon: Icon, onClick, className = '' }: NavLinkP
 }
 
 export default function Navbar() {
-    const { isAuthenticated, isManager, logout, hasTag } = useAuth();
+    const { isAuthenticated, isManager, logout, hasTag, hasTeamLeaderTag, user } = useAuth();
     const { hasAccess: hasCheckInAccess } = useCheckInAccess();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isManagementOpen, setIsManagementOpen] = useState(false);
@@ -176,6 +176,9 @@ export default function Navbar() {
                                     {hasTag('FAMILY_HEAD') && (
                                         <NavLink to="/leadership/my-family" icon={Users}>My Family</NavLink>
                                     )}
+                                    {hasTeamLeaderTag() && (
+                                        <NavLink to="/leadership/my-team" icon={Users}>My Team</NavLink>
+                                    )}
 
                                     <div className="w-px h-6 bg-slate-800 mx-2"></div>
 
@@ -238,6 +241,7 @@ export default function Navbar() {
                                         <NavLink to="/profile" icon={User} className="w-full">Profile</NavLink>
                                         {hasTag('REGIONAL_HEAD') && <NavLink to="/leadership/my-region" icon={MapPin} className="w-full">My Region</NavLink>}
                                         {hasTag('FAMILY_HEAD') && <NavLink to="/leadership/my-family" icon={Users} className="w-full">My Family</NavLink>}
+                                        {hasTeamLeaderTag() && <NavLink to="/leadership/my-team" icon={Users} className="w-full">My Team</NavLink>}
                                     </div>
 
                                     {isManager && (

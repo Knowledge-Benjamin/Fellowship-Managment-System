@@ -212,10 +212,13 @@ export const getMembers = async (req: Request, res: Response) => {
             },
         });
 
-        // Transform to include only tag info (not full memberTag object)
+        // Transform to include tag info with isActive status
         const membersWithTags = members.map(member => ({
             ...member,
-            tags: member.memberTags.map(mt => mt.tag),
+            tags: member.memberTags.map(mt => ({
+                ...mt.tag,
+                isActive: mt.isActive
+            })),
             memberTags: undefined, // Remove the join table data
         }));
 

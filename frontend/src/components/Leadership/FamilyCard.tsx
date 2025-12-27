@@ -1,5 +1,6 @@
 import React from 'react';
-import { Users, UserCheck, Edit, Trash2, Calendar, MapPin, Clock } from 'lucide-react';
+import { Users, UserCheck, Edit, Trash2, Calendar, MapPin, Clock, Eye } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 interface FamilyCardProps {
     family: {
@@ -121,7 +122,16 @@ const FamilyCard: React.FC<FamilyCardProps> = ({ family, onEdit, onDelete, onAss
             {/* Member Count */}
             <div className="flex items-center justify-between pt-3 border-t border-gray-700">
                 <span className="text-gray-400 text-sm">Members</span>
-                <span className="text-teal-400 font-bold text-2xl">{family._count.members}</span>
+                <div className="flex items-center gap-3">
+                    <span className="text-teal-400 font-bold text-2xl">{family._count.members}</span>
+                    <Link
+                        to={`/leadership/families/${family.id}`}
+                        className="text-xs px-3 py-1.5 bg-teal-500/20 text-teal-400 rounded hover:bg-teal-500/30 transition-colors flex items-center gap-1"
+                    >
+                        <Eye size={14} />
+                        Details
+                    </Link>
+                </div>
             </div>
         </div>
     );

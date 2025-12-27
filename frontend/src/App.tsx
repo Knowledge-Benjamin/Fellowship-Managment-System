@@ -18,6 +18,7 @@ import SalvationManagement from './pages/SalvationManagement';
 import LeadershipOverview from './pages/Leadership/Overview';
 import TeamsManagement from './pages/Leadership/Teams';
 import RegionalDashboard from './pages/Leadership/RegionalDashboard';
+import FamiliesManagement from './pages/Leadership/Families';
 import { ToastProvider } from './components/ToastProvider';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -123,6 +124,12 @@ function AppContent() {
             <Route path="/leadership/my-region" element={
               <ProtectedRoute>
                 <RegionalDashboard />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/leadership/families" element={
+              <ProtectedRoute roles={['FELLOWSHIP_MANAGER']}>
+                <FamiliesManagement />
               </ProtectedRoute>
             } />
 

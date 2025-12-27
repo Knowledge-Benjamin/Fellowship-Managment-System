@@ -18,7 +18,13 @@ const Login = () => {
 
         try {
             const response = await api.post('/auth/login', { email, password });
-            const { token, ...userData } = response.data;
+            const { token, message, ...userData } = response.data;
+
+            // Show message if backend sent one (e.g., expired tags warning)
+            if (message && message !== 'Login successful') {
+                setError(message);
+                // Still proceed with login, just show the warning
+            }
 
             // Login with user data including tags
             login(token, {
@@ -28,7 +34,7 @@ const Login = () => {
                 role: userData.role,
                 fellowshipNumber: userData.fellowshipNumber,
                 qrCode: userData.qrCode,
-                tags: userData.tags || [], // Tags from backend
+                tags: userData.tags || [], // Tags from backend (filtered, non-expired)
             });
         } catch (err: any) {
             setError(err.response?.data?.message || err.message || 'Login failed');

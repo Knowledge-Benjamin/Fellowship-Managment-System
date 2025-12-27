@@ -10,7 +10,12 @@ interface User {
     role: 'MEMBER' | 'FELLOWSHIP_MANAGER';
     fellowshipNumber: string;
     qrCode: string;
-    tags: Array<{ name: string; isActive: boolean }>;
+    tags: Array<{
+        name: string;
+        isActive: boolean;
+        expiresAt?: string | null;
+        color?: string;
+    }>;
 }
 
 interface AuthContextType {
@@ -49,7 +54,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         localStorage.setItem('token', newToken);
         localStorage.setItem('user', JSON.stringify(newUser));
         api.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
-        navigate('/profile');
+
+        // Smart redirect based on user role/tags
+        let redirectPath = '/profile';  // Default for regular members
+
+        if (newUser.role === 'FELLOWSHIP_MANAGER') {
+            redirectPath = '/leadership';
+        } else if (newUser.tags?.some(t => t.name === 'REGIONAL_HEAD' && t.isActive)) {
+            redirectPath = '/leadership/my-region';
+        } else if (newUser.tags?.some(t => t.name === 'FAMILY_HEAD' && t.isActive)) {
+            redirectPath = '/leadership/my-family';
+        } else if (newUser.tags?.some(t => t.name?.endsWith('_LEADER') && t.isActive)) {
+            redirectPath = '/leadership/my-team';
+        }
+
+        navigate(redirectPath);
     };
 
     const logout = () => {
@@ -61,10 +80,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         navigate('/login');
     };
 
-    // Helper: Check if user has a specific tag
+    // Helper: Check if user has a specific tag (with expiry check)
     const hasTag = (tagName: string): boolean => {
         if (!user?.tags || !Array.isArray(user.tags)) return false;
-        return user.tags.some(tag => tag?.name === tagName && tag?.isActive) || false;
+        return user.tags.some(tag => {
+            if (tag?.name !== tagName || !tag?.isActive) return false;
+
+            // Check expiry if present
+            if (tag.expiresAt && new Date() > new Date(tag.expiresAt)) {
+                return false;  // Tag expired
+            }
+
+            return true;
+        }) || false;
     };
 
     // Helper: Check if user has any team leader tag (ends with _LEADER)

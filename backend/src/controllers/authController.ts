@@ -30,7 +30,7 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
 
     const { email, password } = result.data;
 
-    // Find user by email with active tags
+    // Find user by email with active tags (including expiry info)
     const user = await prisma.member.findUnique({
         where: { email },
         include: {
@@ -43,6 +43,13 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
                             color: true,
                         },
                     },
+                },
+                select: {
+                    id: true,
+                    expiresAt: true,
+                    isActive: true,
+                    notes: true,
+                    tag: true,
                 },
             },
         },
@@ -63,12 +70,39 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
         throw new Error('Invalid email or password');
     }
 
-    // Extract tags with full information for frontend
-    const tags = user.memberTags.map(mt => ({
-        name: mt.tag.name,
-        isActive: mt.isActive,
-        color: mt.tag.color
-    }));
+    // Filter and auto-deactivate expired tags
+    const now = new Date();
+    const validTags = [];
+    const expiredTagNames = [];
+
+    for (const mt of user.memberTags) {
+        if (mt.expiresAt && now > new Date(mt.expiresAt)) {
+            // Auto-deactivate expired tag
+            await prisma.memberTag.update({
+                where: { id: mt.id },
+                data: {
+                    isActive: false,
+                    removedAt: now,
+                    notes: (mt.notes || '') + ' [Auto-expired on login]',
+                },
+            });
+            expiredTagNames.push(mt.tag.name);
+        } else if (mt.isActive) { // Only include tags that are currently active and not expired
+            // Tag is valid (either no expiry or not yet expired)
+            validTags.push({
+                name: mt.tag.name,
+                isActive: mt.isActive,
+                color: mt.tag.color,
+                expiresAt: mt.expiresAt,
+            });
+        }
+    }
+
+    // Prepare response message
+    let message = 'Login successful';
+    if (expiredTagNames.length > 0) {
+        message += `. Note: The following access has expired: ${expiredTagNames.join(', ')}`;
+    }
 
     // Successful login
     res.json({
@@ -78,7 +112,8 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
         role: user.role,
         fellowshipNumber: user.fellowshipNumber,
         qrCode: user.qrCode,
-        tags, // Array of tag objects with name, isActive, color
+        tags: validTags, // Only valid, non-expired tags
+        message,
         token: generateToken(user.id),
     });
 });

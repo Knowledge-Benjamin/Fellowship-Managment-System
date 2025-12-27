@@ -72,11 +72,7 @@ const GuestCheckIn = () => {
     };
 
     if (loading) {
-        return (
-            <div className="flex items-center justify-center min-h-[calc(100vh-12rem)]">
-                <LoadingSpinner size="lg" text="Loading event information..." />
-            </div>
-        );
+        return <LoadingSpinner message="Loading event information..." />;
     }
 
     if (activeEvents.length === 0 && !loading) {

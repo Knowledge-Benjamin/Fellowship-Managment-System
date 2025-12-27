@@ -45,12 +45,14 @@ function NavLink({ to, children, icon: Icon, onClick, className = '' }: NavLinkP
 }
 
 export default function Navbar() {
-    const { isAuthenticated, isManager, logout } = useAuth();
+    const { isAuthenticated, isManager, logout, hasTag } = useAuth();
     const { hasAccess: hasCheckInAccess } = useCheckInAccess();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isManagementOpen, setIsManagementOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const location = useLocation();
+
+    const isRegionalHead = hasTag('REGIONAL_HEAD');
 
     // Close mobile menu on route change
     useEffect(() => {
@@ -165,6 +167,11 @@ export default function Navbar() {
                                     {isManager && <NavLink to="/reports/custom" icon={PieChart}>Reports</NavLink>}
                                     <NavLink to="/transport" icon={Bus}>Transport</NavLink>
                                     <NavLink to="/profile" icon={User}>Profile</NavLink>
+                                    {isRegionalHead && (
+                                        <NavLink to="/leadership/my-region" icon={MapPin}>
+                                            My Region
+                                        </NavLink>
+                                    )}
 
                                     <div className="w-px h-6 bg-slate-800 mx-2"></div>
 

@@ -30,9 +30,22 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
 
     const { email, password } = result.data;
 
-    // Find user by email
+    // Find user by email with active tags
     const user = await prisma.member.findUnique({
         where: { email },
+        include: {
+            memberTags: {
+                where: { isActive: true },
+                include: {
+                    tag: {
+                        select: {
+                            name: true,
+                            color: true,
+                        },
+                    },
+                },
+            },
+        },
     });
 
     // Use constant-time comparison to prevent timing attacks
@@ -50,6 +63,9 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
         throw new Error('Invalid email or password');
     }
 
+    // Extract tag names for easy access
+    const tags = user.memberTags.map(mt => mt.tag.name);
+
     // Successful login
     res.json({
         id: user.id,
@@ -58,6 +74,7 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
         role: user.role,
         fellowshipNumber: user.fellowshipNumber,
         qrCode: user.qrCode,
+        tags, // Array of active tag names
         token: generateToken(user.id),
     });
 });

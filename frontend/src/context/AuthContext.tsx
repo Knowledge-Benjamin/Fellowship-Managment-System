@@ -10,6 +10,7 @@ interface User {
     role: 'MEMBER' | 'FELLOWSHIP_MANAGER';
     fellowshipNumber: string;
     qrCode: string;
+    tags: string[]; // Array of active tag names
 }
 
 interface AuthContextType {
@@ -19,6 +20,8 @@ interface AuthContextType {
     logout: () => void;
     isAuthenticated: boolean;
     isManager: boolean;
+    hasTag: (tagName: string) => boolean; // Check if user has specific tag
+    hasAnyTag: (tagNames: string[]) => boolean; // Check if user has any of these tags
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -57,6 +60,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         navigate('/login');
     };
 
+    // Helper: Check if user has a specific tag
+    const hasTag = (tagName: string): boolean => {
+        return user?.tags?.includes(tagName) || false;
+    };
+
+    // Helper: Check if user has any of the specified tags
+    const hasAnyTag = (tagNames: string[]): boolean => {
+        return tagNames.some(tag => user?.tags?.includes(tag)) || false;
+    };
+
     return (
         <AuthContext.Provider
             value={{
@@ -66,6 +79,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 logout,
                 isAuthenticated: !!token,
                 isManager: user?.role === 'FELLOWSHIP_MANAGER',
+                hasTag,
+                hasAnyTag,
             }}
         >
             {children}

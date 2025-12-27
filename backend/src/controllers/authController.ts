@@ -69,6 +69,12 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     const expiredTagNames = [];
 
     for (const mt of user.memberTags) {
+        // Skip if tag relation is missing (orphaned memberTag)
+        if (!mt.tag) {
+            console.warn(`MemberTag ${mt.id} has missing tag relation - skipping`);
+            continue;
+        }
+
         if (mt.expiresAt && now > new Date(mt.expiresAt)) {
             // Auto-deactivate expired tag
             await prisma.memberTag.update({
@@ -80,7 +86,7 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
                 },
             });
             expiredTagNames.push(mt.tag.name);
-        } else if (mt.isActive) { // Only include tags that are currently active and not expired
+        } else if (mt.isActive) {
             // Tag is valid (either no expiry or not yet expired)
             validTags.push({
                 name: mt.tag.name,

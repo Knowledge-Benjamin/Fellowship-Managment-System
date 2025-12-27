@@ -182,6 +182,7 @@ export const getMembers = async (req: Request, res: Response) => {
                 },
                 yearOfStudy: true,
                 createdAt: true,
+                regionId: true, // CRITICAL: Include regionId for filtering
                 region: {
                     select: {
                         id: true,

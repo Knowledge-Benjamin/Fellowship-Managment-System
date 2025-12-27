@@ -100,6 +100,9 @@ const RegionalDashboard = () => {
                 <p className="text-gray-400">
                     Your Regional Dashboard
                 </p>
+                <p className="text-gray-600 text-xs mt-1">
+                    Last updated: {new Date().toLocaleTimeString()}
+                </p>
             </div>
 
             {/* Stats Cards */}

@@ -204,6 +204,41 @@ const RegionalDashboard = () => {
                 )}
             </div>
 
+            {/* Gender Distribution */}
+            <div className="glass-card p-6 mt-8">
+                <h2 className="text-2xl font-bold text-white mb-6">Region Member Distribution</h2>
+                <div className="space-y-4">
+                    <div>
+                        <div className="flex justify-between mb-2">
+                            <span className="text-sm text-gray-400">Male</span>
+                            <span className="text-sm text-white font-medium">
+                                {region.stats.maleCount} ({Math.round((region.stats.maleCount / region.stats.totalMembers) * 100)}%)
+                            </span>
+                        </div>
+                        <div className="w-full h-3 bg-gray-800 rounded-full overflow-hidden">
+                            <div
+                                className="h-full bg-blue-500 transition-all duration-500"
+                                style={{ width: `${(region.stats.maleCount / region.stats.totalMembers) * 100}%` }}
+                            />
+                        </div>
+                    </div>
+                    <div>
+                        <div className="flex justify-between mb-2">
+                            <span className="text-sm text-gray-400">Female</span>
+                            <span className="text-sm text-white font-medium">
+                                {region.stats.femaleCount} ({Math.round((region.stats.femaleCount / region.stats.totalMembers) * 100)}%)
+                            </span>
+                        </div>
+                        <div className="w-full h-3 bg-gray-800 rounded-full overflow-hidden">
+                            <div
+                                className="h-full bg-pink-500 transition-all duration-500"
+                                style={{ width: `${(region.stats.femaleCount / region.stats.totalMembers) * 100}%` }}
+                            />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             {/* Info Note */}
             <div className="mt-6 bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
                 <p className="text-blue-400 text-sm">

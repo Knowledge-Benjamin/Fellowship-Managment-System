@@ -74,6 +74,7 @@ export default function Navbar() {
     const managementLinks = [
         { to: '/events', label: 'Events', icon: Calendar },
         { to: '/leadership', label: 'Leadership', icon: Users },
+        { to: '/leadership/families', label: 'Families', icon: Users },
         { to: '/members', label: 'Members', icon: Users },
         { to: '/courses', label: 'Courses', icon: BookOpen },
         { to: '/residences', label: 'Residences', icon: Home },

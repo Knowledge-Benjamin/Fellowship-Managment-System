@@ -28,6 +28,8 @@ interface AuthContextType {
     loading: boolean;
     hasTag: (tagName: string) => boolean;
     hasTeamLeaderTag: () => boolean;
+    hasTeamMemberTag: () => boolean;
+    hasFamilyMemberTag: () => boolean;
     hasAnyTag: (tagNames: string[]) => boolean;
 }
 
@@ -105,6 +107,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return user.tags.some(tag => tag?.name?.endsWith?.('_LEADER') && tag?.isActive) || false;
     };
 
+    // Helper: Check if user has any team member tag (ends with _MEMBER, not _FAMILY_MEMBER)
+    const hasTeamMemberTag = (): boolean => {
+        if (!user?.tags || !Array.isArray(user.tags)) return false;
+        return user.tags.some(tag => {
+            if (!tag?.name || !tag?.isActive) return false;
+            // Must end with _MEMBER but NOT be a family member tag
+            return tag.name.endsWith('_MEMBER') && !tag.name.includes('_FAMILY_');
+        }) || false;
+    };
+
+    // Helper: Check if user has family member tag (contains _FAMILY_MEMBER)
+    const hasFamilyMemberTag = (): boolean => {
+        if (!user?.tags || !Array.isArray(user.tags)) return false;
+        return user.tags.some(tag => tag?.name?.includes?.('_FAMILY_MEMBER') && tag?.isActive) || false;
+    };
+
     // Helper: Check if user has any of the specified tags
     const hasAnyTag = (tagNames: string[]): boolean => {
         if (!user?.tags || !Array.isArray(user.tags)) return false;
@@ -123,6 +141,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 loading,
                 hasTag,
                 hasTeamLeaderTag,
+                hasTeamMemberTag,
+                hasFamilyMemberTag,
                 hasAnyTag,
             }}
         >

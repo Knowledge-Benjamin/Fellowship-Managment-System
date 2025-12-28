@@ -10,10 +10,13 @@ router.use(protect);
 // Family head dashboard - must be before /:id to avoid conflict
 router.get('/my-family', familyController.getMyFamily);
 
+// Family member access - finds family where user is a member
+router.get('/my-family-member', familyController.getMyFamilyAsMember);
+
 // Family CRUD - FM only (Regional Heads use controller-level filtering)
 router.get('/', authorize('FELLOWSHIP_MANAGER'), familyController.getAllFamilies);
 router.post('/', authorize('FELLOWSHIP_MANAGER'), familyController.createFamily);
-router.get('/:id', authorize('FELLOWSHIP_MANAGER'), familyController.getFamilyById);
+router.get('/:id', familyController.getFamilyById); // Allow all authenticated users to view
 router.put('/:id', authorize('FELLOWSHIP_MANAGER'), familyController.updateFamily);
 router.delete('/:id', authorize('FELLOWSHIP_MANAGER'), familyController.deleteFamily);
 

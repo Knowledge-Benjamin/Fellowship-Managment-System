@@ -742,3 +742,91 @@ export const getMyTeam = async (req: Request, res: Response) => {
         res.status(500).json({ message: 'Failed to fetch team' });
     }
 };
+
+// Get team for regular member (finds team where user is a member)
+export const getMyTeamAsMember = async (req: Request, res: Response) => {
+    try {
+        const userId = (req as any).user.id;
+
+        // Find team where user is a member
+        const teamMembership = await prisma.ministryTeamMember.findFirst({
+            where: {
+                memberId: userId,
+                isActive: true,
+            },
+            include: {
+                team: {
+                    include: {
+                        leader: {
+                            select: {
+                                id: true,
+                                fullName: true,
+                                email: true,
+                                phoneNumber: true,
+                            },
+                        },
+                        assistant: {
+                            select: {
+                                id: true,
+                                fullName: true,
+                            },
+                        },
+                        members: {
+                            where: { isActive: true },
+                            select: {
+                                id: true,
+                                member: {
+                                    select: {
+                                        id: true,
+                                        fullName: true,
+                                        email: true,
+                                        phoneNumber: true,
+                                        fellowshipNumber: true,
+                                        gender: true,
+                                    },
+                                },
+                                joinedAt: true,
+                            },
+                            orderBy: {
+                                joinedAt: 'asc',
+                            },
+                        },
+                    },
+                },
+            },
+        });
+
+        if (!teamMembership) {
+            return res.status(404).json({ message: 'You are not a member of any team' });
+        }
+
+        const team = teamMembership.team;
+
+        // Transform members to flat structure
+        const transformedMembers = team.members.map(tm => ({
+            id: tm.member.id,
+            fullName: tm.member.fullName,
+            email: tm.member.email,
+            phoneNumber: tm.member.phoneNumber,
+            fellowshipNumber: tm.member.fellowshipNumber,
+            gender: tm.member.gender,
+            joinedAt: tm.joinedAt,
+        }));
+
+        // Calculate stats
+        const stats = {
+            totalMembers: transformedMembers.length,
+            maleCount: transformedMembers.filter(m => m.gender === 'MALE').length,
+            femaleCount: transformedMembers.filter(m => m.gender === 'FEMALE').length,
+        };
+
+        res.json({
+            ...team,
+            members: transformedMembers,
+            stats,
+        });
+    } catch (error) {
+        console.error('Error fetching team for member:', error);
+        res.status(500).json({ message: 'Failed to fetch team' });
+    }
+};

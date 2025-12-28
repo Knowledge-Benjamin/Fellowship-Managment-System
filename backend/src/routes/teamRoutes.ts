@@ -8,10 +8,13 @@ router.use(protect);
 // Team leader dashboard - must be before /:id to avoid conflict
 router.get('/my-team', teamController.getMyTeam);
 
+// Team member access - finds team where user is a member
+router.get('/my-team-member', teamController.getMyTeamAsMember);
+
 // Team CRUD (Fellowship Manager only)
 router.post('/', authorize('FELLOWSHIP_MANAGER'), teamController.createTeam);
 router.get('/', authorize('FELLOWSHIP_MANAGER'), teamController.getAllTeams);
-router.get('/:id', authorize('FELLOWSHIP_MANAGER'), teamController.getTeamById);
+router.get('/:id', teamController.getTeamById); // Allow all authenticated users to view
 router.put('/:id', authorize('FELLOWSHIP_MANAGER'), teamController.updateTeam);
 router.delete('/:id', authorize('FELLOWSHIP_MANAGER'), teamController.deleteTeam);
 

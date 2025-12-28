@@ -25,6 +25,7 @@ interface AuthContextType {
     logout: () => void;
     isAuthenticated: boolean;
     isManager: boolean;
+    loading: boolean;
     hasTag: (tagName: string) => boolean;
     hasTeamLeaderTag: () => boolean;
     hasAnyTag: (tagNames: string[]) => boolean;
@@ -35,6 +36,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null);
     const [token, setToken] = useState<string | null>(null);
+    const [loading, setLoading] = useState(true); // Start as loading
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -46,6 +48,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             setUser(JSON.parse(storedUser));
             api.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
         }
+
+        setLoading(false); // Done checking localStorage
     }, []);
 
     const login = (newToken: string, newUser: User) => {
@@ -116,6 +120,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 logout,
                 isAuthenticated: !!token,
                 isManager: user?.role === 'FELLOWSHIP_MANAGER',
+                loading,
                 hasTag,
                 hasTeamLeaderTag,
                 hasAnyTag,

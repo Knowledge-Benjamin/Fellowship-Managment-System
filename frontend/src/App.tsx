@@ -17,6 +17,7 @@ import ResidenceManagement from './pages/ResidenceManagement';
 import SalvationManagement from './pages/SalvationManagement';
 import LeadershipOverview from './pages/Leadership/Overview';
 import TeamsManagement from './pages/Leadership/Teams';
+import TeamDetails from './pages/Leadership/TeamDetails';
 import RegionalDashboard from './pages/Leadership/RegionalDashboard';
 import Families from './pages/Leadership/Families';
 import FamilyDetails from './pages/Leadership/FamilyDetails';
@@ -121,6 +122,12 @@ function AppContent() {
             <Route path="/leadership/teams" element={
               <ProtectedRoute roles={['FELLOWSHIP_MANAGER']}>
                 <TeamsManagement />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/leadership/teams/:id" element={
+              <ProtectedRoute>
+                <TeamDetails />
               </ProtectedRoute>
             } />
 

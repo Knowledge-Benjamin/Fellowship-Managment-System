@@ -172,6 +172,8 @@ export const getTeamById = async (req: Request, res: Response) => {
                                 fullName: true,
                                 email: true,
                                 phoneNumber: true,
+                                fellowshipNumber: true,
+                                gender: true,
                                 region: {
                                     select: {
                                         name: true,
@@ -188,7 +190,29 @@ export const getTeamById = async (req: Request, res: Response) => {
             return res.status(404).json({ message: 'Team not found' });
         }
 
-        res.json(team);
+        // Transform members to flat structure
+        const transformedMembers = team.members.map(tm => ({
+            id: tm.member.id,
+            fullName: tm.member.fullName,
+            email: tm.member.email,
+            phoneNumber: tm.member.phoneNumber,
+            fellowshipNumber: tm.member.fellowshipNumber,
+            gender: tm.member.gender,
+            joinedAt: tm.joinedAt,
+        }));
+
+        // Calculate stats
+        const stats = {
+            totalMembers: transformedMembers.length,
+            maleCount: transformedMembers.filter(m => m.gender === 'MALE').length,
+            femaleCount: transformedMembers.filter(m => m.gender === 'FEMALE').length,
+        };
+
+        res.json({
+            ...team,
+            members: transformedMembers,
+            stats,
+        });
     } catch (error) {
         console.error('Error fetching team:', error);
         res.status(500).json({ message: 'Failed to fetch team' });

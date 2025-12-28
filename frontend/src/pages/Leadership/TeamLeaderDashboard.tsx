@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Users, Calendar, Mail, Phone, Hash, Loader2, User2, AlertCircle, Award } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { formatDistanceToNow } from 'date-fns';
 import api from '../../api';
+import { useAuth } from '../../context/AuthContext';
 
 interface Member {
     id: string;
@@ -40,20 +42,37 @@ interface TeamData {
 }
 
 const TeamLeaderDashboard = () => {
+    const navigate = useNavigate();
+    const { hasTeamLeaderTag, hasTeamMemberTag } = useAuth();
     const [team, setTeam] = useState<TeamData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        fetchMyTeam();
+        fetchTeamData();
     }, []);
 
-    const fetchMyTeam = async () => {
+    const fetchTeamData = async () => {
         try {
             setLoading(true);
-            const response = await api.get('/teams/my-team');
-            setTeam(response.data);
-            setError(null);
+
+            // Check if user is a team leader or just a member
+            if (hasTeamLeaderTag()) {
+                // Leader - fetch from leader dashboard endpoint
+                const response = await api.get('/teams/my-team');
+                setTeam(response.data);
+                setError(null);
+            } else if (hasTeamMemberTag()) {
+                // Regular member - fetch from member endpoint and redirect to detail page
+                const response = await api.get('/teams/my-team-member');
+                const teamData = response.data;
+                // Redirect to team detail page
+                navigate(`/leadership/teams/${teamData.id}`, { replace: true });
+                return;
+            } else {
+                // Not assigned to any team
+                setError('You are not currently assigned to any team');
+            }
         } catch (error: any) {
             console.error('Failed to fetch team:', error);
             if (error.response?.status === 404) {

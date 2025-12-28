@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Users, Calendar, MapPin, Mail, Phone, Hash, Loader2, User2, AlertCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { formatDistanceToNow } from 'date-fns';
 import api from '../../api';
+import { useAuth } from '../../context/AuthContext';
 
 interface Member {
     id: string;
@@ -40,20 +42,37 @@ interface FamilyData {
 }
 
 const FamilyHeadDashboard = () => {
+    const navigate = useNavigate();
+    const { hasTag, hasFamilyMemberTag } = useAuth();
     const [family, setFamily] = useState<FamilyData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        fetchMyFamily();
+        fetchFamilyData();
     }, []);
 
-    const fetchMyFamily = async () => {
+    const fetchFamilyData = async () => {
         try {
             setLoading(true);
-            const response = await api.get('/families/my-family');
-            setFamily(response.data);
-            setError(null);
+
+            // Check if user is a family head or just a member
+            if (hasTag('FAMILY_HEAD')) {
+                // Head - fetch from head dashboard endpoint
+                const response = await api.get('/families/my-family');
+                setFamily(response.data);
+                setError(null);
+            } else if (hasFamilyMemberTag()) {
+                // Regular member - fetch from member endpoint and redirect to detail page
+                const response = await api.get('/families/my-family-member');
+                const familyData = response.data;
+                // Redirect to family detail page
+                navigate(`/leadership/families/${familyData.id}`, { replace: true });
+                return;
+            } else {
+                // Not assigned to any family
+                setError('You are not currently assigned to any family');
+            }
         } catch (error: any) {
             console.error('Failed to fetch family:', error);
             if (error.response?.status === 404) {

@@ -29,6 +29,9 @@ dotenv.config({ path: path.join(__dirname, '..', '.env') });
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Trust proxy - Required for Render/Heroku/etc to get correct client IP
+app.set('trust proxy', 1);
+
 // Security Middleware
 app.use(helmet());
 app.use(cors());

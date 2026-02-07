@@ -2,10 +2,14 @@ import React, { useState, useEffect } from 'react';
 import api from '../api';
 import QRCode from 'react-qr-code';
 import { useToast } from '../components/ToastProvider';
-import { UserPlus, CheckCircle, Download, RotateCcw, Sparkles, Copy, Mail, MapPin, GraduationCap, Tag as TagIcon, BookOpen, Plus, Loader2, Building } from 'lucide-react';
+import { UserPlus, CheckCircle, Download, RotateCcw, Sparkles, Copy, Mail, MapPin, GraduationCap, Tag as TagIcon, BookOpen, Plus, Loader2, Building, Users } from 'lucide-react';
+import type { E164Number } from 'libphonenumber-js/core';
+import PhoneInput from '../components/PhoneInput';
+import '../styles/phoneInput.css';
 import AddCollegeModal from '../components/AddCollegeModal';
 import AddCourseModal from '../components/AddCourseModal';
 import AddResidenceModal from '../components/AddResidenceModal';
+import RegistrationModeSelector from '../components/RegistrationModeSelector';
 
 interface Region {
     id: string;
@@ -41,6 +45,13 @@ interface Residence {
     type: string;
 }
 
+interface Family {
+    id: string;
+    name: string;
+    familyHead: { fullName: string } | null;
+    memberCount: number;
+}
+
 const Registration = () => {
     const { showToast } = useToast();
     const [loading, setLoading] = useState(false);
@@ -50,6 +61,8 @@ const Registration = () => {
     const [courses, setCourses] = useState<Course[]>([]);
     const [colleges, setColleges] = useState<College[]>([]);
     const [residences, setResidences] = useState<Residence[]>([]);
+    const [families, setFamilies] = useState<Family[]>([]);
+    const [loadingFamilies, setLoadingFamilies] = useState(false);
 
     // Modal states
     const [isCourseModalOpen, setIsCourseModalOpen] = useState(false);
@@ -59,7 +72,7 @@ const Registration = () => {
     const [formData, setFormData] = useState({
         fullName: '',
         email: '',
-        phoneNumber: '',
+        phoneNumber: '' as E164Number | '',
         gender: 'MALE',
         isMakerereStudent: true,
         regionId: '',
@@ -67,11 +80,25 @@ const Registration = () => {
         additionalTagIds: [] as string[],
         collegeId: '',
         courseId: '',
-        yearOfStudy: 1,
+        initialYearOfStudy: 1,
+        initialSemester: 1,
         residenceId: '',
         hostelName: '',
+        familyId: '', // Family assignment
+        registrationMode: 'NEW_MEMBER' as 'NEW_MEMBER' | 'LEGACY_IMPORT' | 'TRANSFER' | 'READMISSION',
+        assignFirstTimerTag: undefined as boolean | undefined, // undefined = use mode default
     });
-    const [createdMember, setCreatedMember] = useState<{ fullName: string; fellowshipNumber: string; defaultPassword?: string; qrCode: string; region?: { name: string } } | null>(null);
+    // Member data from successful registration
+    const [createdMember, setCreatedMember] = useState<{
+        id: string;
+        fullName: string;
+        fellowshipNumber: string;
+        defaultPassword?: string;
+        qrCode: string;
+        email: string;
+        region?: { name: string };
+        tags?: any[];
+    } | null>(null);
 
     useEffect(() => {
         fetchRegions();
@@ -174,6 +201,37 @@ const Registration = () => {
         }
     };
 
+    const fetchFamiliesByRegion = async (regionId: string) => {
+        if (!regionId) {
+            setFamilies([]);
+            return;
+        }
+
+        try {
+            setLoadingFamilies(true);
+            const response = await api.get(`/families/region/${regionId}`);
+            setFamilies(response.data);
+        } catch (error) {
+            console.error('Failed to fetch families:', error);
+            showToast('error', 'Failed to load families for this region.');
+            setFamilies([]);
+        } finally {
+            setLoadingFamilies(false);
+        }
+    };
+
+    // Fetch families when region changes
+    useEffect(() => {
+        if (formData.regionId && formData.isMakerereStudent) {
+            fetchFamiliesByRegion(formData.regionId);
+            // Reset family selection when region changes
+            setFormData(prev => ({ ...prev, familyId: '' }));
+        } else {
+            setFamilies([]);
+            setFormData(prev => ({ ...prev, familyId: '' }));
+        }
+    }, [formData.regionId, formData.isMakerereStudent]);
+
     const handleCollegeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const value = e.target.value;
         if (value === 'NEW_COLLEGE') {
@@ -212,22 +270,78 @@ const Registration = () => {
         setLoading(true);
 
         try {
-            // Sanitize payload: valid UUIDs or undefined, no empty strings
-            const payload = {
-                ...formData,
-                classificationTagId: formData.classificationTagId || undefined,
-                courseId: formData.courseId || undefined,
-                regionId: formData.regionId || undefined, // Must be UUID if present, but required by schema
-                residenceId: formData.residenceId || undefined,
-                hostelName: formData.hostelName || undefined,
+            // Build clean payload - remove UI-only fields and empty values
+            const payload: any = {
+                fullName: formData.fullName,
+                email: formData.email,
+                phoneNumber: formData.phoneNumber,
+                gender: formData.gender,
+                regionId: formData.regionId,
             };
 
+            // Add optional fields only if they have values
+            if (formData.classificationTagId) payload.classificationTagId = formData.classificationTagId;
+            if (formData.additionalTagIds?.length > 0) payload.additionalTagIds = formData.additionalTagIds;
+            if (formData.courseId) payload.courseId = formData.courseId;
+            if (formData.initialYearOfStudy) payload.initialYearOfStudy = formData.initialYearOfStudy;
+            if (formData.initialSemester) payload.initialSemester = formData.initialSemester;
+            if (formData.residenceId) payload.residenceId = formData.residenceId;
+            if (formData.hostelName) payload.hostelName = formData.hostelName;
+
+            // Add registration mode and tag assignment
+            payload.registrationMode = formData.registrationMode;
+            if (formData.assignFirstTimerTag !== undefined) {
+                payload.assignFirstTimerTag = formData.assignFirstTimerTag;
+            }
+
+            // NOTE: isMakerereStudent and familyId are NOT sent - they're UI state only
+
+            // Register the member
             const response = await api.post('/members', payload);
-            setCreatedMember(response.data);
+
+            // Backend returns { message, member: {...}, fellowshipNumber }
+            const { member, fellowshipNumber } = response.data;
+
+            if (!member || !member.qrCode) {
+                throw new Error('Invalid response from server');
+            }
+
+            // Handle family assignment separately if selected
+            if (formData.familyId && member.id) {
+                try {
+                    await api.post(`/families/${formData.familyId}/members`, {
+                        memberId: member.id,
+                    });
+                    // Don't show separate success for family - it's part of registration
+                } catch (familyError: any) {
+                    console.warn('Family assignment failed:', familyError);
+                    // Don't fail registration if family assignment fails
+                    const familyErrorMsg = familyError.response?.data?.error || 'Could not assign to family';
+                    showToast('warning', `Member registered but family assignment failed: ${familyErrorMsg}`);
+                }
+            }
+
+            // Set member data for success display (include fellowshipNumber at top level)
+            setCreatedMember({ ...member, fellowshipNumber });
             showToast('success', 'Member registered successfully!');
         } catch (error: any) {
             console.error('Registration error:', error);
-            const errorMessage = error.response?.data?.error || 'Registration failed. Please try again.';
+
+            // Extract meaningful error message
+            let errorMessage = 'Registration failed. Please try again.';
+
+            if (error.response?.data?.error) {
+                errorMessage = error.response.data.error;
+            } else if (error.response?.data?.details) {
+                // Zod validation errors
+                const details = error.response.data.details;
+                if (Array.isArray(details) && details.length > 0) {
+                    errorMessage = details.map((d: any) => d.message).join(', ');
+                }
+            } else if (error.message) {
+                errorMessage = error.message;
+            }
+
             showToast('error', errorMessage);
         } finally {
             setLoading(false);
@@ -235,11 +349,10 @@ const Registration = () => {
     };
 
     const handleReset = () => {
-        setCreatedMember(null);
         setFormData({
             fullName: '',
             email: '',
-            phoneNumber: '',
+            phoneNumber: '' as E164Number | '',
             gender: 'MALE',
             isMakerereStudent: true,
             regionId: '',
@@ -247,10 +360,15 @@ const Registration = () => {
             additionalTagIds: [],
             collegeId: '',
             courseId: '',
-            yearOfStudy: 1,
+            initialYearOfStudy: 1,
+            initialSemester: 1,
             residenceId: '',
             hostelName: '',
+            familyId: '',
+            registrationMode: 'NEW_MEMBER' as 'NEW_MEMBER' | 'LEGACY_IMPORT' | 'TRANSFER' | 'READMISSION',
+            assignFirstTimerTag: undefined,
         });
+        setCreatedMember(null);
     };
 
     const downloadQRCode = () => {
@@ -366,7 +484,7 @@ const Registration = () => {
                             <div className="p-4 bg-white rounded-xl shadow-lg shadow-black/20">
                                 <QRCode
                                     id="qr-code"
-                                    value={createdMember.qrCode}
+                                    value={createdMember.qrCode || ''}
                                     size={200}
                                     level="H"
                                 />
@@ -416,6 +534,35 @@ const Registration = () => {
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-6">
+                        {/* Registration Mode Selector */}
+                        <RegistrationModeSelector
+                            value={formData.registrationMode}
+                            onChange={(mode) => setFormData({ ...formData, registrationMode: mode, assignFirstTimerTag: undefined })}
+                        />
+
+                        {/* Conditional First-Timer Tag Override (only for TRANSFER and READMISSION) */}
+                        {(formData.registrationMode === 'TRANSFER' || formData.registrationMode === 'READMISSION') && (
+                            <div className="p-4 rounded-xl bg-slate-800/40 border border-slate-700 space-y-3">
+                                <label className="flex items-start gap-3 cursor-pointer group">
+                                    <input
+                                        type="checkbox"
+                                        checked={formData.assignFirstTimerTag === true}
+                                        onChange={(e) => setFormData({ ...formData, assignFirstTimerTag: e.target.checked ? true : false })}
+                                        className="mt-1 w-4 h-4 rounded border-slate-600 bg-slate-700 text-teal-500 focus:ring-teal-500 focus:ring-offset-slate-900 transition-colors cursor-pointer"
+                                    />
+                                    <div className="flex-1">
+                                        <span className="text-sm font-medium text-slate-300 group-hover:text-white transition-colors">
+                                            Mark as pending first attendance
+                                        </span>
+                                        <p className="text-xs text-slate-400 mt-1">
+                                            Enable only if this member has never attended any fellowship event.
+                                            They will be counted as a first-timer on their first attendance.
+                                        </p>
+                                    </div>
+                                </label>
+                            </div>
+                        )}
+
                         {/* Full Name */}
                         <div className="space-y-2">
                             <label className="text-sm font-semibold text-slate-300 flex items-center gap-2">
@@ -455,13 +602,11 @@ const Registration = () => {
                                     Phone Number
                                     <span className="text-red-400">*</span>
                                 </label>
-                                <input
-                                    type="tel"
-                                    placeholder="+256 700 000 000"
-                                    className="input transition-smooth"
-                                    value={formData.phoneNumber}
-                                    onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
+                                <PhoneInput
+                                    value={formData.phoneNumber as E164Number | undefined}
+                                    onChange={(value) => setFormData({ ...formData, phoneNumber: value || '' })}
                                     required
+                                    placeholder="700 123 456"
                                 />
                             </div>
 
@@ -564,6 +709,48 @@ const Registration = () => {
                             )}
                         </div>
 
+                        {/* Family Assignment - Only for Makerere students with selected region */}
+                        {formData.isMakerereStudent && formData.regionId && (
+                            <div className="space-y-2">
+                                <label className="text-sm font-semibold text-slate-300 flex items-center gap-2">
+                                    <Users className="w-4 h-4 text-purple-400" />
+                                    Family Group
+                                    <span className="text-red-400">*</span>
+                                </label>
+
+                                {loadingFamilies ? (
+                                    <div className="input flex items-center gap-2 text-slate-400">
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        Loading families...
+                                    </div>
+                                ) : families.length === 0 ? (
+                                    <div className="input text-slate-500 italic">
+                                        No families available in this region yet
+                                    </div>
+                                ) : (
+                                    <select
+                                        className="input transition-smooth cursor-pointer"
+                                        value={formData.familyId}
+                                        onChange={(e) => setFormData({ ...formData, familyId: e.target.value })}
+                                        required
+                                    >
+                                        <option value="">Select a family</option>
+                                        {families.map((family) => (
+                                            <option key={family.id} value={family.id}>
+                                                {family.name}
+                                                {family.familyHead && ` - ${family.familyHead.fullName}`}
+                                                {` (${family.memberCount} member${family.memberCount !== 1 ? 's' : ''})`}
+                                            </option>
+                                        ))}
+                                    </select>
+                                )}
+
+                                <p className="text-xs text-slate-500">
+                                    You can assign the member to a family now or later
+                                </p>
+                            </div>
+                        )}
+
                         {/* Residence/Hostel - Based on Region */}
                         {formData.regionId && formData.isMakerereStudent && (() => {
                             const selectedRegion = regions.find(r => r.id === formData.regionId);
@@ -607,7 +794,8 @@ const Registration = () => {
                                     <div className="space-y-2">
                                         <label className="text-sm font-semibold text-slate-300 flex items-center gap-2">
                                             <MapPin className="w-4 h-4 text-teal-400" />
-                                            Hostel Name (Optional)
+                                            Hostel Name
+                                            <span className="text-red-400">*</span>
                                         </label>
                                         <input
                                             type="text"
@@ -615,6 +803,7 @@ const Registration = () => {
                                             className="input transition-smooth"
                                             value={formData.hostelName}
                                             onChange={(e) => setFormData({ ...formData, hostelName: e.target.value })}
+                                            required
                                         />
                                         <p className="text-xs text-slate-500">Enter the hostel where they reside</p>
                                     </div>
@@ -629,7 +818,8 @@ const Registration = () => {
                                 <label className="text-sm font-semibold text-slate-300 flex items-center justify-between">
                                     <span className="flex items-center gap-2">
                                         <Building className="w-4 h-4 text-teal-400" />
-                                        College (Optional)
+                                        College
+                                        <span className="text-red-400">*</span>
                                     </span>
                                     <button
                                         type="button"
@@ -643,6 +833,7 @@ const Registration = () => {
                                     className="input transition-smooth cursor-pointer"
                                     value={formData.collegeId}
                                     onChange={handleCollegeChange}
+                                    required
                                 >
                                     <option value="">Select College</option>
                                     {colleges.map((college) => (
@@ -664,7 +855,10 @@ const Registration = () => {
                                 {/* Course */}
                                 <div className="space-y-2">
                                     <label className="text-sm font-semibold text-slate-300 flex items-center justify-between">
-                                        <span>Course (Optional)</span>
+                                        <span className="flex items-center gap-2">
+                                            Course
+                                            <span className="text-red-400">*</span>
+                                        </span>
                                         <button
                                             type="button"
                                             onClick={() => setIsCourseModalOpen(true)}
@@ -678,6 +872,7 @@ const Registration = () => {
                                         value={formData.courseId}
                                         onChange={handleCourseChange}
                                         disabled={formData.isMakerereStudent && !formData.collegeId && courses.length === 0}
+                                        required
                                     >
                                         <option value="">Select Course</option>
                                         {courses.map((course) => (
@@ -699,15 +894,41 @@ const Registration = () => {
 
                                 {/* Year of Study */}
                                 <div className="space-y-2">
-                                    <label className="text-sm font-semibold text-slate-300">Year of Study (Optional)</label>
-                                    <input
-                                        type="number"
-                                        min="1"
-                                        max="7"
-                                        className="input transition-smooth"
-                                        value={formData.yearOfStudy}
-                                        onChange={(e) => setFormData({ ...formData, yearOfStudy: parseInt(e.target.value) })}
-                                    />
+                                    <label className="text-sm font-semibold text-slate-300 flex items-center gap-2">
+                                        Current Year of Study
+                                        <span className="text-red-400">*</span>
+                                    </label>
+                                    <select
+                                        className="input transition-smooth cursor-pointer"
+                                        value={formData.initialYearOfStudy}
+                                        onChange={(e) => setFormData({ ...formData, initialYearOfStudy: parseInt(e.target.value) })}
+                                        required
+                                    >
+                                        <option value="">Select year</option>
+                                        <option value="1">Yr 1</option>
+                                        <option value="2">Yr 2</option>
+                                        <option value="3">Yr 3</option>
+                                        <option value="4">Yr 4</option>
+                                        <option value="5">Yr 5</option>
+                                    </select>
+                                </div>
+
+                                {/* Current Semester */}
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold text-slate-300 flex items-center gap-2">
+                                        Current Semester
+                                        <span className="text-red-400">*</span>
+                                    </label>
+                                    <select
+                                        className="input transition-smooth cursor-pointer"
+                                        value={formData.initialSemester}
+                                        onChange={(e) => setFormData({ ...formData, initialSemester: parseInt(e.target.value) })}
+                                        required
+                                    >
+                                        <option value="">Select semester</option>
+                                        <option value="1">Semester 1</option>
+                                        <option value="2">Semester 2</option>
+                                    </select>
                                 </div>
                             </div>
                         )}

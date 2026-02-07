@@ -1,5 +1,5 @@
-const { PrismaClient } = require('@prisma/client');
-const bcrypt = require('bcryptjs');
+import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
@@ -33,11 +33,11 @@ async function main() {
     const hashedPassword = await bcrypt.hash('Manager@Fellowship', 10);
 
     const manager = await prisma.member.upsert({
-        where: { email: 'manager@fellowship.com' },
+        where: { email: 'makmanifest@gmail.com' },
         update: {},
         create: {
             fullName: 'Fellowship Manager',
-            email: 'manager@fellowship.com',
+            email: 'makmanifest@gmail.com',
             phoneNumber: '+256700000000',
             password: hashedPassword,
             role: 'FELLOWSHIP_MANAGER',
@@ -138,10 +138,11 @@ async function main() {
 }
 
 main()
-    .catch((e) => {
-        console.error('Error seeding database:', e);
-        process.exit(1);
-    })
-    .finally(async () => {
+    .then(async () => {
         await prisma.$disconnect();
+    })
+    .catch(async (e) => {
+        console.error(e);
+        await prisma.$disconnect();
+        throw e;
     });

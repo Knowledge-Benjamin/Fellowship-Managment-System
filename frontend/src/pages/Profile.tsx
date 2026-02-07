@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/ToastProvider';
 import api from '../api';
 import QRCode from 'react-qr-code';
-import { User, Mail, Hash, Shield, Tag as TagIcon, Loader2 } from 'lucide-react';
+import { User, Mail, Hash, Shield, Tag as TagIcon, Loader2, BookOpen, GraduationCap } from 'lucide-react';
 import TagBadge from '../components/TagBadge';
 
 interface Tag {
@@ -14,15 +14,30 @@ interface Tag {
     isSystem: boolean;
 }
 
+interface AcademicStatus {
+    currentYear: number | null;
+    currentSemester: number | null;
+    isFinalist: boolean;
+    isAlumni: boolean;
+    course: {
+        id: string;
+        name: string;
+        durationYears: number;
+    } | null;
+}
+
 const Profile = () => {
     const { user } = useAuth();
     const { showToast } = useToast();
     const [tags, setTags] = useState<Tag[]>([]);
     const [loadingTags, setLoadingTags] = useState(true);
+    const [academicStatus, setAcademicStatus] = useState<AcademicStatus | null>(null);
+    const [loadingAcademic, setLoadingAcademic] = useState(true);
 
     useEffect(() => {
         if (user?.id) {
             fetchUserTags();
+            fetchAcademicStatus();
         }
     }, [user?.id]);
 
@@ -40,6 +55,19 @@ const Profile = () => {
             // Don't show error toast - tags are optional
         } finally {
             setLoadingTags(false);
+        }
+    };
+
+    const fetchAcademicStatus = async () => {
+        try {
+            setLoadingAcademic(true);
+            const response = await api.get(`/members/${user?.id}/academic-status`);
+            setAcademicStatus(response.data);
+        } catch (error) {
+            console.error('Failed to fetch academic status:', error);
+            // Don't show error - this is optional info
+        } finally {
+            setLoadingAcademic(false);
         }
     };
 
@@ -89,6 +117,51 @@ const Profile = () => {
                                     <p className="text-white font-medium">{user.role.replace('_', ' ')}</p>
                                 </div>
                             </div>
+
+                            {/* Academic Status Section */}
+                            {loadingAcademic ? (
+                                <div className="flex items-center gap-4 p-4 bg-slate-900/50 rounded-xl border border-slate-700/50">
+                                    <Loader2 className="text-slate-400 animate-spin" size={24} />
+                                    <div>
+                                        <p className="text-sm text-slate-400">Loading academic status...</p>
+                                    </div>
+                                </div>
+                            ) : academicStatus && academicStatus.currentYear !== null ? (
+                                <>
+                                    <div className="flex items-center gap-4 p-4 bg-slate-900/50 rounded-xl border border-slate-700/50">
+                                        <GraduationCap className="text-slate-400" size={24} />
+                                        <div className="flex-1">
+                                            <p className="text-sm text-slate-400">Current Academic Standing</p>
+                                            <div className="flex items-center gap-3 mt-1">
+                                                <p className="text-white font-medium text-lg">
+                                                    Year {academicStatus.currentYear}, Semester {academicStatus.currentSemester}
+                                                </p>
+                                                {academicStatus.isFinalist && (
+                                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
+                                                        Finalist
+                                                    </span>
+                                                )}
+                                                {academicStatus.isAlumni && (
+                                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                                                        Alumni
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {academicStatus.course && (
+                                        <div className="flex items-center gap-4 p-4 bg-slate-900/50 rounded-xl border border-slate-700/50">
+                                            <BookOpen className="text-slate-400" size={24} />
+                                            <div>
+                                                <p className="text-sm text-slate-400">Course</p>
+                                                <p className="text-white font-medium">{academicStatus.course.name}</p>
+                                                <p className="text-xs text-slate-500 mt-1">{academicStatus.course.durationYears} years</p>
+                                            </div>
+                                        </div>
+                                    )}
+                                </>
+                            ) : null}
 
                             {/* Tags Section */}
                             <div className="flex items-start gap-4 p-4 bg-slate-900/50 rounded-xl border border-slate-700/50">

@@ -27,6 +27,17 @@ export const getEventReport = async (req: Request, res: Response) => {
                         member: {
                             include: {
                                 region: true,
+                                courseRelation: {
+                                    include: { college: true }
+                                },
+                                familyMemberships: {
+                                    where: { isActive: true },
+                                    include: { family: true }
+                                },
+                                ministryMemberships: {
+                                    where: { isActive: true },
+                                    include: { team: true }
+                                },
                                 memberTags: {
                                     where: { isActive: true },
                                     include: { tag: true }
@@ -59,21 +70,36 @@ export const getEventReport = async (req: Request, res: Response) => {
             { MALE: 0, FEMALE: 0 } as Record<string, number>
         );
 
-        // 3. First Timers
+        // 3. First Timers (Tag-Based with Fallback)
         const memberIds = event.attendances.map((a) => a.memberId);
-        const previousAttendances = await prisma.attendance.findMany({
+
+        // Priority 1: Check for PENDING_FIRST_ATTENDANCE tag (new system)
+        const firstTimerTagCount = await prisma.memberTag.count({
             where: {
                 memberId: { in: memberIds },
-                event: {
-                    date: { lt: event.date },
-                },
+                tag: { name: 'PENDING_FIRST_ATTENDANCE' },
+                isActive: true,
             },
-            select: { memberId: true },
-            distinct: ['memberId'],
         });
 
-        const returningMemberIds = new Set(previousAttendances.map((a) => a.memberId));
-        const firstTimersCount = memberIds.filter((id) => !returningMemberIds.has(id)).length;
+        let firstTimersCount = firstTimerTagCount;
+
+        // Priority 2: Fallback to attendance history if no tags found (backward compatibility)
+        if (firstTimersCount === 0 && memberIds.length > 0) {
+            const previousAttendances = await prisma.attendance.findMany({
+                where: {
+                    memberId: { in: memberIds },
+                    event: {
+                        date: { lt: event.date },
+                    },
+                },
+                select: { memberId: true },
+                distinct: ['memberId'],
+            });
+
+            const returningMemberIds = new Set(previousAttendances.map((a) => a.memberId));
+            firstTimersCount = memberIds.filter((id) => !returningMemberIds.has(id)).length;
+        }
 
         // 4. Guest Analysis
         const guestDetails = event.guestAttendances.map(g => ({
@@ -112,6 +138,93 @@ export const getEventReport = async (req: Request, res: Response) => {
             {} as Record<string, number>
         );
 
+        // 8. Year of Study Breakdown
+        const yearOfStudyBreakdown: Record<string, number> = {
+            'Year 1': 0,
+            'Year 2': 0,
+            'Year 3': 0,
+            'Year 4': 0,
+            'Year 5+': 0,
+            'Unknown': 0
+        };
+
+        event.attendances.forEach(att => {
+            const year = att.member.initialYearOfStudy;
+            if (!year) {
+                yearOfStudyBreakdown['Unknown']++;
+            } else if (year <= 4) {
+                yearOfStudyBreakdown[`Year ${year}`]++;
+            } else {
+                yearOfStudyBreakdown['Year 5+']++;
+            }
+        });
+
+        // 9. College Distribution
+        const collegeBreakdown = event.attendances.reduce(
+            (acc, curr) => {
+                const college = curr.member.courseRelation?.college?.name || 'Unknown';
+                acc[college] = (acc[college] || 0) + 1;
+                return acc;
+            },
+            {} as Record<string, number>
+        );
+
+        // 10. Course Distribution
+        const courseBreakdown = event.attendances.reduce(
+            (acc, curr) => {
+                const course = curr.member.courseRelation?.name || 'Unknown';
+                acc[course] = (acc[course] || 0) + 1;
+                return acc;
+            },
+            {} as Record<string, number>
+        );
+
+        // 11. Family Participation
+        const familyBreakdown = event.attendances.reduce(
+            (acc, curr) => {
+                const families = curr.member.familyMemberships.filter(fm => fm.isActive);
+                if (families.length === 0) {
+                    acc['No Family'] = (acc['No Family'] || 0) + 1;
+                } else {
+                    families.forEach(fm => {
+                        const familyName = fm.family.name;
+                        acc[familyName] = (acc[familyName] || 0) + 1;
+                    });
+                }
+                return acc;
+            },
+            {} as Record<string, number>
+        );
+
+        // 12. Ministry Team Participation
+        const teamBreakdown = event.attendances.reduce(
+            (acc, curr) => {
+                const teams = curr.member.ministryMemberships.filter(mm => mm.isActive);
+                if (teams.length === 0) {
+                    acc['No Team'] = (acc['No Team'] || 0) + 1;
+                } else {
+                    teams.forEach(mm => {
+                        const teamName = mm.team.name;
+                        acc[teamName] = (acc[teamName] || 0) + 1;
+                    });
+                }
+                return acc;
+            },
+            {} as Record<string, number>
+        );
+
+        // 13. Special Tags (Finalist, Alumni, Volunteers)
+        const specialTagStats = event.attendances.reduce(
+            (acc, curr) => {
+                const tagNames = curr.member.memberTags.map(mt => mt.tag.name);
+                if (tagNames.includes('FINALIST')) acc.finalists++;
+                if (tagNames.includes('ALUMNI')) acc.alumni++;
+                if (tagNames.includes('CHECK_IN_VOLUNTEER')) acc.volunteers++;
+                return acc;
+            },
+            { finalists: 0, alumni: 0, volunteers: 0 }
+        );
+
         res.json({
             event: {
                 id: event.id,
@@ -129,6 +242,15 @@ export const getEventReport = async (req: Request, res: Response) => {
                 firstTimersCount,
                 salvationBreakdown,
                 tagDistribution,
+                // Academic Statistics
+                yearOfStudyBreakdown,
+                collegeBreakdown,
+                courseBreakdown,
+                // Organizational Statistics
+                familyBreakdown,
+                teamBreakdown,
+                // Special Tags
+                specialTagStats,
             },
             guests: guestDetails,
         });
@@ -190,7 +312,7 @@ export const getDashboardStats = async (req: Request, res: Response) => {
             return res.json(cachedData);
         }
 
-        const [totalMembers, totalEvents, recentEvents] = await Promise.all([
+        const [totalMembers, totalEvents, recentEvents, finalistsCount, alumniCount, activeFamilies, activeTeams] = await Promise.all([
             prisma.member.count(),
             prisma.event.count(),
             prisma.event.findMany({
@@ -202,6 +324,20 @@ export const getDashboardStats = async (req: Request, res: Response) => {
                     },
                 },
             }),
+            prisma.memberTag.count({
+                where: {
+                    tag: { name: 'FINALIST' },
+                    isActive: true
+                }
+            }),
+            prisma.memberTag.count({
+                where: {
+                    tag: { name: 'ALUMNI' },
+                    isActive: true
+                }
+            }),
+            prisma.familyGroup.count(),
+            prisma.ministryTeam.count()
         ]);
 
         const totalRecentAttendance = recentEvents.reduce((acc, event) => {
@@ -216,6 +352,10 @@ export const getDashboardStats = async (req: Request, res: Response) => {
             totalMembers,
             totalEvents,
             averageAttendance,
+            finalistsCount,
+            alumniCount,
+            activeFamilies,
+            activeTeams,
         };
 
         cache.set(cacheKey, responseData);
@@ -258,6 +398,17 @@ export const getCustomReport = async (req: Request, res: Response) => {
                         member: {
                             include: {
                                 region: true,
+                                courseRelation: {
+                                    include: { college: true }
+                                },
+                                familyMemberships: {
+                                    where: { isActive: true },
+                                    include: { family: true }
+                                },
+                                ministryMemberships: {
+                                    where: { isActive: true },
+                                    include: { team: true }
+                                },
                                 memberTags: {
                                     where: { isActive: true },
                                     include: { tag: true }
@@ -297,6 +448,14 @@ export const getCustomReport = async (req: Request, res: Response) => {
         const tagDistribution: Record<string, number> = {};
         const salvationBreakdown: Record<string, number> = {};
 
+        // Academic & Organizational Distributions
+        const yearOfStudyBreakdown: Record<string, number> = { 'Year 1': 0, 'Year 2': 0, 'Year 3': 0, 'Year 4': 0, 'Year 5+': 0, 'Unknown': 0 };
+        const collegeBreakdown: Record<string, number> = {};
+        const courseBreakdown: Record<string, number> = {};
+        const familyBreakdown: Record<string, number> = {};
+        const teamBreakdown: Record<string, number> = {};
+        const specialTagStats = { finalists: 0, alumni: 0, volunteers: 0 };
+
         events.forEach(event => {
             event.attendances.forEach(a => {
                 // Gender
@@ -314,6 +473,52 @@ export const getCustomReport = async (req: Request, res: Response) => {
                     const tagName = mt.tag.name;
                     tagDistribution[tagName] = (tagDistribution[tagName] || 0) + 1;
                 });
+
+                // Year of Study
+                const year = a.member.initialYearOfStudy;
+                if (!year) {
+                    yearOfStudyBreakdown['Unknown']++;
+                } else if (year <= 4) {
+                    yearOfStudyBreakdown[`Year ${year}`]++;
+                } else {
+                    yearOfStudyBreakdown['Year 5+']++;
+                }
+
+                // College
+                const college = a.member.courseRelation?.college?.name || 'Unknown';
+                collegeBreakdown[college] = (collegeBreakdown[college] || 0) + 1;
+
+                // Course
+                const course = a.member.courseRelation?.name || 'Unknown';
+                courseBreakdown[course] = (courseBreakdown[course] || 0) + 1;
+
+                // Family
+                const families = a.member.familyMemberships.filter(fm => fm.isActive);
+                if (families.length === 0) {
+                    familyBreakdown['No Family'] = (familyBreakdown['No Family'] || 0) + 1;
+                } else {
+                    families.forEach(fm => {
+                        const familyName = fm.family.name;
+                        familyBreakdown[familyName] = (familyBreakdown[familyName] || 0) + 1;
+                    });
+                }
+
+                // Team
+                const teams = a.member.ministryMemberships.filter(mm => mm.isActive);
+                if (teams.length === 0) {
+                    teamBreakdown['No Team'] = (teamBreakdown['No Team'] || 0) + 1;
+                } else {
+                    teams.forEach(mm => {
+                        const teamName = mm.team.name;
+                        teamBreakdown[teamName] = (teamBreakdown[teamName] || 0) + 1;
+                    });
+                }
+
+                // Special Tags
+                const tagNames = a.member.memberTags.map(mt => mt.tag.name);
+                if (tagNames.includes('FINALIST')) specialTagStats.finalists++;
+                if (tagNames.includes('ALUMNI')) specialTagStats.alumni++;
+                if (tagNames.includes('CHECK_IN_VOLUNTEER')) specialTagStats.volunteers++;
             });
 
             // Salvations
@@ -339,6 +544,15 @@ export const getCustomReport = async (req: Request, res: Response) => {
                 regionBreakdown,
                 tagDistribution,
                 salvationBreakdown,
+                // Academic Statistics
+                yearOfStudyBreakdown,
+                collegeBreakdown,
+                courseBreakdown,
+                // Organizational Statistics
+                familyBreakdown,
+                teamBreakdown,
+                // Special Tags
+                specialTagStats,
             },
             chartData,
         });
@@ -398,19 +612,34 @@ export const exportEventReportPDF = async (req: Request, res: Response) => {
         );
 
         const memberIds = event.attendances.map((a) => a.memberId);
-        const previousAttendances = await prisma.attendance.findMany({
+
+        // Tag-based first-timer detection with fallback
+        const firstTimerTagCount = await prisma.memberTag.count({
             where: {
                 memberId: { in: memberIds },
-                event: {
-                    date: { lt: event.date },
-                },
+                tag: { name: 'PENDING_FIRST_ATTENDANCE' },
+                isActive: true,
             },
-            select: { memberId: true },
-            distinct: ['memberId'],
         });
 
-        const returningMemberIds = new Set(previousAttendances.map((a) => a.memberId));
-        const firstTimersCount = memberIds.filter((id) => !returningMemberIds.has(id)).length;
+        let firstTimersCount = firstTimerTagCount;
+
+        // Fallback to attendance history if no tags found
+        if (firstTimersCount === 0 && memberIds.length > 0) {
+            const previousAttendances = await prisma.attendance.findMany({
+                where: {
+                    memberId: { in: memberIds },
+                    event: {
+                        date: { lt: event.date },
+                    },
+                },
+                select: { memberId: true },
+                distinct: ['memberId'],
+            });
+
+            const returningMemberIds = new Set(previousAttendances.map((a) => a.memberId));
+            firstTimersCount = memberIds.filter((id) => !returningMemberIds.has(id)).length;
+        }
 
         const guestDetails = event.guestAttendances.map(g => ({
             name: g.guestName,
@@ -522,19 +751,34 @@ export const exportEventReportExcel = async (req: Request, res: Response) => {
         );
 
         const memberIds = event.attendances.map((a) => a.memberId);
-        const previousAttendances = await prisma.attendance.findMany({
+
+        // Tag-based first-timer detection with fallback
+        const firstTimerTagCount = await prisma.memberTag.count({
             where: {
                 memberId: { in: memberIds },
-                event: {
-                    date: { lt: event.date },
-                },
+                tag: { name: 'PENDING_FIRST_ATTENDANCE' },
+                isActive: true,
             },
-            select: { memberId: true },
-            distinct: ['memberId'],
         });
 
-        const returningMemberIds = new Set(previousAttendances.map((a) => a.memberId));
-        const firstTimersCount = memberIds.filter((id) => !returningMemberIds.has(id)).length;
+        let firstTimersCount = firstTimerTagCount;
+
+        // Fallback to attendance history if no tags found
+        if (firstTimersCount === 0 && memberIds.length > 0) {
+            const previousAttendances = await prisma.attendance.findMany({
+                where: {
+                    memberId: { in: memberIds },
+                    event: {
+                        date: { lt: event.date },
+                    },
+                },
+                select: { memberId: true },
+                distinct: ['memberId'],
+            });
+
+            const returningMemberIds = new Set(previousAttendances.map((a) => a.memberId));
+            firstTimersCount = memberIds.filter((id) => !returningMemberIds.has(id)).length;
+        }
 
         const guestDetails = event.guestAttendances.map(g => ({
             name: g.guestName,

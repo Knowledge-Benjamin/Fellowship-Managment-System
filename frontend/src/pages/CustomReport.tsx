@@ -31,6 +31,19 @@ interface CustomReportData {
         regionBreakdown: Record<string, number>;
         salvationBreakdown?: Record<string, number>;
         tagDistribution?: Record<string, number>;
+        // Academic Statistics
+        yearOfStudyBreakdown?: Record<string, number>;
+        collegeBreakdown?: Record<string, number>;
+        courseBreakdown?: Record<string, number>;
+        // Organizational Statistics
+        familyBreakdown?: Record<string, number>;
+        teamBreakdown?: Record<string, number>;
+        // Special Tags
+        specialTagStats?: {
+            finalists: number;
+            alumni: number;
+            volunteers: number;
+        };
     };
     chartData: Array<{
         date: string;
@@ -69,6 +82,20 @@ const CustomReport = () => {
 
     const fetchReport = async () => {
         if (!startDate || !endDate) return;
+
+        // Validate date range
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        if (start > today) {
+            // Future date selected
+            setData(null);
+            setLoading(false);
+            return;
+        }
+
         setLoading(true);
         try {
             const response = await api.get('/reports/custom', {
@@ -82,6 +109,7 @@ const CustomReport = () => {
             setData(response.data);
         } catch (error) {
             console.error('Failed to fetch custom report:', error);
+            setData(null);
         } finally {
             setLoading(false);
         }
@@ -165,6 +193,23 @@ const CustomReport = () => {
     };
 
     const [showExportMenu, setShowExportMenu] = useState(false);
+
+    // Helper function to check if date range is in the future
+    const isFutureDateRange = () => {
+        if (!startDate) return false;
+        const start = new Date(startDate);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        return start > today;
+    };
+
+    // Helper function to check if data is empty
+    const isDataEmpty = () => {
+        return data && (
+            data.stats.totalEvents === 0 ||
+            data.stats.totalAttendance === 0
+        );
+    };
 
     // Prepare region data for chart
     const regionChartData = data?.stats.regionBreakdown
@@ -297,6 +342,36 @@ const CustomReport = () => {
                         <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
                         <p className="text-slate-400">Generating report...</p>
                     </div>
+                ) : isFutureDateRange() ? (
+                    <div className="text-center py-12 bg-[#151d30] rounded-2xl border border-slate-800">
+                        <div className="mx-auto mb-4 w-16 h-16 bg-amber-500/10 rounded-full flex items-center justify-center">
+                            <svg className="w-8 h-8 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <h3 className="text-xl font-bold text-white mb-2">Future Date Selected</h3>
+                        <p className="text-slate-400 mb-4">The selected start date is in the future.</p>
+                        <p className="text-slate-500 text-sm">Reports can only be generated for past dates. Please select a date range up to today.</p>
+                    </div>
+                ) : isDataEmpty() ? (
+                    <div className="text-center py-12 bg-[#151d30] rounded-2xl border border-slate-800">
+                        <div className="mx-auto mb-4 w-16 h-16 bg-indigo-500/10 rounded-full flex items-center justify-center">
+                            <svg className="w-8 h-8 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                            </svg>
+                        </div>
+                        <h3 className="text-xl font-bold text-white mb-2">No Events Found</h3>
+                        <p className="text-slate-400 mb-4">No events occurred during the selected period.</p>
+                        <div className="bg-slate-900/50 rounded-lg p-4 mt-4 text-left max-w-md mx-auto border border-slate-800">
+                            <p className="text-slate-400 text-sm mb-2">Possible reasons:</p>
+                            <ul className="text-slate-500 text-sm space-y-1 list-disc list-inside">
+                                <li>No events held between {startDate} and {endDate}</li>
+                                {type && <li>No {type.replace('_', ' ').toLowerCase()} events in this period</li>}
+                                {regionId && <li>No events in the selected region</li>}
+                            </ul>
+                            <p className="text-slate-600 text-xs mt-3 pt-3 border-t border-slate-800">Try selecting a different date range or adjusting your filters.</p>
+                        </div>
+                    </div>
                 ) : data ? (
                     <div className="animate-fade-in space-y-8">
                         {/* Key Metrics */}
@@ -387,6 +462,146 @@ const CustomReport = () => {
                                 </div>
                             </div>
                         </div>
+
+                        {/* Academic Statistics */}
+                        {(data.stats.yearOfStudyBreakdown || data.stats.collegeBreakdown || data.stats.courseBreakdown) && (
+                            <div className="mb-8">
+                                <h2 className="text-2xl font-bold text-white mb-6">Academic Statistics</h2>
+                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                    {/* Year of Study */}
+                                    {data.stats.yearOfStudyBreakdown && Object.keys(data.stats.yearOfStudyBreakdown).length > 0 && (
+                                        <div className="bg-[#151d30] p-6 rounded-2xl border border-slate-800">
+                                            <h3 className="text-xl font-bold text-white mb-6">Year of Study</h3>
+                                            <div className="h-64">
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <BarChart data={Object.entries(data.stats.yearOfStudyBreakdown).map(([name, value]) => ({ name, value }))}>
+                                                        <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                                                        <XAxis dataKey="name" stroke="#94a3b8" angle={-45} textAnchor="end" height={80} />
+                                                        <YAxis stroke="#94a3b8" />
+                                                        <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', color: '#fff' }} />
+                                                        <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                                                    </BarChart>
+                                                </ResponsiveContainer>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* College Distribution */}
+                                    {data.stats.collegeBreakdown && Object.keys(data.stats.collegeBreakdown).length > 0 && (
+                                        <div className="bg-[#151d30] p-6 rounded-2xl border border-slate-800">
+                                            <h3 className="text-xl font-bold text-white mb-6">Colleges</h3>
+                                            <div className="h-64">
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <PieChart>
+                                                        <Pie
+                                                            data={Object.entries(data.stats.collegeBreakdown).map(([name, value]) => ({ name, value }))}
+                                                            cx="50%"
+                                                            cy="50%"
+                                                            innerRadius={60}
+                                                            outerRadius={80}
+                                                            fill="#8884d8"
+                                                            paddingAngle={5}
+                                                            dataKey="value"
+                                                        >
+                                                            {Object.keys(data.stats.collegeBreakdown).map((_entry, index) => (
+                                                                <Cell key={`cell-${index}`} fill={['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4'][index % 6]} />
+                                                            ))}
+                                                        </Pie>
+                                                        <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', color: '#fff' }} />
+                                                        <Legend />
+                                                    </PieChart>
+                                                </ResponsiveContainer>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Top Courses */}
+                                    {data.stats.courseBreakdown && Object.keys(data.stats.courseBreakdown).length > 0 && (
+                                        <div className="bg-[#151d30] p-6 rounded-2xl border border-slate-800">
+                                            <h3 className="text-xl font-bold text-white mb-6">Top Courses</h3>
+                                            <div className="h-64 overflow-y-auto custom-scrollbar">
+                                                <div className="space-y-3">
+                                                    {Object.entries(data.stats.courseBreakdown)
+                                                        .sort((a, b) => b[1] - a[1])
+                                                        .slice(0, 10)
+                                                        .map(([name, value]) => (
+                                                            <div key={name} className="flex justify-between items-center bg-slate-900/50 p-3 rounded-lg">
+                                                                <span className="text-slate-300 text-sm truncate flex-1">{name}</span>
+                                                                <span className="text-white font-bold ml-2">{value}</span>
+                                                            </div>
+                                                        ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Organizational Statistics */}
+                        {(data.stats.familyBreakdown || data.stats.teamBreakdown || data.stats.specialTagStats) && (
+                            <div className="mb-8">
+                                <h2 className="text-2xl font-bold text-white mb-6">Organizational Statistics</h2>
+                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                    {/* Family Participation */}
+                                    {data.stats.familyBreakdown && Object.keys(data.stats.familyBreakdown).length > 0 && (
+                                        <div className="bg-[#151d30] p-6 rounded-2xl border border-slate-800">
+                                            <h3 className="text-xl font-bold text-white mb-6">Family Participation</h3>
+                                            <div className="h-64">
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <BarChart data={Object.entries(data.stats.familyBreakdown).map(([name, value]) => ({ name, value }))} layout="vertical">
+                                                        <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                                                        <XAxis type="number" stroke="#94a3b8" />
+                                                        <YAxis dataKey="name" type="category" stroke="#94a3b8" width={100} />
+                                                        <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', color: '#fff' }} />
+                                                        <Bar dataKey="value" fill="#10b981" radius={[0, 4, 4, 0]} />
+                                                    </BarChart>
+                                                </ResponsiveContainer>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Team Participation */}
+                                    {data.stats.teamBreakdown && Object.keys(data.stats.teamBreakdown).length > 0 && (
+                                        <div className="bg-[#151d30] p-6 rounded-2xl border border-slate-800">
+                                            <h3 className="text-xl font-bold text-white mb-6">Ministry Teams</h3>
+                                            <div className="h-64">
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <BarChart data={Object.entries(data.stats.teamBreakdown).map(([name, value]) => ({ name, value }))} layout="vertical">
+                                                        <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                                                        <XAxis type="number" stroke="#94a3b8" />
+                                                        <YAxis dataKey="name" type="category" stroke="#94a3b8" width={120} />
+                                                        <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', color: '#fff' }} />
+                                                        <Bar dataKey="value" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
+                                                    </BarChart>
+                                                </ResponsiveContainer>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Special Tags Stats */}
+                                    {data.stats.specialTagStats && (
+                                        <div className="bg-[#151d30] p-6 rounded-2xl border border-slate-800">
+                                            <h3 className="text-xl font-bold text-white mb-6">Special Groups</h3>
+                                            <div className="space-y-4">
+                                                <div className="bg-gradient-to-r from-yellow-500/10 to-yellow-600/10 p-4 rounded-xl border border-yellow-500/20">
+                                                    <p className="text-yellow-400 text-sm uppercase mb-1">Finalists</p>
+                                                    <p className="text-3xl font-bold text-white">{data.stats.specialTagStats.finalists}</p>
+                                                </div>
+                                                <div className="bg-gradient-to-r from-blue-500/10 to-blue-600/10 p-4 rounded-xl border border-blue-500/20">
+                                                    <p className="text-blue-400 text-sm uppercase mb-1">Alumni</p>
+                                                    <p className="text-3xl font-bold text-white">{data.stats.specialTagStats.alumni}</p>
+                                                </div>
+                                                <div className="bg-gradient-to-r from-green-500/10 to-green-600/10 p-4 rounded-xl border border-green-500/20">
+                                                    <p className="text-green-400 text-sm uppercase mb-1">Volunteers</p>
+                                                    <p className="text-3xl font-bold text-white">{data.stats.specialTagStats.volunteers}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
 
                         {/* Spiritual Decisions & Tags */}
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">

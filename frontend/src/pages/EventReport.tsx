@@ -36,6 +36,19 @@ interface EventReportData {
         firstTimersCount: number;
         salvationBreakdown?: Record<string, number>;
         tagDistribution?: Record<string, number>;
+        // Academic Statistics
+        yearOfStudyBreakdown?: Record<string, number>;
+        collegeBreakdown?: Record<string, number>;
+        courseBreakdown?: Record<string, number>;
+        // Organizational Statistics
+        familyBreakdown?: Record<string, number>;
+        teamBreakdown?: Record<string, number>;
+        // Special Tags
+        specialTagStats?: {
+            finalists: number;
+            alumni: number;
+            volunteers: number;
+        };
     };
     guests: Array<{
         name: string;
@@ -376,6 +389,146 @@ const EventReport = () => {
                         </div>
                     </div>
                 </div>
+
+                {/* Academic Statistics */}
+                {(report.stats.yearOfStudyBreakdown || report.stats.collegeBreakdown || report.stats.courseBreakdown) && (
+                    <div className="mb-8">
+                        <h2 className="text-2xl font-bold text-white mb-6">Academic Statistics</h2>
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            {/* Year of Study */}
+                            {report.stats.yearOfStudyBreakdown && Object.keys(report.stats.yearOfStudyBreakdown).length > 0 && (
+                                <div className="bg-[#151d30] p-6 rounded-2xl border border-slate-800">
+                                    <h3 className="text-xl font-bold text-white mb-6">Year of Study</h3>
+                                    <div className="h-64">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart data={Object.entries(report.stats.yearOfStudyBreakdown).map(([name, value]) => ({ name, value }))}>
+                                                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                                                <XAxis dataKey="name" stroke="#94a3b8" angle={-45} textAnchor="end" height={80} />
+                                                <YAxis stroke="#94a3b8" />
+                                                <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', color: '#fff' }} />
+                                                <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* College Distribution */}
+                            {report.stats.collegeBreakdown && Object.keys(report.stats.collegeBreakdown).length > 0 && (
+                                <div className="bg-[#151d30] p-6 rounded-2xl border border-slate-800">
+                                    <h3 className="text-xl font-bold text-white mb-6">Colleges</h3>
+                                    <div className="h-64">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <PieChart>
+                                                <Pie
+                                                    data={Object.entries(report.stats.collegeBreakdown).map(([name, value]) => ({ name, value }))}
+                                                    cx="50%"
+                                                    cy="50%"
+                                                    innerRadius={60}
+                                                    outerRadius={80}
+                                                    fill="#8884d8"
+                                                    paddingAngle={5}
+                                                    dataKey="value"
+                                                >
+                                                    {Object.keys(report.stats.collegeBreakdown).map((_entry, index) => (
+                                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                                    ))}
+                                                </Pie>
+                                                <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', color: '#fff' }} />
+                                                <Legend />
+                                            </PieChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Top Courses */}
+                            {report.stats.courseBreakdown && Object.keys(report.stats.courseBreakdown).length > 0 && (
+                                <div className="bg-[#151d30] p-6 rounded-2xl border border-slate-800">
+                                    <h3 className="text-xl font-bold text-white mb-6">Top Courses</h3>
+                                    <div className="h-64 overflow-y-auto custom-scrollbar">
+                                        <div className="space-y-3">
+                                            {Object.entries(report.stats.courseBreakdown)
+                                                .sort((a, b) => b[1] - a[1])
+                                                .slice(0, 10)
+                                                .map(([name, value]) => (
+                                                    <div key={name} className="flex justify-between items-center bg-slate-900/50 p-3 rounded-lg">
+                                                        <span className="text-slate-300 text-sm truncate flex-1">{name}</span>
+                                                        <span className="text-white font-bold ml-2">{value}</span>
+                                                    </div>
+                                                ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* Organizational Statistics */}
+                {(report.stats.familyBreakdown || report.stats.teamBreakdown || report.stats.specialTagStats) && (
+                    <div className="mb-8">
+                        <h2 className="text-2xl font-bold text-white mb-6">Organizational Statistics</h2>
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            {/* Family Participation */}
+                            {report.stats.familyBreakdown && Object.keys(report.stats.familyBreakdown).length > 0 && (
+                                <div className="bg-[#151d30] p-6 rounded-2xl border border-slate-800">
+                                    <h3 className="text-xl font-bold text-white mb-6">Family Participation</h3>
+                                    <div className="h-64">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart data={Object.entries(report.stats.familyBreakdown).map(([name, value]) => ({ name, value }))} layout="vertical">
+                                                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                                                <XAxis type="number" stroke="#94a3b8" />
+                                                <YAxis dataKey="name" type="category" stroke="#94a3b8" width={100} />
+                                                <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', color: '#fff' }} />
+                                                <Bar dataKey="value" fill="#10b981" radius={[0, 4, 4, 0]} />
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Team Participation */}
+                            {report.stats.teamBreakdown && Object.keys(report.stats.teamBreakdown).length > 0 && (
+                                <div className="bg-[#151d30] p-6 rounded-2xl border border-slate-800">
+                                    <h3 className="text-xl font-bold text-white mb-6">Ministry Teams</h3>
+                                    <div className="h-64">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart data={Object.entries(report.stats.teamBreakdown).map(([name, value]) => ({ name, value }))} layout="vertical">
+                                                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                                                <XAxis type="number" stroke="#94a3b8" />
+                                                <YAxis dataKey="name" type="category" stroke="#94a3b8" width={120} />
+                                                <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', color: '#fff' }} />
+                                                <Bar dataKey="value" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Special Tags Stats */}
+                            {report.stats.specialTagStats && (
+                                <div className="bg-[#151d30] p-6 rounded-2xl border border-slate-800">
+                                    <h3 className="text-xl font-bold text-white mb-6">Special Groups</h3>
+                                    <div className="space-y-4">
+                                        <div className="bg-gradient-to-r from-yellow-500/10 to-yellow-600/10 p-4 rounded-xl border border-yellow-500/20">
+                                            <p className="text-yellow-400 text-sm uppercase mb-1">Finalists</p>
+                                            <p className="text-3xl font-bold text-white">{report.stats.specialTagStats.finalists}</p>
+                                        </div>
+                                        <div className="bg-gradient-to-r from-blue-500/10 to-blue-600/10 p-4 rounded-xl border border-blue-500/20">
+                                            <p className="text-blue-400 text-sm uppercase mb-1">Alumni</p>
+                                            <p className="text-3xl font-bold text-white">{report.stats.specialTagStats.alumni}</p>
+                                        </div>
+                                        <div className="bg-gradient-to-r from-green-500/10 to-green-600/10 p-4 rounded-xl border border-green-500/20">
+                                            <p className="text-green-400 text-sm uppercase mb-1">Volunteers</p>
+                                            <p className="text-3xl font-bold text-white">{report.stats.specialTagStats.volunteers}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
 
                 {/* Spiritual Decisions & Tags */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">

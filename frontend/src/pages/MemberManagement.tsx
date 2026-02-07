@@ -15,6 +15,13 @@ interface Member {
         id: string;
         name: string;
     };
+    courseRelation?: {
+        id: string;
+        name: string;
+        durationYears: number;
+    };
+    initialYearOfStudy?: number;
+    initialSemester?: number;
     tags: Tag[];
 }
 
@@ -202,6 +209,7 @@ const MemberManagement = () => {
                                         <th className="text-left py-4 px-4 text-slate-400 font-medium">Member</th>
                                         <th className="text-left py-4 px-4 text-slate-400 font-medium">Contact</th>
                                         <th className="text-left py-4 px-4 text-slate-400 font-medium">Region</th>
+                                        <th className="text-left py-4 px-4 text-slate-400 font-medium">Academic Status</th>
                                         <th className="text-left py-4 px-4 text-slate-400 font-medium">Tags</th>
                                     </tr>
                                 </thead>
@@ -233,6 +241,22 @@ const MemberManagement = () => {
                                             </td>
                                             <td className="py-3 px-4">
                                                 <span className="text-sm">{member.region.name}</span>
+                                            </td>
+                                            <td className="py-3 px-4">
+                                                {member.initialYearOfStudy && member.initialSemester ? (
+                                                    <div className="text-sm">
+                                                        <div className="font-medium text-indigo-400">
+                                                            Yr {member.initialYearOfStudy}, Sem {member.initialSemester}
+                                                        </div>
+                                                        {member.courseRelation && (
+                                                            <div className="text-xs text-slate-500 mt-0.5">
+                                                                {member.courseRelation.name}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-sm text-slate-500">N/A</span>
+                                                )}
                                             </td>
                                             <td className="py-3 px-4">
                                                 {member.tags && member.tags.length > 0 ? (

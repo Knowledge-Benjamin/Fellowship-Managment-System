@@ -21,6 +21,19 @@ interface EventReportData {
         firstTimersCount: number;
         salvationBreakdown?: Record<string, number>;
         tagDistribution?: Record<string, number>;
+        // Academic Statistics
+        yearOfStudyBreakdown?: Record<string, number>;
+        collegeBreakdown?: Record<string, number>;
+        courseBreakdown?: Record<string, number>;
+        // Organizational Statistics
+        familyBreakdown?: Record<string, number>;
+        teamBreakdown?: Record<string, number>;
+        // Special Tags
+        specialTagStats?: {
+            finalists: number;
+            alumni: number;
+            volunteers: number;
+        };
     };
     guests: Array<{ name: string; purpose: string | null }>;
 }
@@ -35,6 +48,19 @@ interface CustomReportData {
         regionBreakdown: Record<string, number>;
         salvationBreakdown?: Record<string, number>;
         tagDistribution?: Record<string, number>;
+        // Academic Statistics
+        yearOfStudyBreakdown?: Record<string, number>;
+        collegeBreakdown?: Record<string, number>;
+        courseBreakdown?: Record<string, number>;
+        // Organizational Statistics
+        familyBreakdown?: Record<string, number>;
+        teamBreakdown?: Record<string, number>;
+        // Special Tags
+        specialTagStats?: {
+            finalists: number;
+            alumni: number;
+            volunteers: number;
+        };
     };
     chartData: Array<{
         date: string;
@@ -175,6 +201,90 @@ export const generateEventReportPDF = async (
             doc.fillColor('#1e293b').fontSize(11).text(`${tag}: ${count}`);
         });
         doc.moveDown(1);
+    }
+
+    // ACADEMIC STATISTICS SECTION
+    if (data.stats.yearOfStudyBreakdown || data.stats.collegeBreakdown || data.stats.courseBreakdown) {
+        doc.addPage();
+        doc.fillColor('#3b82f6').fontSize(16).text('Academic Statistics');
+        doc.moveDown(1);
+
+        // Year of Study
+        if (data.stats.yearOfStudyBreakdown && Object.keys(data.stats.yearOfStudyBreakdown).length > 0) {
+            doc.fillColor('#14b8a6').fontSize(14).text('Year of Study Distribution');
+            doc.moveDown(0.5);
+            Object.entries(data.stats.yearOfStudyBreakdown)
+                .sort((a, b) => a[0].localeCompare(b[0]))
+                .forEach(([year, count]) => {
+                    doc.fillColor('#1e293b').fontSize(11).text(`${year}: ${count}`);
+                });
+            doc.moveDown(1);
+        }
+
+        // Colleges
+        if (data.stats.collegeBreakdown && Object.keys(data.stats.collegeBreakdown).length > 0) {
+            doc.fillColor('#14b8a6').fontSize(14).text('College Distribution');
+            doc.moveDown(0.5);
+            Object.entries(data.stats.collegeBreakdown)
+                .sort((a, b) => b[1] - a[1])
+                .forEach(([college, count]) => {
+                    doc.fillColor('#1e293b').fontSize(11).text(`${college}: ${count}`);
+                });
+            doc.moveDown(1);
+        }
+
+        // Top Courses
+        if (data.stats.courseBreakdown && Object.keys(data.stats.courseBreakdown).length > 0) {
+            doc.fillColor('#14b8a6').fontSize(14).text('Top Courses');
+            doc.moveDown(0.5);
+            Object.entries(data.stats.courseBreakdown)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 15)
+                .forEach(([course, count]) => {
+                    doc.fillColor('#1e293b').fontSize(10).text(`${course}: ${count}`);
+                });
+        }
+    }
+
+    // ORGANIZATIONAL STATISTICS SECTION
+    if (data.stats.familyBreakdown || data.stats.teamBreakdown || data.stats.specialTagStats) {
+        doc.addPage();
+        doc.fillColor('#10b981').fontSize(16).text('Organizational Statistics');
+        doc.moveDown(1);
+
+        // Family Participation
+        if (data.stats.familyBreakdown && Object.keys(data.stats.familyBreakdown).length > 0) {
+            doc.fillColor('#14b8a6').fontSize(14).text('Family Participation');
+            doc.moveDown(0.5);
+            Object.entries(data.stats.familyBreakdown)
+                .sort((a, b) => b[1] - a[1])
+                .forEach(([family, count]) => {
+                    doc.fillColor('#1e293b').fontSize(11).text(`${family}: ${count}`);
+                });
+            doc.moveDown(1);
+        }
+
+        // Ministry Teams
+        if (data.stats.teamBreakdown && Object.keys(data.stats.teamBreakdown).length > 0) {
+            doc.fillColor('#14b8a6').fontSize(14).text('Ministry Team Participation');
+            doc.moveDown(0.5);
+            Object.entries(data.stats.teamBreakdown)
+                .sort((a, b) => b[1] - a[1])
+                .forEach(([team, count]) => {
+                    doc.fillColor('#1e293b').fontSize(11).text(`${team}: ${count}`);
+                });
+            doc.moveDown(1);
+        }
+
+        // Special Groups
+        if (data.stats.specialTagStats) {
+            doc.fillColor('#14b8a6').fontSize(14).text('Special Groups');
+            doc.moveDown(0.5);
+            doc.fillColor('#1e293b').fontSize(11)
+                .text(`Finalists: ${data.stats.specialTagStats.finalists}`)
+                .text(`Alumni: ${data.stats.specialTagStats.alumni}`)
+                .text(`Volunteers: ${data.stats.specialTagStats.volunteers}`);
+        }
     }
 
     // GUEST LIST SECTION (if applicable)
@@ -428,6 +538,110 @@ export const generateEventReportExcel = async (
         guestSheet.columns = [{ width: 30 }, { width: 40 }];
     }
 
+    // ACADEMIC STATISTICS SHEET
+    if (data.stats.yearOfStudyBreakdown || data.stats.collegeBreakdown || data.stats.courseBreakdown) {
+        const academicSheet = workbook.addWorksheet('Academic Stats');
+
+        // Header
+        academicSheet.mergeCells('A1:B1');
+        const academicTitleCell = academicSheet.getCell('A1');
+        academicTitleCell.value = 'Academic Statistics';
+        academicTitleCell.font = { size: 16, bold: true, color: { argb: 'FFFFFFFF' } };
+        academicTitleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF3b82f6' } };
+        academicTitleCell.alignment = { horizontal: 'center' };
+        academicSheet.getRow(1).height = 30;
+        academicSheet.addRow([]);
+
+        // Year of Study
+        if (data.stats.yearOfStudyBreakdown && Object.keys(data.stats.yearOfStudyBreakdown).length > 0) {
+            const yearHeader = academicSheet.addRow(['Year of Study', 'Count']);
+            yearHeader.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            yearHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF475569' } };
+            Object.entries(data.stats.yearOfStudyBreakdown)
+                .sort((a, b) => a[0].localeCompare(b[0]))
+                .forEach(([year, count]) => academicSheet.addRow([year, count]));
+            academicSheet.addRow([]);
+        }
+
+        // Colleges
+        if (data.stats.collegeBreakdown && Object.keys(data.stats.collegeBreakdown).length > 0) {
+            const collegeHeader = academicSheet.addRow(['College', 'Count']);
+            collegeHeader.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            collegeHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF475569' } };
+            Object.entries(data.stats.collegeBreakdown)
+                .sort((a, b) => b[1] - a[1])
+                .forEach(([college, count]) => academicSheet.addRow([college, count]));
+            academicSheet.addRow([]);
+        }
+
+        // Top Courses
+        if (data.stats.courseBreakdown && Object.keys(data.stats.courseBreakdown).length > 0) {
+            const courseHeader = academicSheet.addRow(['Course', 'Count']);
+            courseHeader.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            courseHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF475569' } };
+            Object.entries(data.stats.courseBreakdown)
+                .sort((a, b) => b[1] - a[1])
+                .forEach(([course, count]) => academicSheet.addRow([course, count]));
+        }
+
+        academicSheet.columns = [{ width: 35 }, { width: 15 }];
+    }
+
+    // ORGANIZATIONAL STATISTICS SHEET
+    if (data.stats.familyBreakdown || data.stats.teamBreakdown || data.stats.specialTagStats) {
+        const orgSheet = workbook.addWorksheet('Organizational Stats');
+
+        // Header
+        orgSheet.mergeCells('A1:B1');
+        const orgTitleCell = orgSheet.getCell('A1');
+        orgTitleCell.value = 'Organizational Statistics';
+        orgTitleCell.font = { size: 16, bold: true, color: { argb: 'FFFFFFFF' } };
+        orgTitleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF10b981' } };
+        orgTitleCell.alignment = { horizontal: 'center' };
+        orgSheet.getRow(1).height = 30;
+        orgSheet.addRow([]);
+
+        // Families
+        if (data.stats.familyBreakdown && Object.keys(data.stats.familyBreakdown).length > 0) {
+            const familyHeader = orgSheet.addRow(['Family Group', 'Members']);
+            familyHeader.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            familyHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF475569' } };
+            Object.entries(data.stats.familyBreakdown)
+                .sort((a, b) => b[1] - a[1])
+                .forEach(([family, count]) => orgSheet.addRow([family, count]));
+            orgSheet.addRow([]);
+        }
+
+        // Teams
+        if (data.stats.teamBreakdown && Object.keys(data.stats.teamBreakdown).length > 0) {
+            const teamHeader = orgSheet.addRow(['Ministry Team', 'Members']);
+            teamHeader.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            teamHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF475569' } };
+            Object.entries(data.stats.teamBreakdown)
+                .sort((a, b) => b[1] - a[1])
+                .forEach(([team, count]) => orgSheet.addRow([team, count]));
+            orgSheet.addRow([]);
+        }
+
+        // Special Groups
+        if (data.stats.specialTagStats) {
+            const specialHeader = orgSheet.addRow(['Special Group', 'Count']);
+            specialHeader.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            specialHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF475569' } };
+
+            const finalistRow = orgSheet.addRow(['Finalists', data.stats.specialTagStats.finalists]);
+            finalistRow.getCell(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFfbbf24' } };
+
+            const alumniRow = orgSheet.addRow(['Alumni', data.stats.specialTagStats.alumni]);
+            alumniRow.getCell(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF3b82f6' } };
+
+            const volunteerRow = orgSheet.addRow(['Volunteers', data.stats.specialTagStats.volunteers]);
+            volunteerRow.getCell(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF10b981' } };
+        }
+
+        orgSheet.columns = [{ width: 30 }, { width: 15 }];
+    }
+
     // Protect Summary sheet
     await summarySheet.protect('fellowship2024', {
         selectLockedCells: true,
@@ -540,6 +754,84 @@ export const generateCustomReportPDF = async (
             .forEach(([tag, count]) => {
                 doc.fillColor('#1e293b').fontSize(12).text(`${tag}: ${count}`);
             });
+    }
+
+    // ACADEMIC STATISTICS
+    if (data.stats.yearOfStudyBreakdown || data.stats.collegeBreakdown || data.stats.courseBreakdown) {
+        doc.addPage();
+        doc.fillColor('#3b82f6').fontSize(16).text('Academic Statistics');
+        doc.moveDown(1);
+
+        if (data.stats.yearOfStudyBreakdown && Object.keys(data.stats.yearOfStudyBreakdown).length > 0) {
+            doc.fillColor('#14b8a6').fontSize(14).text('Year of Study Distribution');
+            doc.moveDown(0.5);
+            Object.entries(data.stats.yearOfStudyBreakdown)
+                .sort((a, b) => a[0].localeCompare(b[0]))
+                .forEach(([year, count]) => {
+                    doc.fillColor('#1e293b').fontSize(12).text(`${year}: ${count}`);
+                });
+            doc.moveDown(1);
+        }
+
+        if (data.stats.collegeBreakdown && Object.keys(data.stats.collegeBreakdown).length > 0) {
+            doc.fillColor('#14b8a6').fontSize(14).text('College Distribution');
+            doc.moveDown(0.5);
+            Object.entries(data.stats.collegeBreakdown)
+                .sort((a, b) => b[1] - a[1])
+                .forEach(([college, count]) => {
+                    doc.fillColor('#1e293b').fontSize(12).text(`${college}: ${count}`);
+                });
+            doc.moveDown(1);
+        }
+
+        if (data.stats.courseBreakdown && Object.keys(data.stats.courseBreakdown).length > 0) {
+            doc.fillColor('#14b8a6').fontSize(14).text('Top Courses');
+            doc.moveDown(0.5);
+            Object.entries(data.stats.courseBreakdown)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 15)
+                .forEach(([course, count]) => {
+                    doc.fillColor('#1e293b').fontSize(11).text(`${course}: ${count}`);
+                });
+        }
+    }
+
+    // ORGANIZATIONAL STATISTICS
+    if (data.stats.familyBreakdown || data.stats.teamBreakdown || data.stats.specialTagStats) {
+        doc.addPage();
+        doc.fillColor('#10b981').fontSize(16).text('Organizational Statistics');
+        doc.moveDown(1);
+
+        if (data.stats.familyBreakdown && Object.keys(data.stats.familyBreakdown).length > 0) {
+            doc.fillColor('#14b8a6').fontSize(14).text('Family Participation');
+            doc.moveDown(0.5);
+            Object.entries(data.stats.familyBreakdown)
+                .sort((a, b) => b[1] - a[1])
+                .forEach(([family, count]) => {
+                    doc.fillColor('#1e293b').fontSize(12).text(`${family}: ${count}`);
+                });
+            doc.moveDown(1);
+        }
+
+        if (data.stats.teamBreakdown && Object.keys(data.stats.teamBreakdown).length > 0) {
+            doc.fillColor('#14b8a6').fontSize(14).text('Ministry Team Participation');
+            doc.moveDown(0.5);
+            Object.entries(data.stats.teamBreakdown)
+                .sort((a, b) => b[1] - a[1])
+                .forEach(([team, count]) => {
+                    doc.fillColor('#1e293b').fontSize(12).text(`${team}: ${count}`);
+                });
+            doc.moveDown(1);
+        }
+
+        if (data.stats.specialTagStats) {
+            doc.fillColor('#14b8a6').fontSize(14).text('Special Groups');
+            doc.moveDown(0.5);
+            doc.fillColor('#1e293b').fontSize(12)
+                .text(`Finalists: ${data.stats.specialTagStats.finalists}`)
+                .text(`Alumni: ${data.stats.specialTagStats.alumni}`)
+                .text(`Volunteers: ${data.stats.specialTagStats.volunteers}`);
+        }
     }
 
     // FOOTER
@@ -655,6 +947,82 @@ export const generateCustomReportExcel = async (
             .forEach(([tag, count]) => {
                 sheet.addRow([tag, count]);
             });
+    }
+
+    // Academic Statistics
+    if (data.stats.yearOfStudyBreakdown || data.stats.collegeBreakdown || data.stats.courseBreakdown) {
+        sheet.addRow([]);
+        const academicTitleRow = sheet.addRow(['Academic Statistics']);
+        academicTitleRow.font = { size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
+        academicTitleRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF3b82f6' } };
+        sheet.addRow([]);
+
+        if (data.stats.yearOfStudyBreakdown && Object.keys(data.stats.yearOfStudyBreakdown).length > 0) {
+            const yearHeader = sheet.addRow(['Year of Study', 'Count']);
+            yearHeader.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            yearHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF475569' } };
+            Object.entries(data.stats.yearOfStudyBreakdown)
+                .sort((a, b) => a[0].localeCompare(b[0]))
+                .forEach(([year, count]) => sheet.addRow([year, count]));
+            sheet.addRow([]);
+        }
+
+        if (data.stats.collegeBreakdown && Object.keys(data.stats.collegeBreakdown).length > 0) {
+            const collegeHeader = sheet.addRow(['College', 'Count']);
+            collegeHeader.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            collegeHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF475569' } };
+            Object.entries(data.stats.collegeBreakdown)
+                .sort((a, b) => b[1] - a[1])
+                .forEach(([college, count]) => sheet.addRow([college, count]));
+            sheet.addRow([]);
+        }
+
+        if (data.stats.courseBreakdown && Object.keys(data.stats.courseBreakdown).length > 0) {
+            const courseHeader = sheet.addRow(['Course', 'Count']);
+            courseHeader.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            courseHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF475569' } };
+            Object.entries(data.stats.courseBreakdown)
+                .sort((a, b) => b[1] - a[1])
+                .forEach(([course, count]) => sheet.addRow([course, count]));
+        }
+    }
+
+    // Organizational Statistics
+    if (data.stats.familyBreakdown || data.stats.teamBreakdown || data.stats.specialTagStats) {
+        sheet.addRow([]);
+        const orgTitleRow = sheet.addRow(['Organizational Statistics']);
+        orgTitleRow.font = { size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
+        orgTitleRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF10b981' } };
+        sheet.addRow([]);
+
+        if (data.stats.familyBreakdown && Object.keys(data.stats.familyBreakdown).length > 0) {
+            const familyHeader = sheet.addRow(['Family Group', 'Members']);
+            familyHeader.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            familyHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF475569' } };
+            Object.entries(data.stats.familyBreakdown)
+                .sort((a, b) => b[1] - a[1])
+                .forEach(([family, count]) => sheet.addRow([family, count]));
+            sheet.addRow([]);
+        }
+
+        if (data.stats.teamBreakdown && Object.keys(data.stats.teamBreakdown).length > 0) {
+            const teamHeader = sheet.addRow(['Ministry Team', 'Members']);
+            teamHeader.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            teamHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF475569' } };
+            Object.entries(data.stats.teamBreakdown)
+                .sort((a, b) => b[1] - a[1])
+                .forEach(([team, count]) => sheet.addRow([team, count]));
+            sheet.addRow([]);
+        }
+
+        if (data.stats.specialTagStats) {
+            const specialHeader = sheet.addRow(['Special Group', 'Count']);
+            specialHeader.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            specialHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF475569' } };
+            sheet.addRow(['Finalists', data.stats.specialTagStats.finalists]);
+            sheet.addRow(['Alumni', data.stats.specialTagStats.alumni]);
+            sheet.addRow(['Volunteers', data.stats.specialTagStats.volunteers]);
+        }
     }
 
     sheet.columns = [{ width: 25 }, { width: 15 }];

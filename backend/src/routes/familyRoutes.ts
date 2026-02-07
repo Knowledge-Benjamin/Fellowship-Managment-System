@@ -15,6 +15,8 @@ router.get('/my-family-member', familyController.getMyFamilyAsMember);
 
 // Family CRUD - FM only (Regional Heads use controller-level filtering)
 router.get('/', authorize('FELLOWSHIP_MANAGER'), familyController.getAllFamilies);
+// Public route for registration - fetch families by region
+router.get('/region/:regionId', familyController.getFamiliesByRegion);
 router.post('/', authorize('FELLOWSHIP_MANAGER'), familyController.createFamily);
 router.get('/:id', familyController.getFamilyById); // Allow all authenticated users to view
 router.put('/:id', authorize('FELLOWSHIP_MANAGER'), familyController.updateFamily);

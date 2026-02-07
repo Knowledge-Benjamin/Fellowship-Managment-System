@@ -5,12 +5,14 @@ import { z } from 'zod';
 const createCourseSchema = z.object({
     name: z.string().min(1, 'Course name is required'),
     code: z.string().min(1, 'Course code is required').toUpperCase(),
+    durationYears: z.number().int().min(1).max(7),
     collegeId: z.string().uuid().optional(),
 });
 
 const updateCourseSchema = z.object({
     name: z.string().min(1, 'Course name is required').optional(),
     code: z.string().min(1, 'Course code is required').toUpperCase().optional(),
+    durationYears: z.number().int().min(1).max(7).optional(),
     collegeId: z.string().uuid().optional(),
 });
 

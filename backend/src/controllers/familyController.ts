@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import prisma from '../prisma';
+import { formatRegionName } from '../utils/displayFormatters';
 
 // Validation schemas
 const createFamilySchema = z.object({
@@ -89,9 +90,17 @@ export const createFamily = async (req: Request, res: Response) => {
             return family;
         });
 
+        // Transform region name for display
+        const formattedFamily = {
+            ...result,
+            region: result.region ? {
+                name: formatRegionName(result.region.name)
+            } : null
+        };
+
         res.status(201).json({
             message: 'Family created successfully',
-            family: result,
+            family: formattedFamily,
         });
     } catch (error) {
         if (error instanceof z.ZodError) {
@@ -159,10 +168,70 @@ export const getAllFamilies = async (req: Request, res: Response) => {
             ],
         });
 
-        res.json(families);
+        // Transform region names for display
+        const formattedFamilies = families.map(family => ({
+            ...family,
+            region: family.region ? {
+                ...family.region,
+                name: formatRegionName(family.region.name)
+            } : null
+        }));
+
+        res.json(formattedFamilies);
     } catch (error) {
         console.error('Error fetching families:', error);
         res.status(500).json({ message: 'Failed to fetch families' });
+    }
+};
+
+// Get families by region (for registration dropdown)
+export const getFamiliesByRegion = async (req: Request, res: Response) => {
+    try {
+        const { regionId } = req.params;
+
+        if (!regionId) {
+            return res.status(400).json({ error: 'Region ID is required' });
+        }
+
+        const families = await prisma.familyGroup.findMany({
+            where: {
+                regionId,
+                isActive: true,
+            },
+            select: {
+                id: true,
+                name: true,
+                familyHead: {
+                    select: {
+                        id: true,
+                        fullName: true,
+                    },
+                },
+                _count: {
+                    select: {
+                        members: {
+                            where: { isActive: true },
+                        },
+                    },
+                },
+            },
+            orderBy: {
+                name: 'asc',
+            },
+        });
+
+        // Transform to simpler structure for registration
+        const formattedFamilies = families.map(family => ({
+            id: family.id,
+            name: family.name,
+            familyHead: family.familyHead,
+            memberCount: family._count.members,
+        }));
+
+        res.json(formattedFamilies);
+    } catch (error) {
+        console.error('Error fetching families by region:', error);
+        res.status(500).json({ error: 'Failed to fetch families' });
     }
 };
 
@@ -209,7 +278,16 @@ export const getFamilyById = async (req: Request, res: Response) => {
             return res.status(404).json({ message: 'Family not found' });
         }
 
-        res.json(family);
+        // Transform region name for display
+        const formattedFamily = {
+            ...family,
+            region: family.region ? {
+                ...family.region,
+                name: formatRegionName(family.region.name)
+            } : null
+        };
+
+        res.json(formattedFamily);
     } catch (error) {
         console.error('Error fetching family:', error);
         res.status(500).json({ message: 'Failed to fetch family' });
@@ -756,11 +834,14 @@ export const getMyFamily = async (req: Request, res: Response) => {
             femaleCount: members.filter(m => m.gender === 'FEMALE').length,
         };
 
-        // Format response
+        // Format response with transformed region name
         const response = {
             id: family.id,
             name: family.name,
-            region: family.region,
+            region: family.region ? {
+                ...family.region,
+                name: formatRegionName(family.region.name)
+            } : null,
             familyHead: family.familyHead,
             meetingDay: family.meetingDay,
             meetingTime: family.meetingTime,
@@ -846,11 +927,14 @@ export const getMyFamilyAsMember = async (req: Request, res: Response) => {
             femaleCount: members.filter(m => m.gender === 'FEMALE').length,
         };
 
-        // Format response
+        // Format response with transformed region name
         const response = {
             id: family.id,
             name: family.name,
-            region: family.region,
+            region: family.region ? {
+                ...family.region,
+                name: formatRegionName(family.region.name)
+            } : null,
             familyHead: family.familyHead,
             meetingDay: family.meetingDay,
             meetingTime: family.meetingTime,

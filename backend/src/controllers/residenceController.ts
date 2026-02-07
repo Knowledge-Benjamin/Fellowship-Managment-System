@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import prisma from '../prisma';
+import { formatResidencesForDisplay, formatResidenceForDisplay, formatRegionName } from '../utils/displayFormatters';
 
 // Validation schemas
 const createResidenceSchema = z.object({
@@ -26,7 +27,13 @@ export const getResidences = async (req: Request, res: Response) => {
             orderBy: { name: 'asc' }
         });
 
-        res.json(residences);
+        // Transform residence and region names for display (uppercase)
+        const formattedResidences = residences.map(r => ({
+            ...formatResidenceForDisplay(r),
+            region: r.region ? { name: formatRegionName(r.region.name) } : null
+        }));
+
+        res.json(formattedResidences);
     } catch (error) {
         console.error('Get residences error:', error);
         res.status(500).json({ error: 'Failed to fetch residences' });
@@ -55,7 +62,10 @@ export const createResidence = async (req: Request, res: Response) => {
             }
         });
 
-        res.status(201).json(residence);
+        // Transform residence name for display
+        const formattedResidence = formatResidenceForDisplay(residence);
+
+        res.status(201).json(formattedResidence);
     } catch (error) {
         if (error instanceof z.ZodError) {
             return res.status(400).json({ error: 'Invalid input', details: error.issues });
@@ -76,7 +86,10 @@ export const updateResidence = async (req: Request, res: Response) => {
             data: validatedData
         });
 
-        res.json(residence);
+        // Transform residence name for display
+        const formattedResidence = formatResidenceForDisplay(residence);
+
+        res.json(formattedResidence);
     } catch (error) {
         if (error instanceof z.ZodError) {
             return res.status(400).json({ error: 'Invalid input', details: error.issues });

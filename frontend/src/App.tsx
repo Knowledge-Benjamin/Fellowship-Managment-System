@@ -23,6 +23,7 @@ import Families from './pages/Leadership/Families';
 import FamilyDetails from './pages/Leadership/FamilyDetails';
 import FamilyHeadDashboard from './pages/Leadership/FamilyHeadDashboard';
 import TeamLeaderDashboard from './pages/Leadership/TeamLeaderDashboard';
+import AcademicCalendar from './pages/AcademicCalendar';
 import { ToastProvider } from './components/ToastProvider';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -188,6 +189,12 @@ function AppContent() {
             <Route path="/profile" element={
               <ProtectedRoute>
                 <Profile />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/academic-calendar" element={
+              <ProtectedRoute roles={['FELLOWSHIP_MANAGER']}>
+                <AcademicCalendar />
               </ProtectedRoute>
             } />
           </Routes>

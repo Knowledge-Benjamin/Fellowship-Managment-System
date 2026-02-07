@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import prisma from '../prisma';
+import { formatRegionName } from '../utils/displayFormatters';
 
 // Get organizational structure  
 export const getOrgStructure = async (req: Request, res: Response) => {
@@ -87,13 +88,19 @@ export const getOrgStructure = async (req: Request, res: Response) => {
         const memberFilter = regionalHeadRegionId ? { regionId: regionalHeadRegionId } : {};
         const totalMembers = await prisma.member.count({ where: memberFilter });
 
+        // Transform region names for display
+        const formattedRegions = regions.map(region => ({
+            ...region,
+            name: formatRegionName(region.name)
+        }));
+
         res.json({
-            regions,
+            regions: formattedRegions,
             ministryTeams: teams,
             stats: {
                 totalMembers,
-                totalRegions: regions.length,
-                totalFamilies: regions.reduce((sum, r) => sum + r.families.length, 0),
+                totalRegions: formattedRegions.length,
+                totalFamilies: formattedRegions.reduce((sum, r) => sum + r.families.length, 0),
                 totalTeams: teams.length,
             },
         });

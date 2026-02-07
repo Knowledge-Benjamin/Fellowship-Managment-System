@@ -76,6 +76,7 @@ const Navbar = () => {
         { to: '/leadership', label: 'Leadership', icon: Users },
         { to: '/leadership/families', label: 'Families', icon: Users },
         { to: '/members', label: 'Members', icon: Users },
+        { to: '/academic-calendar', label: 'Academic Calendar', icon: Calendar },
         { to: '/courses', label: 'Courses', icon: BookOpen },
         { to: '/residences', label: 'Residences', icon: Home },
         { to: '/regions', label: 'Regions', icon: MapPin },

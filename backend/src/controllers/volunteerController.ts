@@ -78,7 +78,25 @@ export const assignVolunteer = async (req: Request, res: Response) => {
 
             // Auto-assign CHECK_IN_VOLUNTEER tag if it exists
             if (checkInVolunteerTag) {
-                // Check if member already has this tag (and it's active)
+                const now = new Date();
+
+                // First, auto-deactivate any expired tags to provide clean slate
+                await tx.memberTag.updateMany({
+                    where: {
+                        memberId,
+                        tagId: checkInVolunteerTag.id,
+                        isActive: true,
+                        expiresAt: { lt: now }, // Expired
+                    },
+                    data: {
+                        isActive: false,
+                        removedAt: now,
+                        removedBy: 'SYSTEM',
+                        notes: 'Auto-deactivated (expired)',
+                    },
+                });
+
+                // Now check if member has an active (non-expired) tag
                 const existingTag = await tx.memberTag.findFirst({
                     where: {
                         memberId,
@@ -88,6 +106,7 @@ export const assignVolunteer = async (req: Request, res: Response) => {
                 });
 
                 if (!existingTag) {
+                    // No active tag - create new one (clean slate)
                     await tx.memberTag.create({
                         data: {
                             memberId,

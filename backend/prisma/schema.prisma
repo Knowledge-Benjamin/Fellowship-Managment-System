@@ -39,6 +39,13 @@ enum TagType {
   CUSTOM
 }
 
+enum RegistrationMode {
+  NEW_MEMBER        // Fresh registration, auto-assign PENDING_FIRST_ATTENDANCE tag
+  LEGACY_IMPORT     // Bulk import of existing members, skip first-timer tag
+  TRANSFER          // Transfer from another fellowship
+  READMISSION       // Returning after absence
+}
+
 enum DecisionType {
   SALVATION
   REDEDICATION
@@ -74,26 +81,35 @@ model Region {
 }
 
 model Member {
-  id               String   @id @default(uuid())
-  fullName         String
-  email            String   @unique
-  phoneNumber      String
-  password         String
-  role             Role     @default(MEMBER)
-  fellowshipNumber String   @unique
-  gender           Gender
-  regionId         String
-  region           Region   @relation(fields: [regionId], references: [id], onDelete: Restrict)
-  residenceId      String?
-  residence        Residence? @relation(fields: [residenceId], references: [id])
-  hostelName       String?
-  courseId         String?
-  courseRelation   Course?  @relation(fields: [courseId], references: [id])
-  course           String?
-  yearOfStudy      Int?
-  qrCode           String   @unique @default(uuid())
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id                     String    @id @default(uuid())
+  fullName               String
+  email                  String    @unique
+  phoneNumber            String
+  password               String
+  role                   Role      @default(MEMBER)
+  fellowshipNumber       String    @unique
+  gender                 Gender
+  regionId               String
+  region                 Region    @relation(fields: [regionId], references: [id], onDelete: Restrict)
+  residenceId            String?
+  residence              Residence? @relation(fields: [residenceId], references: [id])
+  hostelName             String?
+  courseId               String?
+  courseRelation         Course?   @relation(fields: [courseId], references: [id])
+  course                 String?
+  registrationDate       DateTime  @default(now())
+  registrationMode       RegistrationMode @default(NEW_MEMBER)
+  initialYearOfStudy     Int?
+  initialSemester        Int?
+  qrCode                 String    @unique @default(uuid())
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+  
+  // Security fields
+  failedLoginAttempts    Int       @default(0)
+  lockedUntil            DateTime?
+  lastLoginAttempt       DateTime?
+  lastSuccessfulLogin    DateTime?
 
   attendances         Attendance[]
   transportBookings   TransportBooking[]
@@ -124,6 +140,10 @@ model Member {
   // Created records
   familyMeetingsCreated    FamilyMeeting[]
   schedulesCreated         MinistrySchedule[]
+  
+  // Security relations
+  loginAttempts            LoginAttempt[]
+  otps                     OTP[]
 
   @@index([phoneNumber])
   @@index([email])
@@ -231,14 +251,15 @@ model Residence {
 }
 
 model Course {
-  id        String   @id @default(uuid())
-  name      String   @unique
-  code      String   @unique
-  collegeId String?
-  college   College? @relation(fields: [collegeId], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  members   Member[]
+  id            String   @id @default(uuid())
+  name          String   @unique
+  code          String   @unique
+  durationYears Int      @default(3)
+  collegeId     String?
+  college       College? @relation(fields: [collegeId], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  members       Member[]
 }
 
 model Tag {
@@ -488,4 +509,59 @@ model MinistrySchedule {
   @@index([teamId])
   @@index([eventId])
   @@index([date])
+}
+
+// ============================================
+// ACADEMIC CALENDAR SYSTEM
+// ============================================
+
+model AcademicPeriod {
+  id              String   @id @default(uuid())
+  academicYear    String   // "2025/2026"
+  periodNumber    Int      // 1 or 2
+  periodName      String   // "First Period" / "Second Period"
+  startDate       DateTime
+  endDate         DateTime
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([academicYear, periodNumber])
+  @@index([startDate, endDate])
+}
+
+// ===================================
+// SECURITY MODELS
+// ===================================
+
+model LoginAttempt {
+  id          String   @id @default(cuid())
+  memberId    String?
+  email       String
+  ipAddress   String
+  userAgent   String?
+  success     Boolean
+  reason      String?  // "invalid_password", "account_locked", "invalid_email", etc.
+  timestamp   DateTime @default(now())
+  
+  member      Member?  @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  
+  @@index([email])
+  @@index([timestamp])
+  @@index([ipAddress])
+  @@index([memberId])
+}
+
+model OTP {
+  id          String   @id @default(cuid())
+  memberId    String
+  code        String
+  expiresAt   DateTime
+  verified    Boolean  @default(false)
+  attempts    Int      @default(0)
+  createdAt   DateTime @default(now())
+  
+  member      Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  
+  @@index([memberId])
+  @@index([expiresAt])
 }

@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import prisma from '../prisma';
+import { formatRegionsForDisplay, formatRegionForDisplay } from '../utils/displayFormatters';
 
 // Validation schemas
 const createRegionSchema = z.object({
@@ -23,7 +24,10 @@ export const getRegions = async (req: Request, res: Response) => {
             },
         });
 
-        res.json(regions);
+        // Transform region names for display (uppercase, Central gets suffix)
+        const formattedRegions = formatRegionsForDisplay(regions);
+
+        res.json(formattedRegions);
     } catch (error) {
         console.error('Get regions error:', error);
         res.status(500).json({ error: 'Failed to fetch regions' });
@@ -58,9 +62,12 @@ export const createRegion = async (req: Request, res: Response) => {
             },
         });
 
+        // Transform region name for display
+        const formattedRegion = formatRegionForDisplay(region);
+
         res.status(201).json({
             message: 'Region created successfully',
-            region,
+            region: formattedRegion,
         });
     } catch (error) {
         if (error instanceof z.ZodError) {
@@ -173,8 +180,11 @@ export const getMyRegion = async (req: Request, res: Response) => {
             totalFamilies: region.families.length,
         };
 
+        // Transform region name for display
+        const formattedRegion = formatRegionForDisplay(region);
+
         res.json({
-            ...region,
+            ...formattedRegion,
             stats,
         });
     } catch (error) {

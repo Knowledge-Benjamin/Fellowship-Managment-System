@@ -14,6 +14,7 @@ const AddCourseModal: React.FC<AddCourseModalProps> = ({ isOpen, onClose, onSucc
     const { showToast } = useToast();
     const [name, setName] = useState('');
     const [code, setCode] = useState('');
+    const [durationYears, setDurationYears] = useState<number>(3);
     const [loading, setLoading] = useState(false);
 
     if (!isOpen) return null;
@@ -26,7 +27,8 @@ const AddCourseModal: React.FC<AddCourseModalProps> = ({ isOpen, onClose, onSucc
             setLoading(true);
             const payload: any = {
                 name: name.trim(),
-                code: code.trim().toUpperCase()
+                code: code.trim().toUpperCase(),
+                durationYears: durationYears
             };
 
             if (preSelectedCollegeId) {
@@ -39,6 +41,7 @@ const AddCourseModal: React.FC<AddCourseModalProps> = ({ isOpen, onClose, onSucc
             onSuccess(response.data);
             setName('');
             setCode('');
+            setDurationYears(3);
             onClose();
         } catch (error: any) {
             console.error('Failed to create course:', error);
@@ -88,6 +91,25 @@ const AddCourseModal: React.FC<AddCourseModalProps> = ({ isOpen, onClose, onSucc
                             className="w-full px-3 py-2 bg-[#0a0f1e] rounded-lg border border-slate-700 focus:border-teal-500 focus:outline-none text-white"
                             required
                         />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-slate-300 mb-1">Course Duration *</label>
+                        <select
+                            value={durationYears}
+                            onChange={(e) => setDurationYears(parseInt(e.target.value))}
+                            className="w-full px-3 py-2 bg-[#0a0f1e] rounded-lg border border-slate-700 focus:border-teal-500 focus:outline-none text-white cursor-pointer"
+                            required
+                        >
+                            <option value="1">1 Year (Certificate)</option>
+                            <option value="2">2 Years (Diploma)</option>
+                            <option value="3">3 Years (Bachelor's)</option>
+                            <option value="4">4 Years (Bachelor's)</option>
+                            <option value="5">5 Years (Bachelor's/Masters)</option>
+                            <option value="6">6 Years (Masters/PhD)</option>
+                            <option value="7">7 Years (PhD)</option>
+                        </select>
+                        <p className="text-xs text-slate-500 mt-1">Used to automatically identify finalists</p>
                     </div>
 
                     {preSelectedCollegeId && (

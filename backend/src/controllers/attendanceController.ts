@@ -90,6 +90,28 @@ export const checkIn = async (req: Request, res: Response) => {
             },
         });
 
+        // Auto-remove PENDING_FIRST_ATTENDANCE tag if this is their first attendance
+        const firstTimerTag = await prisma.memberTag.findFirst({
+            where: {
+                memberId: member.id,
+                tag: { name: 'PENDING_FIRST_ATTENDANCE' },
+                isActive: true,
+            },
+            include: { tag: true },
+        });
+
+        if (firstTimerTag) {
+            await prisma.memberTag.update({
+                where: { id: firstTimerTag.id },
+                data: {
+                    isActive: false,
+                    removedAt: new Date(),
+                    removedBy: member.id, // Self-removed upon first attendance
+                },
+            });
+            console.log(`[FIRST-TIMER] Tag removed for member ${member.fullName} after first attendance at event ${event.name}`);
+        }
+
         res.status(201).json({
             message: 'Check-in successful',
             attendance,

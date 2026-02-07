@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
+import path from 'path';
 import authRoutes from './routes/authRoutes';
 import memberRoutes from './routes/memberRoutes';
 import eventRoutes from './routes/eventRoutes';
@@ -20,8 +21,10 @@ import residenceRoutes from './routes/residenceRoutes';
 import teamRoutes from './routes/teamRoutes';
 import leadershipRoutes from './routes/leadershipRoutes';
 import familyRoutes from './routes/familyRoutes';
+import academicPeriodRoutes from './routes/academicPeriodRoutes';
 
-dotenv.config();
+// Configure dotenv to load .env from backend root directory
+dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -58,6 +61,7 @@ app.use('/api/residences', residenceRoutes);
 app.use('/api/teams', teamRoutes);
 app.use('/api/leadership', leadershipRoutes);
 app.use('/api/families', familyRoutes);
+app.use('/api/academic-periods', academicPeriodRoutes);
 
 app.get('/', (req, res) => {
     res.send('Fellowship Information Management System API');

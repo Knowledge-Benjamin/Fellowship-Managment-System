@@ -145,12 +145,15 @@ const Login = () => {
                         <p className="text-slate-400">
                             We've sent a 6-digit code to <strong className="text-white">{email}</strong>
                         </p>
+                        <p className="text-slate-500 text-sm mt-2">
+                            Please check your inbox. If you don't see the email, kindly check your spam or junk folder.
+                        </p>
                     </div>
 
                     {error && (
                         <div className={`p-4 rounded-xl mb-6 text-sm ${error.startsWith('✅')
-                                ? 'bg-green-500/10 border border-green-500/20 text-green-400'
-                                : 'bg-red-500/10 border border-red-500/20 text-red-400'
+                            ? 'bg-green-500/10 border border-green-500/20 text-green-400'
+                            : 'bg-red-500/10 border border-red-500/20 text-red-400'
                             }`}>
                             {error}
                         </div>

@@ -5,6 +5,10 @@ import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import path from 'path';
+import dns from 'dns';
+
+// Force IPv4 resolution to avoid connectivity issues on some platforms (Render/AWS)
+dns.setDefaultResultOrder('ipv4first');
 import authRoutes from './routes/authRoutes';
 import memberRoutes from './routes/memberRoutes';
 import eventRoutes from './routes/eventRoutes';

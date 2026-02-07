@@ -7,7 +7,9 @@ const transporter = nodemailer.createTransport({
         user: process.env.GMAIL_USER,
         pass: process.env.GMAIL_APP_PASSWORD,
     },
-});
+    // Force IPv4 to avoid ENETUNREACH errors on some hosting providers (like Render)
+    family: 4,
+} as nodemailer.TransportOptions);
 
 // Verify transporter configuration
 transporter.verify((error: Error | null) => {

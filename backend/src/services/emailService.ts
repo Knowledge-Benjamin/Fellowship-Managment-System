@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer';
 import sgMail from '@sendgrid/mail';
+import QRCode from 'qrcode';
 
 // Initialize SendGrid if API key is available
 if (process.env.SENDGRID_API_KEY) {
@@ -218,4 +219,153 @@ export const sendAccountLockedEmail = async (
     await sendEmail(email, subject, html, '');
 };
 
-export default { sendOTPEmail, sendAccountLockedEmail };
+export const sendWelcomeEmail = async (
+    email: string,
+    fullName: string,
+    fellowshipNumber: string,
+    qrCodeValue: string
+): Promise<boolean> => {
+    try {
+        // Generate QR code as Data URL (base64 image)
+        const qrCodeDataUrl = await QRCode.toDataURL(qrCodeValue, {
+            width: 300,
+            margin: 2,
+            color: {
+                dark: '#14b8a6', // Teal color matching brand
+                light: '#FFFFFF'
+            }
+        });
+
+        const subject = '🎉 Welcome to Fellowship Manager!';
+        const html = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                    .header { background: linear-gradient(135deg, #14b8a6 0%, #0891b2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+                    .content { background: #f8fafc; padding: 30px; border-radius: 0 0 10px 10px; }
+                    .welcome-box { background: white; border: 2px solid #14b8a6; border-radius: 8px; padding: 20px; margin: 20px 0; }
+                    .credential-item { background: #f1f5f9; padding: 15px; border-radius: 6px; margin: 10px 0; }
+                    .credential-label { font-size: 12px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px; }
+                    .credential-value { font-size: 18px; font-weight: bold; color: #0f172a; font-family: 'Courier New', monospace; }
+                    .qr-container { text-align: center; padding: 20px; background: white; border-radius: 8px; margin: 20px 0; }
+                    .info-box { background: #ecfdf5; border-left: 4px solid #10b981; padding: 15px; margin: 20px 0; border-radius: 4px; }
+                    .warning-box { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0; border-radius: 4px; }
+                    .footer { text-align: center; padding: 20px; color: #64748b; font-size: 12px; }
+                    .steps-list { padding-left: 20px; }
+                    .steps-list li { margin: 10px 0; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h1 style="margin: 0; font-size: 28px;">🎉 Welcome to Fellowship!</h1>
+                        <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Your registration was successful</p>
+                    </div>
+                    <div class="content">
+                        <div class="welcome-box">
+                            <p style="margin: 0 0 15px 0; font-size: 18px; color: #14b8a6; font-weight: bold;">Hello <strong style="color: #0f172a;">${fullName}</strong>! 👋</p>
+                            <p style="margin: 0; color: #64748b;">
+                                We're excited to have you as part of our fellowship community. Here are your account credentials and important information to get started.
+                            </p>
+                        </div>
+
+                        <h3 style="color: #0f172a; margin: 30px 0 15px 0;">📋 Your Account Details</h3>
+                        
+                        <div class="credential-item">
+                            <div class="credential-label">Fellowship Number</div>
+                            <div class="credential-value">${fellowshipNumber}</div>
+                        </div>
+
+                        <div class="credential-item">
+                            <div class="credential-label">Default Password</div>
+                            <div class="credential-value">${fellowshipNumber}</div>
+                        </div>
+
+                        <div class="credential-item">
+                            <div class="credential-label">Email</div>
+                            <div class="credential-value" style="font-size: 16px;">${email}</div>
+                        </div>
+
+                        <div class="info-box">
+                            <strong>ℹ️ First Login:</strong> Your default password is the same as your fellowship number. Please change it after your first login for security purposes.
+                        </div>
+
+                        <h3 style="color: #0f172a; margin: 30px 0 15px 0;">📱 Your Personal QR Code</h3>
+                        <p style="color: #64748b; margin-bottom: 15px;">Use this QR code for quick check-in at fellowship events:</p>
+                        
+                        <div class="qr-container">
+                            <img src="${qrCodeDataUrl}" alt="Your QR Code" style="max-width: 300px; width: 100%;" />
+                            <p style="margin: 15px 0 0 0; color: #64748b; font-size: 14px;">
+                                Save this QR code to your device for easy access
+                            </p>
+                        </div>
+
+                        <div class="warning-box">
+                            <strong>🔒 Keep Your QR Code Safe:</strong> This QR code is unique to you. Do not share it with others as it provides access to your fellowship account.
+                        </div>
+
+                        <h3 style="color: #0f172a; margin: 30px 0 15px 0;">🚀 Getting Started</h3>
+                        <ol class="steps-list" style="color: #64748b;">
+                            <li><strong style="color: #0f172a;">Log in</strong> to your account using your fellowship number and password</li>
+                            <li><strong style="color: #0f172a;">Update your profile</strong> with additional information if needed</li>
+                            <li><strong style="color: #0f172a;">Change your password</strong> for security</li>
+                            <li><strong style="color: #0f172a;">Save your QR code</strong> for quick event check-ins</li>
+                            <li><strong style="color: #0f172a;">Explore</strong> the fellowship management system</li>
+                        </ol>
+
+                        <div class="info-box" style="background: #f0f9ff; border-color: #0891b2;">
+                            <strong>💡 Need Help?</strong> Contact your fellowship administrator if you have any questions or need assistance accessing your account.
+                        </div>
+
+                        <p style="margin-top: 30px; color: #64748b;">
+                            We look forward to seeing you at our events!
+                        </p>
+                        <p style="margin: 10px 0 0 0;">
+                            <strong style="color: #0f172a;">The Fellowship Management Team</strong>
+                        </p>
+                    </div>
+                    <div class="footer">
+                        <p>This is an automated welcome message.</p>
+                        <p>&copy; ${new Date().getFullYear()} Fellowship Manager. All rights reserved.</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+        `;
+
+        const text = `
+Welcome to Fellowship, ${fullName}!
+
+Your registration was successful. Here are your account details:
+
+Fellowship Number: ${fellowshipNumber}
+Default Password: ${fellowshipNumber}
+Email: ${email}
+
+Your default password is the same as your fellowship number. Please change it after your first login for security purposes.
+
+Getting Started:
+1. Log in to your account using your fellowship number and password
+2. Update your profile with additional information if needed
+3. Change your password for security
+4. Save your QR code for quick event check-ins
+5. Explore the fellowship management system
+
+Need Help? Contact your fellowship administrator if you have any questions.
+
+We look forward to seeing you at our events!
+
+The Fellowship Management Team
+        `.trim();
+
+        return await sendEmail(email, subject, html, text);
+    } catch (error) {
+        console.error('[EMAIL] Failed to send welcome email:', error);
+        return false;
+    }
+};
+
+export default { sendOTPEmail, sendAccountLockedEmail, sendWelcomeEmail };

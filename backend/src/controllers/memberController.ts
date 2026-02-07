@@ -6,6 +6,7 @@ import { generateFellowshipNumber } from '../utils/fellowshipNumberGenerator';
 import { formatRegionName } from '../utils/displayFormatters';
 import { updateFinalistTag } from '../utils/finalistHelper';
 import { getCurrentAcademicStatus, isMemberFinalist, isMemberAlumni } from '../utils/academicProgressionHelper';
+import { sendWelcomeEmail } from '../services/emailService';
 
 const createMemberSchema = z.object({
     fullName: z.string().min(1),
@@ -171,6 +172,22 @@ export const createMember = async (req: Request, res: Response) => {
             })),
             memberTags: undefined,
         };
+
+        // Send welcome email with QR code (non-blocking - don't wait for result)
+        sendWelcomeEmail(
+            completeMember!.email,
+            completeMember!.fullName,
+            fellowshipNumber,
+            completeMember!.qrCode
+        ).then(success => {
+            if (success) {
+                console.log(`[REGISTRATION] Welcome email sent to ${completeMember!.email}`);
+            } else {
+                console.error(`[REGISTRATION] Failed to send welcome email to ${completeMember!.email}`);
+            }
+        }).catch(err => {
+            console.error('[REGISTRATION] Welcome email error:', err);
+        });
 
         res.status(201).json({
             message: 'Member registered successfully',

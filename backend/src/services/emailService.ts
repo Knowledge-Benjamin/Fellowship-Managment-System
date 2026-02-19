@@ -1,6 +1,9 @@
 import nodemailer from 'nodemailer';
 import sgMail from '@sendgrid/mail';
 import QRCode from 'qrcode';
+import prisma from '../prisma';
+import { EmailStatus, Prisma } from '@prisma/client';
+import { checkConnectivity } from '../utils/networkHelper';
 
 // Initialize SendGrid if API key is available
 if (process.env.SENDGRID_API_KEY) {
@@ -368,4 +371,251 @@ The Fellowship Management Team
     }
 };
 
-export default { sendOTPEmail, sendAccountLockedEmail, sendWelcomeEmail };
+
+/**
+
+ * Queue an email to be sent later (transactional)
+ */
+export const queueEmail = async (
+    tx: Prisma.TransactionClient,
+    to: string,
+    subject: string,
+    html: string,
+    text: string
+) => {
+    await tx.emailQueue.create({
+        data: {
+            email: to,
+            subject,
+            html,
+            text,
+            status: EmailStatus.PENDING,
+        },
+    });
+    console.log(`[EMAIL] 📥 Queued email for ${to}`);
+};
+
+/**
+ * Process the email queue
+ * - Checks internet connectivity first
+ * - Processes pending emails
+ * - Handles retries
+ */
+export const processEmailQueue = async () => {
+    // 1. Check connectivity
+    const isOnline = await checkConnectivity();
+    if (!isOnline) {
+        // Silent return if offline - don't log to avoid spamming console
+        return;
+    }
+
+    try {
+        // 2. Fetch pending emails (limit 5 per batch)
+        const pendingEmails = await prisma.emailQueue.findMany({
+            where: {
+                status: EmailStatus.PENDING,
+                attempts: { lt: 5 }, // Max 5 attempts
+            },
+            take: 5,
+            orderBy: { createdAt: 'asc' },
+        });
+
+        if (pendingEmails.length === 0) return;
+
+        console.log(`[EMAIL QUEUE] Processing ${pendingEmails.length} pending emails...`);
+
+        // 3. Process each email
+        for (const email of pendingEmails) {
+            // Mark as processing
+            await prisma.emailQueue.update({
+                where: { id: email.id },
+                data: { status: EmailStatus.PROCESSING },
+            });
+
+            try {
+                // Attempt to send
+                const sent = await sendEmail(email.email, email.subject, email.html, email.text);
+
+                if (sent) {
+                    // Success
+                    await prisma.emailQueue.update({
+                        where: { id: email.id },
+                        data: {
+                            status: EmailStatus.COMPLETED,
+                            lastAttempt: new Date(),
+                            attempts: { increment: 1 },
+                        },
+                    });
+                    console.log(`[EMAIL QUEUE] ✅ Processed email for ${email.email}`);
+                } else {
+                    // Start of Selection
+                    // Soft failure (SMTP error but connected)
+                    throw new Error('SMTP Send Failed');
+                }
+            } catch (error: any) {
+                console.error(`[EMAIL QUEUE] ❌ Failed to process email for ${email.email}:`, error.message);
+
+                // Mark as pending for retry (with exponential backoff visibility in future if needed)
+                // For now, simple retry count increment
+                await prisma.emailQueue.update({
+                    where: { id: email.id },
+                    data: {
+                        status: email.attempts >= 4 ? EmailStatus.FAILED : EmailStatus.PENDING,
+                        lastAttempt: new Date(),
+                        attempts: { increment: 1 },
+                        error: error.message,
+                    },
+                });
+            }
+        }
+    } catch (error) {
+        console.error('[EMAIL QUEUE] Critical error in processor:', error);
+    }
+};
+
+// ... (existing exports)
+
+export const queueWelcomeEmail = async (
+    tx: Prisma.TransactionClient,
+    email: string,
+    fullName: string,
+    fellowshipNumber: string,
+    qrCodeValue: string
+) => {
+    // Generate QR code
+    const qrCodeDataUrl = await QRCode.toDataURL(qrCodeValue, {
+        width: 300,
+        margin: 2,
+        color: { dark: '#14b8a6', light: '#FFFFFF' }
+    });
+
+
+    const subject = '🎉 Welcome to Fellowship Manager!';
+    const html = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                    .header { background: linear-gradient(135deg, #14b8a6 0%, #0891b2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+                    .content { background: #f8fafc; padding: 30px; border-radius: 0 0 10px 10px; }
+                    .welcome-box { background: white; border: 2px solid #14b8a6; border-radius: 8px; padding: 20px; margin: 20px 0; }
+                    .credential-item { background: #f1f5f9; padding: 15px; border-radius: 6px; margin: 10px 0; }
+                    .credential-label { font-size: 12px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px; }
+                    .credential-value { font-size: 18px; font-weight: bold; color: #0f172a; font-family: 'Courier New', monospace; }
+                    .qr-container { text-align: center; padding: 20px; background: white; border-radius: 8px; margin: 20px 0; }
+                    .info-box { background: #ecfdf5; border-left: 4px solid #10b981; padding: 15px; margin: 20px 0; border-radius: 4px; }
+                    .warning-box { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0; border-radius: 4px; }
+                    .footer { text-align: center; padding: 20px; color: #64748b; font-size: 12px; }
+                    .steps-list { padding-left: 20px; }
+                    .steps-list li { margin: 10px 0; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h1 style="margin: 0; font-size: 28px;">🎉 Welcome to Fellowship!</h1>
+                        <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Your registration was successful</p>
+                    </div>
+                    <div class="content">
+                        <div class="welcome-box">
+                            <p style="margin: 0 0 15px 0; font-size: 18px; color: #14b8a6; font-weight: bold;">Hello <strong style="color: #0f172a;">${fullName}</strong>! 👋</p>
+                            <p style="margin: 0; color: #64748b;">
+                                We're excited to have you as part of our fellowship community. Here are your account credentials and important information to get started.
+                            </p>
+                        </div>
+
+                        <h3 style="color: #0f172a; margin: 30px 0 15px 0;">📋 Your Account Details</h3>
+                        
+                        <div class="credential-item">
+                            <div class="credential-label">Fellowship Number</div>
+                            <div class="credential-value">${fellowshipNumber}</div>
+                        </div>
+
+                        <div class="credential-item">
+                            <div class="credential-label">Default Password</div>
+                            <div class="credential-value">${fellowshipNumber}</div>
+                        </div>
+
+                        <div class="credential-item">
+                            <div class="credential-label">Email</div>
+                            <div class="credential-value" style="font-size: 16px;">${email}</div>
+                        </div>
+
+                        <div class="info-box">
+                            <strong>ℹ️ First Login:</strong> Your default password is the same as your fellowship number. Please change it after your first login for security purposes.
+                        </div>
+
+                        <h3 style="color: #0f172a; margin: 30px 0 15px 0;">📱 Your Personal QR Code</h3>
+                        <p style="color: #64748b; margin-bottom: 15px;">Use this QR code for quick check-in at fellowship events:</p>
+                        
+                        <div class="qr-container">
+                            <img src="${qrCodeDataUrl}" alt="Your QR Code" style="max-width: 300px; width: 100%;" />
+                            <p style="margin: 15px 0 0 0; color: #64748b; font-size: 14px;">
+                                Save this QR code to your device for easy access
+                            </p>
+                        </div>
+
+                        <div class="warning-box">
+                            <strong>🔒 Keep Your QR Code Safe:</strong> This QR code is unique to you. Do not share it with others as it provides access to your fellowship account.
+                        </div>
+
+                        <h3 style="color: #0f172a; margin: 30px 0 15px 0;">🚀 Getting Started</h3>
+                        <ol class="steps-list" style="color: #64748b;">
+                            <li><strong style="color: #0f172a;">Log in</strong> to your account using your fellowship number and password</li>
+                            <li><strong style="color: #0f172a;">Update your profile</strong> with additional information if needed</li>
+                            <li><strong style="color: #0f172a;">Change your password</strong> for security</li>
+                            <li><strong style="color: #0f172a;">Save your QR code</strong> for quick event check-ins</li>
+                            <li><strong style="color: #0f172a;">Explore</strong> the fellowship management system</li>
+                        </ol>
+
+                        <div class="info-box" style="background: #f0f9ff; border-color: #0891b2;">
+                            <strong>💡 Need Help?</strong> Contact your fellowship administrator if you have any questions or need assistance accessing your account.
+                        </div>
+
+                        <p style="margin-top: 30px; color: #64748b;">
+                            We look forward to seeing you at our events!
+                        </p>
+                        <p style="margin: 10px 0 0 0;">
+                            <strong style="color: #0f172a;">The Fellowship Management Team</strong>
+                        </p>
+                    </div>
+                    <div class="footer">
+                        <p>This is an automated welcome message.</p>
+                        <p>&copy; ${new Date().getFullYear()} Fellowship Manager. All rights reserved.</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+        `.trim();
+
+    const text = `
+Welcome to Fellowship, ${fullName}!
+
+Your registration was successful. Here are your account details:
+
+Fellowship Number: ${fellowshipNumber}
+Default Password: ${fellowshipNumber}
+Email: ${email}
+
+Your default password is the same as your fellowship number. Please change it after your first login for security purposes.
+
+Getting Started:
+1. Log in to your account using your fellowship number and password
+2. Update your profile with additional information if needed
+3. Change your password for security
+4. Save your QR code for quick event check-ins
+5. Explore the fellowship management system
+
+Need Help? Contact your fellowship administrator if you have any questions.
+
+We look forward to seeing you at our events!
+
+The Fellowship Management Team
+    `.trim();
+
+    await queueEmail(tx, email, subject, html, text);
+};
+
+

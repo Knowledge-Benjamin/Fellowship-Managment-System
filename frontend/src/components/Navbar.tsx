@@ -29,15 +29,13 @@ function NavLink({ to, children, icon: Icon, onClick, className = '' }: NavLinkP
                 relative flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium
                 transition-all duration-300 ease-out
                 ${isActive
-                    ? 'bg-indigo-600 text-white shadow-lg'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                    ? 'text-white shadow-lg'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                 }
                 ${className}
             `}
+            style={isActive ? { backgroundColor: '#48A111', boxShadow: '0 4px 14px 0 rgba(72, 161, 17, 0.39)' } : {}}
         >
-            {isActive && (
-                <span className="absolute inset-0 rounded-lg bg-indigo-600 opacity-20 blur-sm"></span>
-            )}
             <Icon size={18} className="relative z-10" />
             <span className="relative z-10">{children}</span>
         </Link>
@@ -91,7 +89,7 @@ const Navbar = () => {
 
     return (
         <>
-            <nav className="fixed top-0 left-0 right-0 z-[100] border-b border-slate-800 bg-[#151d30]/95 backdrop-blur-xl">
+            <nav className="fixed top-0 left-0 right-0 z-[100] border-b border-slate-200 bg-white backdrop-blur-xl">
                 {/* ... existing navbar content ... */}
                 <div className="max-w-7xl mx-auto px-6 py-4">
                     <div className="flex justify-between items-center">
@@ -102,12 +100,12 @@ const Navbar = () => {
                                     <img
                                         src={logo}
                                         alt="Fellowship Logo"
-                                        className="w-11 h-11 rounded-lg shadow-lg group-hover:scale-105 transition-transform object-cover"
+                                        className="w-11 h-11 rounded-lg shadow-sm group-hover:scale-105 transition-transform object-cover"
                                     />
-                                    <div className="absolute -top-1 -right-1 w-3 h-3 bg-teal-500 rounded-full animate-pulse border-2 border-[#151d30]"></div>
+                                    <div className="absolute -top-1 -right-1 w-3 h-3 bg-teal-500 rounded-full animate-pulse border-2 border-white"></div>
                                 </div>
                                 <div>
-                                    <h1 className="text-lg font-bold text-white group-hover:text-indigo-400 transition-colors">Fellowship Manager</h1>
+                                    <h1 className="text-lg font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">Fellowship Manager</h1>
                                     <p className="text-xs text-slate-500">Digital Registration System</p>
                                 </div>
                             </Link>
@@ -128,10 +126,13 @@ const Navbar = () => {
                                                     relative flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium
                                                     transition-all duration-300 ease-out
                                                     ${isManagementActive || isManagementOpen
-                                                        ? 'bg-indigo-600/10 text-indigo-400'
-                                                        : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                                                        ? 'text-white shadow-lg'
+                                                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                                                     }
                                                 `}
+                                                style={isManagementActive || isManagementOpen
+                                                    ? { backgroundColor: '#48A111', boxShadow: '0 4px 14px 0 rgba(72, 161, 17, 0.39)' }
+                                                    : {}}
                                             >
                                                 <div className="flex items-center gap-2">
                                                     <PieChart size={18} />
@@ -142,7 +143,7 @@ const Navbar = () => {
 
                                             {/* Dropdown Menu */}
                                             {isManagementOpen && (
-                                                <div className="absolute top-full right-0 mt-2 w-56 rounded-xl bg-[#1a233b] border border-slate-700 shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                                                <div className="absolute top-full right-0 mt-2 w-56 rounded-xl bg-white border border-slate-200 shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                                                     <div className="p-1">
                                                         {managementLinks.map((link) => (
                                                             <Link
@@ -151,10 +152,13 @@ const Navbar = () => {
                                                                 className={`
                                                                     flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
                                                                     ${location.pathname === link.to
-                                                                        ? 'bg-indigo-600 text-white'
-                                                                        : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                                                                        ? 'text-white shadow-md'
+                                                                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                                                                     }
                                                                 `}
+                                                                style={location.pathname === link.to
+                                                                    ? { backgroundColor: '#48A111', boxShadow: '0 4px 14px 0 rgba(72, 161, 17, 0.39)' }
+                                                                    : {}}
                                                             >
                                                                 <link.icon size={16} />
                                                                 {link.label}
@@ -181,25 +185,25 @@ const Navbar = () => {
                                         <NavLink to="/leadership/my-team" icon={Users}>My Team</NavLink>
                                     )}
 
-                                    <div className="w-px h-6 bg-slate-800 mx-2"></div>
+                                    <div className="w-px h-6 bg-slate-200 mx-2"></div>
 
                                     <button
                                         onClick={logout}
-                                        className="flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium text-slate-400 hover:text-red-400 hover:bg-slate-800 transition-all"
+                                        className="flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium text-slate-500 hover:text-red-600 hover:bg-red-50 transition-all"
                                         title="Logout"
                                     >
                                         <LogOut size={18} />
                                     </button>
                                 </>
                             ) : (
-                                <NavLink to="/login" icon={LogIn}>Login</NavLink>
+                                location.pathname !== '/login' && <NavLink to="/login" icon={LogIn}>Login</NavLink>
                             )}
                         </div>
 
                         {/* Mobile Menu Button */}
                         <button
                             onClick={() => setIsMobileMenuOpen(true)}
-                            className="lg:hidden p-2 rounded-lg text-slate-400 hover:bg-slate-800 transition-colors relative z-[101]"
+                            className="lg:hidden p-2 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors relative z-[101]"
                         >
                             <Menu size={24} />
                         </button>
@@ -217,15 +221,15 @@ const Navbar = () => {
                     />
 
                     {/* Menu Panel */}
-                    <div className="absolute inset-y-0 right-0 w-[85vw] max-w-sm bg-[#151d30] border-l border-slate-800 shadow-2xl p-6 overflow-y-auto animate-in slide-in-from-right duration-300 flex flex-col">
+                    <div className="absolute inset-y-0 right-0 w-[85vw] max-w-sm bg-white border-l border-slate-200 shadow-2xl p-6 overflow-y-auto animate-in slide-in-from-right duration-300 flex flex-col">
                         <div className="flex items-center justify-between mb-8">
-                            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                            <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
                                 <span className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-sm">F</span>
                                 Menu
                             </h2>
                             <button
                                 onClick={() => setIsMobileMenuOpen(false)}
-                                className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+                                className="p-2 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-slate-100"
                             >
                                 <X size={24} />
                             </button>
@@ -247,7 +251,7 @@ const Navbar = () => {
 
                                     {isManager && (
                                         <div className="space-y-1">
-                                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-2 mb-2 pt-4 border-t border-slate-800">Management</p>
+                                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-2 mb-2 pt-4 border-t border-slate-100">Management</p>
                                             {managementLinks.map(link => (
                                                 <NavLink key={link.to} to={link.to} icon={link.icon} className="w-full">{link.label}</NavLink>
                                             ))}
@@ -255,10 +259,10 @@ const Navbar = () => {
                                         </div>
                                     )}
 
-                                    <div className="pt-6 border-t border-slate-800 mt-auto">
+                                    <div className="pt-6 border-t border-slate-100 mt-auto">
                                         <button
                                             onClick={logout}
-                                            className="w-full flex items-center gap-2 px-4 py-3 rounded-lg font-medium text-red-400 hover:bg-red-500/10 transition-colors"
+                                            className="w-full flex items-center gap-2 px-4 py-3 rounded-lg font-medium text-red-600 hover:bg-red-50 transition-colors"
                                         >
                                             <LogOut size={18} />
                                             <span>Logout</span>
@@ -266,7 +270,7 @@ const Navbar = () => {
                                     </div>
                                 </>
                             ) : (
-                                <NavLink to="/login" icon={LogIn} className="w-full">Login</NavLink>
+                                location.pathname !== '/login' && <NavLink to="/login" icon={LogIn} className="w-full">Login</NavLink>
                             )}
                         </div>
                     </div>

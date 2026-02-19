@@ -141,7 +141,7 @@ export const getAllSalvations = async (req: Request, res: Response) => {
  * Get salvation by ID
  * GET /api/salvations/:id
  */
-export const getSalvationById = async (req: Request, res: Response) => {
+export const getSalvationById = async (req: Request<{ id: string }>, res: Response) => {
     try {
         const { id } = req.params;
 
@@ -191,7 +191,7 @@ export const getSalvationById = async (req: Request, res: Response) => {
  * Update salvation record
  * PUT /api/salvations/:id
  */
-export const updateSalvation = async (req: Request, res: Response) => {
+export const updateSalvation = async (req: Request<{ id: string }>, res: Response) => {
     try {
         const { id } = req.params;
         const validatedData = updateSalvationSchema.parse(req.body);
@@ -239,7 +239,7 @@ export const updateSalvation = async (req: Request, res: Response) => {
  * Delete salvation record
  * DELETE /api/salvations/:id
  */
-export const deleteSalvation = async (req: Request, res: Response) => {
+export const deleteSalvation = async (req: Request<{ id: string }>, res: Response) => {
     try {
         const { id } = req.params;
 

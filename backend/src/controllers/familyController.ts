@@ -185,7 +185,7 @@ export const getAllFamilies = async (req: Request, res: Response) => {
 };
 
 // Get families by region (for registration dropdown)
-export const getFamiliesByRegion = async (req: Request, res: Response) => {
+export const getFamiliesByRegion = async (req: Request<{ regionId: string }>, res: Response) => {
     try {
         const { regionId } = req.params;
 
@@ -236,7 +236,7 @@ export const getFamiliesByRegion = async (req: Request, res: Response) => {
 };
 
 // Get family by ID with full details
-export const getFamilyById = async (req: Request, res: Response) => {
+export const getFamilyById = async (req: Request<{ id: string }>, res: Response) => {
     try {
         const { id } = req.params;
 
@@ -295,7 +295,7 @@ export const getFamilyById = async (req: Request, res: Response) => {
 };
 
 // Update family
-export const updateFamily = async (req: Request, res: Response) => {
+export const updateFamily = async (req: Request<{ id: string }>, res: Response) => {
     try {
         const { id } = req.params;
         const validatedData = updateFamilySchema.parse(req.body);
@@ -377,7 +377,7 @@ export const updateFamily = async (req: Request, res: Response) => {
 };
 
 // Delete family (soft delete)
-export const deleteFamily = async (req: Request, res: Response) => {
+export const deleteFamily = async (req: Request<{ id: string }>, res: Response) => {
     try {
         const { id } = req.params;
 
@@ -424,7 +424,7 @@ export const deleteFamily = async (req: Request, res: Response) => {
 };
 
 // Assign family head
-export const assignFamilyHead = async (req: Request, res: Response) => {
+export const assignFamilyHead = async (req: Request<{ id: string }>, res: Response) => {
     try {
         const { id } = req.params;
         const validatedData = assignHeadSchema.parse(req.body);
@@ -452,6 +452,10 @@ export const assignFamilyHead = async (req: Request, res: Response) => {
 
         if (!member) {
             return res.status(404).json({ message: 'Member not found' });
+        }
+
+        if (member.isDeleted) {
+            return res.status(400).json({ message: 'Cannot assign deleted member as family head' });
         }
 
         if (member.regionId !== family.regionId) {
@@ -561,7 +565,7 @@ export const assignFamilyHead = async (req: Request, res: Response) => {
 };
 
 // Remove family head
-export const removeFamilyHead = async (req: Request, res: Response) => {
+export const removeFamilyHead = async (req: Request<{ id: string }>, res: Response) => {
     try {
         const { id } = req.params;
         const removerId = req.user?.id;
@@ -618,7 +622,7 @@ export const removeFamilyHead = async (req: Request, res: Response) => {
 };
 
 // Add member to family
-export const addFamilyMember = async (req: Request, res: Response) => {
+export const addFamilyMember = async (req: Request<{ id: string }>, res: Response) => {
     try {
         const { id } = req.params;
         const validatedData = addMemberSchema.parse(req.body);
@@ -707,7 +711,7 @@ export const addFamilyMember = async (req: Request, res: Response) => {
 };
 
 // Remove member from family
-export const removeFamilyMember = async (req: Request, res: Response) => {
+export const removeFamilyMember = async (req: Request<{ id: string; memberId: string }>, res: Response) => {
     try {
         const { id, memberId } = req.params;
         const removerId = req.user?.id;

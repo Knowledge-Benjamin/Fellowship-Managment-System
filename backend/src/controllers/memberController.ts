@@ -4,9 +4,11 @@ import { z } from 'zod';
 import prisma from '../prisma';
 import { generateFellowshipNumber } from '../utils/fellowshipNumberGenerator';
 import { formatRegionName } from '../utils/displayFormatters';
-import { updateFinalistTag } from '../utils/finalistHelper';
+import { updateMemberTags } from '../utils/finalistHelper';
 import { getCurrentAcademicStatus, isMemberFinalist, isMemberAlumni } from '../utils/academicProgressionHelper';
-import { sendWelcomeEmail } from '../services/emailService';
+import { sendWelcomeEmail, queueWelcomeEmail } from '../services/emailService';
+import { activeMemberFilter } from '../utils/queryHelpers';
+import { Prisma } from '@prisma/client';
 
 const createMemberSchema = z.object({
     fullName: z.string().min(1),
@@ -25,6 +27,7 @@ const createMemberSchema = z.object({
     assignFirstTimerTag: z.boolean().optional(),
 });
 
+// Create new member
 // Create new member
 export const createMember = async (req: Request, res: Response) => {
     try {
@@ -65,93 +68,106 @@ export const createMember = async (req: Request, res: Response) => {
         // Hash the fellowship number to use as default password
         const hashedPassword = await bcrypt.hash(fellowshipNumber, 10);
 
-        // Prepare tag connections
-        const tagConnections = [];
+        // --- TRANSACTION START ---
+        // Perform all writes atomically: Member, Tags, and Email Queue
+        const result = await prisma.$transaction(async (tx) => {
+            // 1. Create Member
+            const registrationMode = validatedData.registrationMode || 'NEW_MEMBER';
 
-        // Add classification tag if provided
-        if (validatedData.classificationTagId) {
-            tagConnections.push({
-                tagId: validatedData.classificationTagId,
-                isActive: true,
-            });
-        }
-
-        // Add additional tags if provided
-        if (validatedData.additionalTagIds && validatedData.additionalTagIds.length > 0) {
-            tagConnections.push(
-                ...validatedData.additionalTagIds.map((tagId) => ({
-                    tagId,
-                    isActive: true,
-                }))
-            );
-        }
-
-        // Determine registration mode (default to NEW_MEMBER)
-        const registrationMode = validatedData.registrationMode || 'NEW_MEMBER';
-
-        // Create the member first without tags
-        const member = await prisma.member.create({
-            data: {
-                fullName: validatedData.fullName,
-                email: validatedData.email,
-                phoneNumber: validatedData.phoneNumber,
-                gender: validatedData.gender,
-                password: hashedPassword,
-                fellowshipNumber,
-                regionId: validatedData.regionId,
-                courseId: validatedData.courseId,
-                initialYearOfStudy: validatedData.initialYearOfStudy,
-                initialSemester: validatedData.initialSemester,
-                residenceId: validatedData.residenceId,
-                hostelName: validatedData.hostelName,
-                registrationMode,
-            },
-            include: {
-                region: true,
-                courseRelation: true,
-            },
-        });
-
-        // Determine if should assign first-timer tag
-        const shouldAssignFirstTimerTag = validatedData.assignFirstTimerTag !== undefined
-            ? validatedData.assignFirstTimerTag
-            : registrationMode === 'NEW_MEMBER'; // Auto-assign only for NEW_MEMBER mode
-
-        // Add first-timer tag if applicable
-        if (shouldAssignFirstTimerTag) {
-            const firstTimerTag = await prisma.tag.findUnique({
-                where: { name: 'PENDING_FIRST_ATTENDANCE' },
+            const member = await tx.member.create({
+                data: {
+                    fullName: validatedData.fullName,
+                    email: validatedData.email,
+                    phoneNumber: validatedData.phoneNumber,
+                    gender: validatedData.gender,
+                    password: hashedPassword,
+                    fellowshipNumber,
+                    regionId: validatedData.regionId,
+                    courseId: validatedData.courseId,
+                    initialYearOfStudy: validatedData.initialYearOfStudy,
+                    initialSemester: validatedData.initialSemester,
+                    residenceId: validatedData.residenceId,
+                    hostelName: validatedData.hostelName,
+                    registrationMode,
+                },
+                include: {
+                    region: true,
+                    courseRelation: true,
+                },
             });
 
-            if (firstTimerTag) {
+            // 2. Prepare Tags
+            const tagConnections = [];
+
+            // Classification Tag
+            if (validatedData.classificationTagId) {
                 tagConnections.push({
-                    tagId: firstTimerTag.id,
+                    tagId: validatedData.classificationTagId,
                     isActive: true,
                 });
             }
-        }
 
-        // Add tags after member is created (so we can use member.id as assignedBy)
-        if (tagConnections.length > 0) {
-            await prisma.memberTag.createMany({
-                data: tagConnections.map(tc => ({
-                    memberId: member.id,
-                    tagId: tc.tagId,
-                    assignedBy: member.id, // Self-assigned during registration
-                    isActive: tc.isActive,
-                })),
-            });
-        }
+            // Additional Tags
+            if (validatedData.additionalTagIds && validatedData.additionalTagIds.length > 0) {
+                tagConnections.push(
+                    ...validatedData.additionalTagIds.map((tagId) => ({
+                        tagId,
+                        isActive: true,
+                    }))
+                );
+            }
 
-        // Update finalist tag if applicable
-        if (validatedData.courseId && validatedData.initialYearOfStudy && validatedData.initialSemester) {
-            // Use member.id as assignedBy since this is the registration process
-            await updateFinalistTag(member.id, member.id);
-        }
+            // First Timer Tag
+            const shouldAssignFirstTimerTag = validatedData.assignFirstTimerTag !== undefined
+                ? validatedData.assignFirstTimerTag
+                : registrationMode === 'NEW_MEMBER';
 
-        // Fetch the complete member with all relations
+            if (shouldAssignFirstTimerTag) {
+                const firstTimerTag = await tx.tag.findUnique({
+                    where: { name: 'PENDING_FIRST_ATTENDANCE' },
+                });
+
+                if (firstTimerTag) {
+                    tagConnections.push({
+                        tagId: firstTimerTag.id,
+                        isActive: true,
+                    });
+                }
+            }
+
+            // Assign Tags
+            if (tagConnections.length > 0) {
+                await tx.memberTag.createMany({
+                    data: tagConnections.map(tc => ({
+                        memberId: member.id,
+                        tagId: tc.tagId,
+                        assignedBy: member.id,
+                        isActive: tc.isActive,
+                    })),
+                });
+            }
+
+            // 3. Update Finalist/Alumni Tags (using the transaction client)
+            if (validatedData.courseId && validatedData.initialYearOfStudy && validatedData.initialSemester) {
+                await updateMemberTags(member.id, member.id, tx);
+            }
+
+            // 4. Queue Welcome Email (Atomic with registration)
+            await queueWelcomeEmail(
+                tx,
+                member.email,
+                member.fullName,
+                fellowshipNumber,
+                member.qrCode
+            );
+
+            return member;
+        });
+        // --- TRANSACTION END ---
+
+        // Fetch complete member for response (outside transaction is fine)
         const completeMember = await prisma.member.findUnique({
-            where: { id: member.id },
+            where: { id: result.id },
             include: {
                 region: true,
                 courseRelation: true,
@@ -163,7 +179,7 @@ export const createMember = async (req: Request, res: Response) => {
             },
         });
 
-        // Transform response to match expected format
+        // Transform response
         const responseData = {
             ...completeMember,
             tags: (completeMember as any).memberTags.map((mt: any) => ({
@@ -172,22 +188,6 @@ export const createMember = async (req: Request, res: Response) => {
             })),
             memberTags: undefined,
         };
-
-        // Send welcome email with QR code (non-blocking - don't wait for result)
-        sendWelcomeEmail(
-            completeMember!.email,
-            completeMember!.fullName,
-            fellowshipNumber,
-            completeMember!.qrCode
-        ).then(success => {
-            if (success) {
-                console.log(`[REGISTRATION] Welcome email sent to ${completeMember!.email}`);
-            } else {
-                console.error(`[REGISTRATION] Failed to send welcome email to ${completeMember!.email}`);
-            }
-        }).catch(err => {
-            console.error('[REGISTRATION] Welcome email error:', err);
-        });
 
         res.status(201).json({
             message: 'Member registered successfully',
@@ -206,6 +206,7 @@ export const createMember = async (req: Request, res: Response) => {
     }
 };
 
+
 // Get all members with optional search and tag filters
 export const getMembers = async (req: Request, res: Response) => {
     try {
@@ -214,7 +215,9 @@ export const getMembers = async (req: Request, res: Response) => {
         // Parse tag IDs if provided
         const tagIds = tags ? (tags as string).split(',').filter(Boolean) : [];
 
-        const where: any = {};
+        const where: any = {
+            ...activeMemberFilter
+        };
 
         // Search filter
         if (search) {
@@ -302,10 +305,16 @@ export const getMemberAcademicStatus = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
 
+        // Type guard: ensure id is a string
+        if (!id || typeof id !== 'string') {
+            return res.status(400).json({ error: 'Invalid member ID' });
+        }
+
         const member = await prisma.member.findUnique({
             where: { id },
             select: {
                 id: true,
+                isDeleted: true,
                 registrationDate: true,
                 initialYearOfStudy: true,
                 initialSemester: true,
@@ -321,6 +330,10 @@ export const getMemberAcademicStatus = async (req: Request, res: Response) => {
         });
 
         if (!member) {
+            return res.status(404).json({ error: 'Member not found' });
+        }
+
+        if (member.isDeleted) {
             return res.status(404).json({ error: 'Member not found' });
         }
 
@@ -365,5 +378,65 @@ export const getMemberAcademicStatus = async (req: Request, res: Response) => {
     } catch (error) {
         console.error('Error fetching academic status:', error);
         res.status(500).json({ error: 'Failed to fetch academic status' });
+    }
+};
+
+// Soft delete a member
+export const softDeleteMember = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const userId = (req as any).user.id;
+
+        // Type guard: ensure id is a string
+        if (!id || typeof id !== 'string') {
+            return res.status(400).json({ error: 'Invalid member ID' });
+        }
+
+        const member = await prisma.member.findUnique({ where: { id } });
+
+        if (!member) return res.status(404).json({ error: 'Member not found' });
+        if (member.isDeleted) return res.status(400).json({ error: 'Member is already deleted' });
+        if (member.id === userId) return res.status(400).json({ error: 'Cannot delete your own account' });
+
+        await prisma.member.update({
+            where: { id },
+            data: { isDeleted: true, deletedAt: new Date(), deletedBy: userId },
+        });
+
+        console.log(`[MEMBER] Soft deleted member ${member.fullName} (${member.fellowshipNumber}) by user ${userId}`);
+        res.json({ message: 'Member deleted successfully' });
+    } catch (error) {
+        console.error('Error soft deleting member:', error);
+        res.status(500).json({ error: 'Failed to delete member' });
+    }
+};
+
+export const bulkSoftDeleteMembers = async (req: Request, res: Response) => {
+    try {
+        const { memberIds } = req.body;
+        const userId = (req as any).user.id;
+
+        if (!Array.isArray(memberIds) || memberIds.length === 0) {
+            return res.status(400).json({ error: 'memberIds must be a non-empty array' });
+        }
+
+        if (memberIds.includes(userId)) return res.status(400).json({ error: 'Cannot delete your own account' });
+
+        const members = await prisma.member.findMany({
+            where: { id: { in: memberIds }, ...activeMemberFilter },
+        });
+
+        if (members.length === 0) return res.status(400).json({ error: 'No valid members to delete' });
+
+        const result = await prisma.member.updateMany({
+            where: { id: { in: members.map(m => m.id) } },
+            data: { isDeleted: true, deletedAt: new Date(), deletedBy: userId },
+        });
+
+        console.log(`[MEMBER] Bulk soft deleted ${result.count} members by user ${userId}`);
+        res.json({ message: `${result.count} member(s) deleted successfully`, count: result.count });
+    } catch (error) {
+        console.error('Error bulk soft deleting members:', error);
+        res.status(500).json({ error: 'Failed to delete members' });
     }
 };

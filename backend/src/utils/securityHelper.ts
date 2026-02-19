@@ -84,8 +84,11 @@ export const getRemainingLockoutTime = (user: Member): number | null => {
  * Fetch user with all necessary relations for privilege check
  */
 export const getUserWithPrivilegeInfo = async (userId: string) => {
-    return await prisma.member.findUnique({
-        where: { id: userId },
+    return await prisma.member.findFirst({
+        where: {
+            id: userId,
+            isDeleted: false
+        },
         include: {
             memberTags: {
                 where: { isActive: true },

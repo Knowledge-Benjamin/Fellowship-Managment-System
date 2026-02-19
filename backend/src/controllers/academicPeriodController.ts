@@ -114,7 +114,7 @@ export const createPeriod = async (req: Request, res: Response) => {
 /**
  * Update academic period
  */
-export const updatePeriod = async (req: Request, res: Response) => {
+export const updatePeriod = async (req: Request<{ id: string }>, res: Response) => {
     try {
         const { id } = req.params;
         const validatedData = updatePeriodSchema.parse(req.body);
@@ -164,7 +164,7 @@ export const updatePeriod = async (req: Request, res: Response) => {
 /**
  * Delete academic period
  */
-export const deletePeriod = async (req: Request, res: Response) => {
+export const deletePeriod = async (req: Request<{ id: string }>, res: Response) => {
     try {
         const { id } = req.params;
 

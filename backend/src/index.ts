@@ -1,11 +1,17 @@
+import dotenv from 'dotenv';
+import path from 'path';
+
+// ⚠️ MUST be called FIRST before any other imports that use process.env (e.g. Prisma)
+dotenv.config({ path: path.join(__dirname, '..', '.env') });
+
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
-import dotenv from 'dotenv';
-import path from 'path';
 import dns from 'dns';
+
+import { processEmailQueue } from './services/emailService';
 
 // Force IPv4 resolution to avoid connectivity issues on some platforms (Render/AWS)
 dns.setDefaultResultOrder('ipv4first');
@@ -26,9 +32,6 @@ import teamRoutes from './routes/teamRoutes';
 import leadershipRoutes from './routes/leadershipRoutes';
 import familyRoutes from './routes/familyRoutes';
 import academicPeriodRoutes from './routes/academicPeriodRoutes';
-
-// Configure dotenv to load .env from backend root directory
-dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -76,4 +79,10 @@ app.get('/', (req, res) => {
 
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
+
+    // Start Email Queue Processor (Background Job)
+    console.log('[BACKGROUND] 📧 Starting Email Queue Processor...');
+    setInterval(() => {
+        processEmailQueue().catch(err => console.error('[BACKGROUND] Email processor error:', err));
+    }, 30000); // Check every 30 seconds
 });

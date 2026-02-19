@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import prisma from '../prisma';
 import { formatRegionName } from '../utils/displayFormatters';
+import { activeMemberFilter } from '../utils/queryHelpers';
 
 // Get organizational structure  
 export const getOrgStructure = async (req: Request, res: Response) => {
@@ -76,7 +77,10 @@ export const getOrgStructure = async (req: Request, res: Response) => {
                 _count: {
                     select: {
                         members: {
-                            where: { isActive: true },
+                            where: {
+                                isActive: true,
+                                member: activeMemberFilter
+                            },
                         },
                     },
                 },
@@ -85,7 +89,9 @@ export const getOrgStructure = async (req: Request, res: Response) => {
         }) : [];
 
         // Get total member count (filtered by region if Regional Head)
-        const memberFilter = regionalHeadRegionId ? { regionId: regionalHeadRegionId } : {};
+        const memberFilter = regionalHeadRegionId
+            ? { regionId: regionalHeadRegionId, ...activeMemberFilter }
+            : { ...activeMemberFilter };
         const totalMembers = await prisma.member.count({ where: memberFilter });
 
         // Transform region names for display
@@ -130,6 +136,10 @@ export const assignRegionalHead = async (req: Request, res: Response) => {
 
         if (!member) {
             return res.status(404).json({ message: 'Member not found' });
+        }
+
+        if (member.isDeleted) {
+            return res.status(400).json({ message: 'Cannot assign deleted member as regional head' });
         }
 
         if (member.headsRegion) {
@@ -195,7 +205,7 @@ export const assignRegionalHead = async (req: Request, res: Response) => {
 };
 
 // Remove regional head
-export const removeRegionalHead = async (req: Request, res: Response) => {
+export const removeRegionalHead = async (req: Request<{ regionId: string }>, res: Response) => {
     try {
         const { regionId } = req.params;
         const removerId = req.user?.id;

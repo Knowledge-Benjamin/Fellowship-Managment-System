@@ -9,20 +9,50 @@ import {
     generateCustomReportPDF,
     generateCustomReportExcel,
 } from '../services/reportExportService';
+import { getUserReportScope, buildMemberScopeFilter, getScopeDisplayName } from '../utils/reportScopeHelper';
 
 const cache = new NodeCache({ stdTTL: 300 }); // 5 minutes TTL
+
 
 // Helper to calculate event status
 
 
-export const getEventReport = async (req: Request, res: Response) => {
+export const getEventReport = async (req: Request<{ eventId: string }>, res: Response) => {
     try {
         const { eventId } = req.params;
+        const userId = req.user?.id;
+        const userRole = req.user?.role;
+
+        if (!userId || !userRole) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+
+        // Check publication status
+        const reportStatus = await prisma.eventReport.findUnique({
+            where: { eventId }
+        });
+
+        // Fellowship Managers can always see reports (even unpublished)
+        if (userRole !== 'FELLOWSHIP_MANAGER') {
+            if (!reportStatus || !reportStatus.isPublished) {
+                return res.status(403).json({
+                    error: 'Report not yet available',
+                    message: 'This report has not been published yet. Please contact the Fellowship Manager.'
+                });
+            }
+        }
+
+        // Get user's scope
+        const scope = await getUserReportScope(userId);
+        const memberFilter = buildMemberScopeFilter(scope);
 
         const event = await prisma.event.findUnique({
             where: { id: eventId },
             include: {
                 attendances: {
+                    where: {
+                        member: memberFilter
+                    },
                     include: {
                         member: {
                             include: {
@@ -62,7 +92,7 @@ export const getEventReport = async (req: Request, res: Response) => {
 
         // 2. Gender Breakdown
         const genderBreakdown = event.attendances.reduce(
-            (acc, curr) => {
+            (acc: Record<string, number>, curr: any) => {
                 const gender = curr.member.gender;
                 acc[gender] = (acc[gender] || 0) + 1;
                 return acc;
@@ -71,7 +101,7 @@ export const getEventReport = async (req: Request, res: Response) => {
         );
 
         // 3. First Timers (Tag-Based with Fallback)
-        const memberIds = event.attendances.map((a) => a.memberId);
+        const memberIds = event.attendances.map((a: any) => a.memberId);
 
         // Priority 1: Check for PENDING_FIRST_ATTENDANCE tag (new system)
         const firstTimerTagCount = await prisma.memberTag.count({
@@ -97,19 +127,19 @@ export const getEventReport = async (req: Request, res: Response) => {
                 distinct: ['memberId'],
             });
 
-            const returningMemberIds = new Set(previousAttendances.map((a) => a.memberId));
-            firstTimersCount = memberIds.filter((id) => !returningMemberIds.has(id)).length;
+            const returningMemberIds = new Set(previousAttendances.map((a: any) => a.memberId));
+            firstTimersCount = memberIds.filter((id: string) => !returningMemberIds.has(id)).length;
         }
 
         // 4. Guest Analysis
-        const guestDetails = event.guestAttendances.map(g => ({
+        const guestDetails = event.guestAttendances.map((g: any) => ({
             name: g.guestName,
             purpose: g.purpose,
         }));
 
         // 5. Region Breakdown
         const regionBreakdown = event.attendances.reduce(
-            (acc, curr) => {
+            (acc: Record<string, number>, curr: any) => {
                 const regionName = curr.member.region.name;
                 acc[regionName] = (acc[regionName] || 0) + 1;
                 return acc;
@@ -119,7 +149,7 @@ export const getEventReport = async (req: Request, res: Response) => {
 
         // 6. Salvation Breakdown
         const salvationBreakdown = event.salvations.reduce(
-            (acc, curr) => {
+            (acc: Record<string, number>, curr: any) => {
                 acc[curr.decisionType] = (acc[curr.decisionType] || 0) + 1;
                 return acc;
             },
@@ -128,8 +158,8 @@ export const getEventReport = async (req: Request, res: Response) => {
 
         // 7. Tag Distribution
         const tagDistribution = event.attendances.reduce(
-            (acc, curr) => {
-                curr.member.memberTags.forEach(mt => {
+            (acc: Record<string, number>, curr: any) => {
+                curr.member.memberTags.forEach((mt: any) => {
                     const tagName = mt.tag.name;
                     acc[tagName] = (acc[tagName] || 0) + 1;
                 });
@@ -148,7 +178,7 @@ export const getEventReport = async (req: Request, res: Response) => {
             'Unknown': 0
         };
 
-        event.attendances.forEach(att => {
+        event.attendances.forEach((att: any) => {
             const year = att.member.initialYearOfStudy;
             if (!year) {
                 yearOfStudyBreakdown['Unknown']++;
@@ -161,7 +191,7 @@ export const getEventReport = async (req: Request, res: Response) => {
 
         // 9. College Distribution
         const collegeBreakdown = event.attendances.reduce(
-            (acc, curr) => {
+            (acc: Record<string, number>, curr: any) => {
                 const college = curr.member.courseRelation?.college?.name || 'Unknown';
                 acc[college] = (acc[college] || 0) + 1;
                 return acc;
@@ -171,7 +201,7 @@ export const getEventReport = async (req: Request, res: Response) => {
 
         // 10. Course Distribution
         const courseBreakdown = event.attendances.reduce(
-            (acc, curr) => {
+            (acc: Record<string, number>, curr: any) => {
                 const course = curr.member.courseRelation?.name || 'Unknown';
                 acc[course] = (acc[course] || 0) + 1;
                 return acc;
@@ -181,12 +211,12 @@ export const getEventReport = async (req: Request, res: Response) => {
 
         // 11. Family Participation
         const familyBreakdown = event.attendances.reduce(
-            (acc, curr) => {
-                const families = curr.member.familyMemberships.filter(fm => fm.isActive);
+            (acc: Record<string, number>, curr: any) => {
+                const families = curr.member.familyMemberships.filter((fm: any) => fm.isActive);
                 if (families.length === 0) {
                     acc['No Family'] = (acc['No Family'] || 0) + 1;
                 } else {
-                    families.forEach(fm => {
+                    families.forEach((fm: any) => {
                         const familyName = fm.family.name;
                         acc[familyName] = (acc[familyName] || 0) + 1;
                     });
@@ -198,12 +228,12 @@ export const getEventReport = async (req: Request, res: Response) => {
 
         // 12. Ministry Team Participation
         const teamBreakdown = event.attendances.reduce(
-            (acc, curr) => {
-                const teams = curr.member.ministryMemberships.filter(mm => mm.isActive);
+            (acc: Record<string, number>, curr: any) => {
+                const teams = curr.member.ministryMemberships.filter((mm: any) => mm.isActive);
                 if (teams.length === 0) {
                     acc['No Team'] = (acc['No Team'] || 0) + 1;
                 } else {
-                    teams.forEach(mm => {
+                    teams.forEach((mm: any) => {
                         const teamName = mm.team.name;
                         acc[teamName] = (acc[teamName] || 0) + 1;
                     });
@@ -215,8 +245,8 @@ export const getEventReport = async (req: Request, res: Response) => {
 
         // 13. Special Tags (Finalist, Alumni, Volunteers)
         const specialTagStats = event.attendances.reduce(
-            (acc, curr) => {
-                const tagNames = curr.member.memberTags.map(mt => mt.tag.name);
+            (acc: any, curr: any) => {
+                const tagNames = curr.member.memberTags.map((mt: any) => mt.tag.name);
                 if (tagNames.includes('FINALIST')) acc.finalists++;
                 if (tagNames.includes('ALUMNI')) acc.alumni++;
                 if (tagNames.includes('CHECK_IN_VOLUNTEER')) acc.volunteers++;
@@ -252,15 +282,23 @@ export const getEventReport = async (req: Request, res: Response) => {
                 // Special Tags
                 specialTagStats,
             },
-            guests: guestDetails,
+            guests: event.guestAttendances.map((g: any) => ({
+                name: g.guestName,
+                purpose: g.purpose,
+            })),
+            scope: {
+                type: scope.regionId ? 'region' : scope.familyIds.length > 0 ? 'family' : scope.teamIds.length > 0 ? 'team' : 'all',
+                name: getScopeDisplayName(scope),
+                isFellowshipManager: userRole === 'FELLOWSHIP_MANAGER'
+            }
         });
     } catch (error) {
-        console.error('Get event report error:', error);
-        res.status(500).json({ error: 'Failed to generate report' });
+        console.error('Event report error:', error);
+        res.status(500).json({ error: 'Failed to generate event report' });
     }
 };
 
-export const getComparativeReport = async (req: Request, res: Response) => {
+export const getComparativeReport = async (req: Request<{ eventId: string }>, res: Response) => {
     try {
         const { eventId } = req.params;
 
@@ -305,15 +343,18 @@ export const getComparativeReport = async (req: Request, res: Response) => {
 
 export const getDashboardStats = async (req: Request, res: Response) => {
     try {
-        const cacheKey = 'dashboard_stats';
-        const cachedData = cache.get(cacheKey);
+        const userId = req.user?.id;
 
-        if (cachedData) {
-            return res.json(cachedData);
+        if (!userId) {
+            return res.status(401).json({ error: 'Unauthorized' });
         }
 
+        // Get user's scope  
+        const scope = await getUserReportScope(userId);
+        const memberFilter = buildMemberScopeFilter(scope);
+
         const [totalMembers, totalEvents, recentEvents, finalistsCount, alumniCount, activeFamilies, activeTeams] = await Promise.all([
-            prisma.member.count(),
+            prisma.member.count({ where: { isDeleted: false, ...memberFilter } }),
             prisma.event.count(),
             prisma.event.findMany({
                 take: 5,
@@ -327,20 +368,22 @@ export const getDashboardStats = async (req: Request, res: Response) => {
             prisma.memberTag.count({
                 where: {
                     tag: { name: 'FINALIST' },
-                    isActive: true
+                    isActive: true,
+                    member: memberFilter
                 }
             }),
             prisma.memberTag.count({
                 where: {
                     tag: { name: 'ALUMNI' },
-                    isActive: true
+                    isActive: true,
+                    member: memberFilter
                 }
             }),
-            prisma.familyGroup.count(),
-            prisma.ministryTeam.count()
+            scope.role === 'FELLOWSHIP_MANAGER' ? prisma.familyGroup.count() : Promise.resolve(scope.familyIds.length),
+            scope.role === 'FELLOWSHIP_MANAGER' ? prisma.ministryTeam.count() : Promise.resolve(scope.teamIds.length)
         ]);
 
-        const totalRecentAttendance = recentEvents.reduce((acc, event) => {
+        const totalRecentAttendance = recentEvents.reduce((acc: number, event: any) => {
             return acc + (event._count?.attendances || 0) + (event._count?.guestAttendances || 0);
         }, 0);
 
@@ -356,9 +399,12 @@ export const getDashboardStats = async (req: Request, res: Response) => {
             alumniCount,
             activeFamilies,
             activeTeams,
+            scope: {
+                type: scope.regionId ? 'region' : scope.familyIds.length > 0 ? 'family' : scope.teamIds.length > 0 ? 'team' : 'all',
+                name: getScopeDisplayName(scope)
+            }
         };
 
-        cache.set(cacheKey, responseData);
         res.json(responseData);
     } catch (error) {
         console.error('Dashboard stats error:', error);
@@ -368,7 +414,16 @@ export const getDashboardStats = async (req: Request, res: Response) => {
 
 export const getCustomReport = async (req: Request, res: Response) => {
     try {
-        const { startDate, endDate, type, regionId } = req.query;
+        const { startDate, endDate, type } = req.query;
+        const userId = req.user?.id;
+
+        if (!userId) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+
+        // Get user's scope
+        const scope = await getUserReportScope(userId);
+        const memberFilter = buildMemberScopeFilter(scope);
 
         const where: any = {};
 
@@ -383,17 +438,15 @@ export const getCustomReport = async (req: Request, res: Response) => {
             where.type = type;
         }
 
-        // If regionId is provided, we need to filter attendances
+        // Fetch events with scoped attendances
         const events = await prisma.event.findMany({
             where,
             orderBy: { date: 'asc' },
             include: {
                 attendances: {
-                    where: regionId ? {
-                        member: {
-                            regionId: regionId as string
-                        }
-                    } : undefined,
+                    where: {
+                        member: memberFilter
+                    },
                     include: {
                         member: {
                             include: {
@@ -425,9 +478,9 @@ export const getCustomReport = async (req: Request, res: Response) => {
         // Aggregated Stats
         const totalEvents = events.length;
 
-        const totalAttendance = events.reduce((acc, event) => {
+        const totalAttendance = events.reduce((acc: number, event: any) => {
             const memberCount = event.attendances.length;
-            const guestCount = regionId ? 0 : event.guestAttendances.length;
+            const guestCount = event.guestAttendances.length;
             return acc + memberCount + guestCount;
         }, 0);
 
@@ -435,8 +488,8 @@ export const getCustomReport = async (req: Request, res: Response) => {
 
         // Unique Members
         const allMemberIds = new Set<string>();
-        events.forEach(event => {
-            event.attendances.forEach(a => allMemberIds.add(a.memberId));
+        events.forEach((event: any) => {
+            event.attendances.forEach((a: any) => allMemberIds.add(a.memberId));
         });
         const uniqueMembers = allMemberIds.size;
 
@@ -456,8 +509,8 @@ export const getCustomReport = async (req: Request, res: Response) => {
         const teamBreakdown: Record<string, number> = {};
         const specialTagStats = { finalists: 0, alumni: 0, volunteers: 0 };
 
-        events.forEach(event => {
-            event.attendances.forEach(a => {
+        events.forEach((event: any) => {
+            event.attendances.forEach((a: any) => {
                 // Gender
                 const gender = a.member.gender as 'MALE' | 'FEMALE';
                 if (genderBreakdown[gender] !== undefined) {
@@ -469,7 +522,7 @@ export const getCustomReport = async (req: Request, res: Response) => {
                 regionBreakdown[regionName] = (regionBreakdown[regionName] || 0) + 1;
 
                 // Tags
-                a.member.memberTags.forEach(mt => {
+                a.member.memberTags.forEach((mt: any) => {
                     const tagName = mt.tag.name;
                     tagDistribution[tagName] = (tagDistribution[tagName] || 0) + 1;
                 });
@@ -493,45 +546,45 @@ export const getCustomReport = async (req: Request, res: Response) => {
                 courseBreakdown[course] = (courseBreakdown[course] || 0) + 1;
 
                 // Family
-                const families = a.member.familyMemberships.filter(fm => fm.isActive);
+                const families = a.member.familyMemberships.filter((fm: any) => fm.isActive);
                 if (families.length === 0) {
                     familyBreakdown['No Family'] = (familyBreakdown['No Family'] || 0) + 1;
                 } else {
-                    families.forEach(fm => {
+                    families.forEach((fm: any) => {
                         const familyName = fm.family.name;
                         familyBreakdown[familyName] = (familyBreakdown[familyName] || 0) + 1;
                     });
                 }
 
                 // Team
-                const teams = a.member.ministryMemberships.filter(mm => mm.isActive);
+                const teams = a.member.ministryMemberships.filter((mm: any) => mm.isActive);
                 if (teams.length === 0) {
                     teamBreakdown['No Team'] = (teamBreakdown['No Team'] || 0) + 1;
                 } else {
-                    teams.forEach(mm => {
+                    teams.forEach((mm: any) => {
                         const teamName = mm.team.name;
                         teamBreakdown[teamName] = (teamBreakdown[teamName] || 0) + 1;
                     });
                 }
 
                 // Special Tags
-                const tagNames = a.member.memberTags.map(mt => mt.tag.name);
+                const tagNames = a.member.memberTags.map((mt: any) => mt.tag.name);
                 if (tagNames.includes('FINALIST')) specialTagStats.finalists++;
                 if (tagNames.includes('ALUMNI')) specialTagStats.alumni++;
                 if (tagNames.includes('CHECK_IN_VOLUNTEER')) specialTagStats.volunteers++;
             });
 
             // Salvations
-            event.salvations.forEach(s => {
+            event.salvations.forEach((s: any) => {
                 salvationBreakdown[s.decisionType] = (salvationBreakdown[s.decisionType] || 0) + 1;
             });
         });
 
         // Chart Data (Attendance over time)
-        const chartData = events.map(event => ({
+        const chartData = events.map((event: any) => ({
             date: event.date.toISOString().split('T')[0],
             name: event.name,
-            attendance: event.attendances.length + (regionId ? 0 : event.guestAttendances.length),
+            attendance: event.attendances.length + event.guestAttendances.length,
         }));
 
         res.json({
@@ -555,6 +608,10 @@ export const getCustomReport = async (req: Request, res: Response) => {
                 specialTagStats,
             },
             chartData,
+            scope: {
+                type: scope.regionId ? 'region' : scope.familyIds.length > 0 ? 'family' : scope.teamIds.length > 0 ? 'team' : 'all',
+                name: getScopeDisplayName(scope)
+            }
         });
 
     } catch (error) {
@@ -567,7 +624,7 @@ export const getCustomReport = async (req: Request, res: Response) => {
  * Export Event Report as PDF
  * GET /reports/:eventId/export/pdf
  */
-export const exportEventReportPDF = async (req: Request, res: Response) => {
+export const exportEventReportPDF = async (req: Request<{ eventId: string }>, res: Response) => {
     try {
         const { eventId } = req.params;
 
@@ -601,8 +658,8 @@ export const exportEventReportPDF = async (req: Request, res: Response) => {
         const totalAttendance = memberCount + guestCount;
 
         const genderBreakdown: { MALE: number; FEMALE: number } = event.attendances.reduce(
-            (acc, curr) => {
-                const gender = curr.member.gender;
+            (acc: { MALE: number; FEMALE: number }, curr: any) => {
+                const gender = curr.member.gender as 'MALE' | 'FEMALE';
                 if (gender === 'MALE' || gender === 'FEMALE') {
                     acc[gender] = (acc[gender] || 0) + 1;
                 }
@@ -611,7 +668,7 @@ export const exportEventReportPDF = async (req: Request, res: Response) => {
             { MALE: 0, FEMALE: 0 }
         );
 
-        const memberIds = event.attendances.map((a) => a.memberId);
+        const memberIds = event.attendances.map((a: any) => a.memberId);
 
         // Tag-based first-timer detection with fallback
         const firstTimerTagCount = await prisma.memberTag.count({
@@ -637,17 +694,17 @@ export const exportEventReportPDF = async (req: Request, res: Response) => {
                 distinct: ['memberId'],
             });
 
-            const returningMemberIds = new Set(previousAttendances.map((a) => a.memberId));
-            firstTimersCount = memberIds.filter((id) => !returningMemberIds.has(id)).length;
+            const returningMemberIds = new Set(previousAttendances.map((a: any) => a.memberId));
+            firstTimersCount = memberIds.filter((id: string) => !returningMemberIds.has(id)).length;
         }
 
-        const guestDetails = event.guestAttendances.map(g => ({
+        const guestDetails = event.guestAttendances.map((g: any) => ({
             name: g.guestName,
             purpose: g.purpose,
         }));
 
         const regionBreakdown = event.attendances.reduce(
-            (acc, curr) => {
+            (acc: Record<string, number>, curr: any) => {
                 const regionName = curr.member.region.name;
                 acc[regionName] = (acc[regionName] || 0) + 1;
                 return acc;
@@ -656,7 +713,7 @@ export const exportEventReportPDF = async (req: Request, res: Response) => {
         );
 
         const salvationBreakdown = event.salvations.reduce(
-            (acc, curr) => {
+            (acc: Record<string, number>, curr: any) => {
                 acc[curr.decisionType] = (acc[curr.decisionType] || 0) + 1;
                 return acc;
             },
@@ -664,8 +721,8 @@ export const exportEventReportPDF = async (req: Request, res: Response) => {
         );
 
         const tagDistribution = event.attendances.reduce(
-            (acc, curr) => {
-                curr.member.memberTags.forEach(mt => {
+            (acc: Record<string, number>, curr: any) => {
+                curr.member.memberTags.forEach((mt: any) => {
                     const tagName = mt.tag.name;
                     acc[tagName] = (acc[tagName] || 0) + 1;
                 });
@@ -706,7 +763,7 @@ export const exportEventReportPDF = async (req: Request, res: Response) => {
  * Export Event Report as Excel
  * GET /reports/:eventId/export/excel
  */
-export const exportEventReportExcel = async (req: Request, res: Response) => {
+export const exportEventReportExcel = async (req: Request<{ eventId: string }>, res: Response) => {
     try {
         const { eventId } = req.params;
 
@@ -740,8 +797,8 @@ export const exportEventReportExcel = async (req: Request, res: Response) => {
         const totalAttendance = memberCount + guestCount;
 
         const genderBreakdown: { MALE: number; FEMALE: number } = event.attendances.reduce(
-            (acc, curr) => {
-                const gender = curr.member.gender;
+            (acc: { MALE: number; FEMALE: number }, curr: any) => {
+                const gender = curr.member.gender as 'MALE' | 'FEMALE';
                 if (gender === 'MALE' || gender === 'FEMALE') {
                     acc[gender] = (acc[gender] || 0) + 1;
                 }
@@ -750,7 +807,7 @@ export const exportEventReportExcel = async (req: Request, res: Response) => {
             { MALE: 0, FEMALE: 0 }
         );
 
-        const memberIds = event.attendances.map((a) => a.memberId);
+        const memberIds = event.attendances.map((a: any) => a.memberId);
 
         // Tag-based first-timer detection with fallback
         const firstTimerTagCount = await prisma.memberTag.count({
@@ -776,17 +833,17 @@ export const exportEventReportExcel = async (req: Request, res: Response) => {
                 distinct: ['memberId'],
             });
 
-            const returningMemberIds = new Set(previousAttendances.map((a) => a.memberId));
-            firstTimersCount = memberIds.filter((id) => !returningMemberIds.has(id)).length;
+            const returningMemberIds = new Set(previousAttendances.map((a: any) => a.memberId));
+            firstTimersCount = memberIds.filter((id: string) => !returningMemberIds.has(id)).length;
         }
 
-        const guestDetails = event.guestAttendances.map(g => ({
+        const guestDetails = event.guestAttendances.map((g: any) => ({
             name: g.guestName,
             purpose: g.purpose,
         }));
 
         const regionBreakdown = event.attendances.reduce(
-            (acc, curr) => {
+            (acc: Record<string, number>, curr: any) => {
                 const regionName = curr.member.region.name;
                 acc[regionName] = (acc[regionName] || 0) + 1;
                 return acc;
@@ -795,7 +852,7 @@ export const exportEventReportExcel = async (req: Request, res: Response) => {
         );
 
         const salvationBreakdown = event.salvations.reduce(
-            (acc, curr) => {
+            (acc: Record<string, number>, curr: any) => {
                 acc[curr.decisionType] = (acc[curr.decisionType] || 0) + 1;
                 return acc;
             },
@@ -803,8 +860,8 @@ export const exportEventReportExcel = async (req: Request, res: Response) => {
         );
 
         const tagDistribution = event.attendances.reduce(
-            (acc, curr) => {
-                curr.member.memberTags.forEach(mt => {
+            (acc: Record<string, number>, curr: any) => {
+                curr.member.memberTags.forEach((mt: any) => {
                     const tagName = mt.tag.name;
                     acc[tagName] = (acc[tagName] || 0) + 1;
                 });
@@ -894,7 +951,7 @@ export const exportCustomReportPDF = async (req: Request, res: Response) => {
         });
 
         const totalEvents = events.length;
-        const totalAttendance = events.reduce((acc, event) => {
+        const totalAttendance = events.reduce((acc: number, event: any) => {
             const memberCount = event.attendances.length;
             const guestCount = regionId ? 0 : event.guestAttendances.length;
             return acc + memberCount + guestCount;
@@ -903,8 +960,8 @@ export const exportCustomReportPDF = async (req: Request, res: Response) => {
         const averageAttendance = totalEvents > 0 ? Math.round(totalAttendance / totalEvents) : 0;
 
         const allMemberIds = new Set<string>();
-        events.forEach(event => {
-            event.attendances.forEach(a => allMemberIds.add(a.memberId));
+        events.forEach((event: any) => {
+            event.attendances.forEach((a: any) => allMemberIds.add(a.memberId));
         });
         const uniqueMembers = allMemberIds.size;
 
@@ -913,8 +970,8 @@ export const exportCustomReportPDF = async (req: Request, res: Response) => {
         const tagDistribution: Record<string, number> = {};
         const salvationBreakdown: Record<string, number> = {};
 
-        events.forEach(event => {
-            event.attendances.forEach(a => {
+        events.forEach((event: any) => {
+            event.attendances.forEach((a: any) => {
                 const gender = a.member.gender as 'MALE' | 'FEMALE';
                 if (genderBreakdown[gender] !== undefined) {
                     genderBreakdown[gender]++;
@@ -922,18 +979,18 @@ export const exportCustomReportPDF = async (req: Request, res: Response) => {
                 const regionName = a.member.region.name;
                 regionBreakdown[regionName] = (regionBreakdown[regionName] || 0) + 1;
 
-                a.member.memberTags.forEach(mt => {
+                a.member.memberTags.forEach((mt: any) => {
                     const tagName = mt.tag.name;
                     tagDistribution[tagName] = (tagDistribution[tagName] || 0) + 1;
                 });
             });
 
-            event.salvations.forEach(s => {
+            event.salvations.forEach((s: any) => {
                 salvationBreakdown[s.decisionType] = (salvationBreakdown[s.decisionType] || 0) + 1;
             });
         });
 
-        const chartData = events.map(event => ({
+        const chartData = events.map((event: any) => ({
             date: event.date.toISOString().split('T')[0],
             name: event.name,
             attendance: event.attendances.length + (regionId ? 0 : event.guestAttendances.length),
@@ -1016,7 +1073,7 @@ export const exportCustomReportExcel = async (req: Request, res: Response) => {
         });
 
         const totalEvents = events.length;
-        const totalAttendance = events.reduce((acc, event) => {
+        const totalAttendance = events.reduce((acc: number, event: any) => {
             const memberCount = event.attendances.length;
             const guestCount = regionId ? 0 : event.guestAttendances.length;
             return acc + memberCount + guestCount;
@@ -1025,8 +1082,8 @@ export const exportCustomReportExcel = async (req: Request, res: Response) => {
         const averageAttendance = totalEvents > 0 ? Math.round(totalAttendance / totalEvents) : 0;
 
         const allMemberIds = new Set<string>();
-        events.forEach(event => {
-            event.attendances.forEach(a => allMemberIds.add(a.memberId));
+        events.forEach((event: any) => {
+            event.attendances.forEach((a: any) => allMemberIds.add(a.memberId));
         });
         const uniqueMembers = allMemberIds.size;
 
@@ -1035,8 +1092,8 @@ export const exportCustomReportExcel = async (req: Request, res: Response) => {
         const tagDistribution: Record<string, number> = {};
         const salvationBreakdown: Record<string, number> = {};
 
-        events.forEach(event => {
-            event.attendances.forEach(a => {
+        events.forEach((event: any) => {
+            event.attendances.forEach((a: any) => {
                 const gender = a.member.gender as 'MALE' | 'FEMALE';
                 if (genderBreakdown[gender] !== undefined) {
                     genderBreakdown[gender]++;
@@ -1044,18 +1101,18 @@ export const exportCustomReportExcel = async (req: Request, res: Response) => {
                 const regionName = a.member.region.name;
                 regionBreakdown[regionName] = (regionBreakdown[regionName] || 0) + 1;
 
-                a.member.memberTags.forEach(mt => {
+                a.member.memberTags.forEach((mt: any) => {
                     const tagName = mt.tag.name;
                     tagDistribution[tagName] = (tagDistribution[tagName] || 0) + 1;
                 });
             });
 
-            event.salvations.forEach(s => {
+            event.salvations.forEach((s: any) => {
                 salvationBreakdown[s.decisionType] = (salvationBreakdown[s.decisionType] || 0) + 1;
             });
         });
 
-        const chartData = events.map(event => ({
+        const chartData = events.map((event: any) => ({
             date: event.date.toISOString().split('T')[0],
             name: event.name,
             attendance: event.attendances.length + (regionId ? 0 : event.guestAttendances.length),
@@ -1082,5 +1139,114 @@ export const exportCustomReportExcel = async (req: Request, res: Response) => {
     } catch (error) {
         console.error('Custom Excel export error:', error);
         res.status(500).json({ error: 'Failed to generate Excel' });
+    }
+};
+
+// ============================================================================
+// EVENT REPORT PUBLICATION CONTROL
+// ============================================================================
+
+// Publish event report (Fellowship Managers only)
+export const publishEventReport = async (req: Request<{ eventId: string }>, res: Response) => {
+    try {
+        const { eventId } = req.params;
+        const userId = req.user?.id;
+
+        if (!userId) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+
+        // Verify event exists
+        const event = await prisma.event.findUnique({
+            where: { id: eventId }
+        });
+
+        if (!event) {
+            return res.status(404).json({ error: 'Event not found' });
+        }
+
+        // Publish report (create or update)
+        const report = await prisma.eventReport.upsert({
+            where: { eventId },
+            create: {
+                eventId,
+                isPublished: true,
+                publishedAt: new Date(),
+                publishedBy: userId
+            },
+            update: {
+                isPublished: true,
+                publishedAt: new Date(),
+                publishedBy: userId
+            },
+            include: {
+                publisher: {
+                    select: {
+                        id: true,
+                        fullName: true
+                    }
+                }
+            }
+        });
+
+        res.json({
+            message: 'Report published successfully',
+            report
+        });
+    } catch (error) {
+        console.error('Error publishing report:', error);
+        res.status(500).json({ error: 'Failed to publish report' });
+    }
+};
+
+// Unpublish event report (Fellowship Managers only)
+export const unpublishEventReport = async (req: Request<{ eventId: string }>, res: Response) => {
+    try {
+        const { eventId } = req.params;
+
+        const report = await prisma.eventReport.update({
+            where: { eventId },
+            data: {
+                isPublished: false,
+                publishedAt: null,
+                publishedBy: null
+            }
+        });
+
+        res.json({
+            message: 'Report unpublished successfully',
+            report
+        });
+    } catch (error) {
+        console.error('Error unpublishing report:', error);
+        res.status(500).json({ error: 'Failed to unpublish report' });
+    }
+};
+
+//Get event report publication status
+export const getReportStatus = async (req: Request<{ eventId: string }>, res: Response) => {
+    try {
+        const { eventId } = req.params;
+
+        const report = await prisma.eventReport.findUnique({
+            where: { eventId },
+            include: {
+                publisher: {
+                    select: {
+                        id: true,
+                        fullName: true
+                    }
+                }
+            }
+        });
+
+        res.json({
+            isPublished: report?.isPublished || false,
+            publishedAt: report?.publishedAt || null,
+            publisher: report?.publisher || null
+        });
+    } catch (error) {
+        console.error('Error fetching report status:', error);
+        res.status(500).json({ error: 'Failed to fetch report status' });
     }
 };

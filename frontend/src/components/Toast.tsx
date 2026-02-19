@@ -43,19 +43,19 @@ const Toast = ({ id, type, message, duration = 4000, onClose }: ToastProps) => {
         info: <Info className="w-6 h-6" />,
     };
 
-    // Glassmorphic premium styling matching VolunteerManager
+    // Standard light theme styling
     const styles = {
-        success: 'bg-green-500/10 backdrop-blur-xl border-green-500/30 text-green-100',
-        error: 'bg-red-500/10 backdrop-blur-xl border-red-500/30 text-red-100',
-        warning: 'bg-yellow-500/10 backdrop-blur-xl border-yellow-500/30 text-yellow-100',
-        info: 'bg-blue-500/10 backdrop-blur-xl border-blue-500/30 text-blue-100',
+        success: 'bg-white border-green-200 text-slate-800 shadow-xl shadow-green-100',
+        error: 'bg-white border-red-200 text-slate-800 shadow-xl shadow-red-100',
+        warning: 'bg-white border-yellow-200 text-slate-800 shadow-xl shadow-yellow-100',
+        info: 'bg-white border-blue-200 text-slate-800 shadow-xl shadow-blue-100',
     };
 
     const iconBgStyles = {
-        success: 'bg-green-500/20 text-green-400',
-        error: 'bg-red-500/20 text-red-400',
-        warning: 'bg-yellow-500/20 text-yellow-400',
-        info: 'bg-blue-500/20 text-blue-400',
+        success: 'bg-green-50 text-green-600',
+        error: 'bg-red-50 text-red-600',
+        warning: 'bg-yellow-50 text-yellow-600',
+        info: 'bg-blue-50 text-blue-600',
     };
 
     const progressStyles = {
@@ -101,7 +101,7 @@ const Toast = ({ id, type, message, duration = 4000, onClose }: ToastProps) => {
                     {/* Close button */}
                     <button
                         onClick={handleClose}
-                        className="text-white/60 hover:text-white transition-colors shrink-0 mt-1 hover:bg-white/10 rounded-full p-1"
+                        className="text-slate-400 hover:text-slate-600 transition-colors shrink-0 mt-1 hover:bg-slate-100 rounded-full p-1"
                         aria-label="Close notification"
                     >
                         <X className="w-4 h-4" />
@@ -109,7 +109,7 @@ const Toast = ({ id, type, message, duration = 4000, onClose }: ToastProps) => {
                 </div>
 
                 {/* Progress bar */}
-                <div className="mt-3 h-1 bg-white/10 rounded-full overflow-hidden">
+                <div className="mt-3 h-1 bg-slate-100 rounded-full overflow-hidden">
                     <div
                         className={`h-full transition-all duration-50 linear ${progressStyles[type]}`}
                         style={{ width: `${progress}%` }}

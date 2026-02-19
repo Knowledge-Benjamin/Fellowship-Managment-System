@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { getCountries, getCountryCallingCode } from 'libphonenumber-js';
 import en from 'react-phone-number-input/locale/en.json';
-import { Search, X, ChevronDown } from 'lucide-react';
+import { Search, X, ChevronDown, CheckCircle } from 'lucide-react';
 
 interface CountrySelectorProps {
     value: string;
@@ -87,25 +87,23 @@ const CountrySelector: React.FC<CountrySelectorProps> = ({ value, onChange, disa
                 onClick={() => !disabled && setIsOpen(!isOpen)}
                 disabled={disabled}
                 className={`
-                    flex items-center gap-2 px-3 py-3
-                    bg-slate-800/50 border border-slate-700/50
-                    rounded-lg transition-all duration-300
-                    ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-800/70 hover:border-slate-600/50 cursor-pointer'}
-                    ${isOpen ? 'border-teal-500 ring-2 ring-teal-500/20' : ''}
+                    flex items-center gap-2 px-3 py-1
+                    rounded-lg transition-all duration-200
+                    text-white font-bold shadow-sm border-2 border-transparent
+                    ${disabled ? 'opacity-50 cursor-not-allowed bg-slate-200' : 'hover:brightness-105 cursor-pointer'}
+                    ${isOpen ? 'ring-4 ring-[#F2B50B]/20' : ''}
                 `}
+                style={{ backgroundColor: '#F2B50B' }}
             >
-                <span className="text-2xl">{selectedCountry ? getFlag(selectedCountry.code) : '🌍'}</span>
-                <span className="text-slate-300 text-sm font-medium">
-                    +{selectedCountry?.callingCode || '256'}
-                </span>
-                <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                <span className="text-xl leading-none">{selectedCountry ? getFlag(selectedCountry.code) : '🌍'}</span>
+                <ChevronDown className={`w-4 h-4 text-white transition-transform ${isOpen ? 'rotate-180' : ''}`} />
             </button>
 
             {/* Dropdown */}
             {isOpen && (
-                <div className="absolute top-full left-0 mt-2 w-80 bg-slate-800 border border-slate-700 rounded-lg shadow-2xl z-50 overflow-hidden">
+                <div className="absolute top-full left-0 mt-2 w-80 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden ring-1 ring-slate-900/5 animate-scale-in origin-top-left">
                     {/* Search Input */}
-                    <div className="p-3 border-b border-slate-700">
+                    <div className="p-3 border-b border-slate-100 bg-slate-50/50">
                         <div className="relative">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                             <input
@@ -114,12 +112,12 @@ const CountrySelector: React.FC<CountrySelectorProps> = ({ value, onChange, disa
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 placeholder="Search country..."
-                                className="w-full pl-10 pr-8 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-slate-200 text-sm placeholder-slate-500 focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+                                className="w-full pl-10 pr-8 py-2 bg-white border border-slate-200 rounded-lg text-slate-700 text-sm placeholder-slate-400 focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/10 transition-all"
                             />
                             {searchQuery && (
                                 <button
                                     onClick={() => setSearchQuery('')}
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-700 rounded"
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-100 rounded-full transition-colors"
                                 >
                                     <X className="w-3 h-3 text-slate-400" />
                                 </button>
@@ -130,8 +128,8 @@ const CountrySelector: React.FC<CountrySelectorProps> = ({ value, onChange, disa
                     {/* Country List */}
                     <div className="max-h-64 overflow-y-auto custom-scrollbar">
                         {filteredCountries.length === 0 ? (
-                            <div className="p-4 text-center text-slate-500 text-sm">
-                                No countries found
+                            <div className="p-8 text-center text-slate-500 text-sm">
+                                <p>No countries found</p>
                             </div>
                         ) : (
                             filteredCountries.map((country) => (
@@ -141,20 +139,20 @@ const CountrySelector: React.FC<CountrySelectorProps> = ({ value, onChange, disa
                                     onClick={() => handleSelect(country.code)}
                                     className={`
                                         w-full flex items-center gap-3 px-4 py-2.5
-                                        transition-colors duration-150
+                                        transition-colors duration-150 border-b border-slate-50 last:border-0
                                         ${country.code === value
-                                            ? 'bg-teal-500/20 text-teal-300'
-                                            : 'text-slate-300 hover:bg-slate-700/50'
+                                            ? 'bg-teal-50 text-teal-700'
+                                            : 'text-slate-700 hover:bg-slate-50'
                                         }
                                     `}
                                 >
-                                    <span className="text-2xl">{getFlag(country.code)}</span>
+                                    <span className="text-2xl leading-none">{getFlag(country.code)}</span>
                                     <div className="flex-1 text-left">
                                         <div className="text-sm font-medium">{country.name}</div>
                                         <div className="text-xs text-slate-500">+{country.callingCode}</div>
                                     </div>
                                     {country.code === value && (
-                                        <div className="w-2 h-2 bg-teal-400 rounded-full"></div>
+                                        <CheckCircle className="w-4 h-4 text-teal-500" />
                                     )}
                                 </button>
                             ))

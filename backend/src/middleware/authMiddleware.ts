@@ -36,13 +36,14 @@ export const protect = async (req: Request, res: Response, next: NextFunction) =
 
             const user = await prisma.member.findUnique({
                 where: { id: decoded.id },
-                select: { id: true, role: true },
+                select: { id: true, role: true, isDeleted: true },
             });
 
-            if (!user) {
+            if (!user || user.isDeleted) {
                 res.status(401).json({ message: 'Not authorized, user not found' });
                 return;
             }
+
 
             req.user = { id: user.id, role: user.role };
             next();

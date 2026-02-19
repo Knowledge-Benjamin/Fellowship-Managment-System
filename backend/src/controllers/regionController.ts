@@ -1,4 +1,6 @@
 import { Request, Response } from 'express';
+import { activeMemberFilter } from '../utils/queryHelpers';
+
 import { z } from 'zod';
 import prisma from '../prisma';
 import { formatRegionsForDisplay, formatRegionForDisplay } from '../utils/displayFormatters';
@@ -16,18 +18,25 @@ export const getRegions = async (req: Request, res: Response) => {
                 name: 'asc',
             },
             include: {
-                _count: {
-                    select: {
-                        members: true,
-                    },
-                },
+                members: {
+                    where: activeMemberFilter,
+                    select: { id: true }
+                }
             },
         });
 
-        // Transform region names for display (uppercase, Central gets suffix)
-        const formattedRegions = formatRegionsForDisplay(regions);
+        // Transform region names for display and count members
+        const formattedRegions = regions.map(region => ({
+            ...region,
+            _count: {
+                members: region.members.length
+            },
+            members: undefined // Remove the members array from response
+        }));
 
-        res.json(formattedRegions);
+        const finalRegions = formatRegionsForDisplay(formattedRegions);
+
+        res.json(finalRegions);
     } catch (error) {
         console.error('Get regions error:', error);
         res.status(500).json({ error: 'Failed to fetch regions' });
@@ -90,15 +99,14 @@ export const deleteRegion = async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'Invalid region ID' });
         }
 
-        // Check if region exists
+        // Check if region exists and count active members
         const region = await prisma.region.findUnique({
             where: { id },
             include: {
-                _count: {
-                    select: {
-                        members: true,
-                    },
-                },
+                members: {
+                    where: activeMemberFilter,
+                    select: { id: true }
+                }
             },
         });
 
@@ -106,10 +114,10 @@ export const deleteRegion = async (req: Request, res: Response) => {
             return res.status(404).json({ error: 'Region not found' });
         }
 
-        // Cannot delete region with assigned members
-        if (region._count.members > 0) {
+        // Cannot delete region with assigned active members
+        if (region.members.length > 0) {
             return res.status(400).json({
-                error: `Cannot delete region. ${region._count.members} member(s) are assigned to this region. Please reassign them first.`
+                error: `Cannot delete region. ${region.members.length} member(s) are assigned to this region. Please reassign them first.`
             });
         }
 
@@ -149,7 +157,9 @@ export const getMyRegion = async (req: Request, res: Response) => {
                         _count: {
                             select: {
                                 members: {
-                                    where: { isActive: true },
+                                    where: {
+                                        isActive: true
+                                    },
                                 },
                             },
                         },
@@ -169,7 +179,10 @@ export const getMyRegion = async (req: Request, res: Response) => {
 
         // Calculate stats
         const members = await prisma.member.findMany({
-            where: { regionId: region.id },
+            where: {
+                regionId: region.id,
+                ...activeMemberFilter
+            },
             select: { gender: true },
         });
 

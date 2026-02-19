@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import api from '../api';
 import QRCode from 'react-qr-code';
 import { useToast } from '../components/ToastProvider';
-import { UserPlus, CheckCircle, Download, RotateCcw, Sparkles, Copy, Mail, MapPin, GraduationCap, Tag as TagIcon, BookOpen, Plus, Loader2, Building, Users } from 'lucide-react';
+import { UserPlus, CheckCircle, Download, RotateCcw, Sparkles, Copy, Mail, MapPin, GraduationCap, Tag as TagIcon, BookOpen, Plus, Loader2, Building, Users, ArrowRight } from 'lucide-react';
 import type { E164Number } from 'libphonenumber-js/core';
 import PhoneInput from '../components/PhoneInput';
 import '../styles/phoneInput.css';
@@ -10,6 +10,7 @@ import AddCollegeModal from '../components/AddCollegeModal';
 import AddCourseModal from '../components/AddCourseModal';
 import AddResidenceModal from '../components/AddResidenceModal';
 import RegistrationModeSelector from '../components/RegistrationModeSelector';
+import CustomSelect from '../components/CustomSelect';
 
 interface Region {
     id: string;
@@ -35,6 +36,7 @@ interface Course {
     id: string;
     name: string;
     code: string;
+    durationYears?: number;
     collegeId?: string;
     college?: College;
 }
@@ -63,6 +65,18 @@ const Registration = () => {
     const [residences, setResidences] = useState<Residence[]>([]);
     const [families, setFamilies] = useState<Family[]>([]);
     const [loadingFamilies, setLoadingFamilies] = useState(false);
+    const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+    // Monitor online/offline status
+    useEffect(() => {
+        const handleStatusChange = () => setIsOnline(navigator.onLine);
+        window.addEventListener('online', handleStatusChange);
+        window.addEventListener('offline', handleStatusChange);
+        return () => {
+            window.removeEventListener('online', handleStatusChange);
+            window.removeEventListener('offline', handleStatusChange);
+        };
+    }, []);
 
     // Modal states
     const [isCourseModalOpen, setIsCourseModalOpen] = useState(false);
@@ -232,8 +246,7 @@ const Registration = () => {
         }
     }, [formData.regionId, formData.isMakerereStudent]);
 
-    const handleCollegeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const value = e.target.value;
+    const handleCollegeChange = (value: string) => {
         if (value === 'NEW_COLLEGE') {
             setIsCollegeModalOpen(true);
         } else {
@@ -241,12 +254,24 @@ const Registration = () => {
         }
     };
 
-    const handleCourseChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const value = e.target.value;
+    const handleCourseChange = (value: string) => {
         if (value === 'NEW_COURSE') {
             setIsCourseModalOpen(true);
         } else {
-            setFormData(prev => ({ ...prev, courseId: value }));
+            const selectedCourse = courses.find(c => c.id === value);
+            let newYearOfStudy = formData.initialYearOfStudy;
+
+            // Reset year if it exceeds the new course's duration
+            if (selectedCourse?.durationYears && formData.initialYearOfStudy > selectedCourse.durationYears) {
+                newYearOfStudy = 1;
+                showToast('info', `Year of study reset to 1 as ${selectedCourse.name} is a ${selectedCourse.durationYears}-year course.`);
+            }
+
+            setFormData(prev => ({
+                ...prev,
+                courseId: value,
+                initialYearOfStudy: newYearOfStudy
+            }));
         }
     };
 
@@ -267,7 +292,19 @@ const Registration = () => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (!isOnline) {
+            showToast('error', 'Cannot register while offline. Please check your internet connection.');
+            return;
+        }
+
         setLoading(true);
+
+        // For non-Makerere students the region dropdown is disabled and never set,
+        // so resolve the Non-Resident region from the loaded list at submit time.
+        const resolvedRegionId = formData.isMakerereStudent
+            ? formData.regionId
+            : (regions.find(r => r.name.toUpperCase() === 'NON-RESIDENT')?.id ?? formData.regionId);
 
         try {
             // Build clean payload - remove UI-only fields and empty values
@@ -276,7 +313,7 @@ const Registration = () => {
                 email: formData.email,
                 phoneNumber: formData.phoneNumber,
                 gender: formData.gender,
-                regionId: formData.regionId,
+                regionId: resolvedRegionId,
             };
 
             // Add optional fields only if they have values
@@ -405,57 +442,57 @@ const Registration = () => {
         return (
             <div className="max-w-2xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="text-center space-y-2">
-                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-teal-500/10 text-teal-400 mb-4 ring-1 ring-teal-500/20">
+                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-teal-50 text-teal-600 mb-4 ring-1 ring-teal-200">
                         <CheckCircle className="w-8 h-8" />
                     </div>
-                    <h2 className="text-3xl font-bold text-teal-300">
+                    <h2 className="text-3xl font-bold text-slate-900">
                         Registration Successful!
                     </h2>
-                    <p className="text-slate-400">
+                    <p className="text-slate-600">
                         Member has been added to the fellowship database.
                     </p>
                 </div>
 
                 <div className="grid md:grid-cols-2 gap-6">
                     {/* Member Details Card */}
-                    <div className="glass-card p-6 space-y-6 relative overflow-hidden group">
-                        <div className="absolute inset-0 bg-teal-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    <div className="premium-card p-6 space-y-6 relative overflow-hidden group bg-white shadow-xl border-slate-200">
+                        <div className="absolute inset-0 bg-teal-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
                         <div className="relative space-y-4">
-                            <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                                <UserPlus className="w-5 h-5 text-teal-400" />
+                            <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+                                <UserPlus className="w-5 h-5 text-teal-600" />
                                 Account Details
                             </h3>
 
                             <div className="space-y-3">
-                                <div className="p-3 rounded-lg bg-slate-900/50 border border-slate-800/50 space-y-1">
+                                <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 space-y-1">
                                     <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Full Name</label>
-                                    <p className="text-slate-200 font-medium">{createdMember.fullName}</p>
+                                    <p className="text-slate-900 font-medium">{createdMember.fullName}</p>
                                 </div>
 
-                                <div className="p-3 rounded-lg bg-slate-900/50 border border-slate-800/50 space-y-1">
+                                <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 space-y-1">
                                     <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Fellowship Number</label>
-                                    <p className="text-teal-400 font-mono font-bold text-lg">{createdMember.fellowshipNumber}</p>
+                                    <p className="text-teal-600 font-mono font-bold text-lg">{createdMember.fellowshipNumber}</p>
                                 </div>
 
                                 {createdMember.region && (
-                                    <div className="p-3 rounded-lg bg-slate-900/50 border border-slate-800/50 space-y-1">
+                                    <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 space-y-1">
                                         <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Region</label>
-                                        <p className="text-slate-200">{createdMember.region.name}</p>
+                                        <p className="text-slate-900">{createdMember.region.name}</p>
                                     </div>
                                 )}
 
                                 {createdMember.defaultPassword && (
-                                    <div className="p-3 rounded-lg bg-slate-900/50 border border-slate-800/50 space-y-1">
+                                    <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 space-y-1">
                                         <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Default Password</label>
                                         <div className="flex items-center justify-between">
-                                            <p className="text-slate-200 font-mono">{createdMember.defaultPassword}</p>
+                                            <p className="text-slate-900 font-mono">{createdMember.defaultPassword}</p>
                                             <button
                                                 onClick={() => {
                                                     navigator.clipboard.writeText(createdMember.defaultPassword!);
                                                     showToast('success', 'Password copied!');
                                                 }}
-                                                className="p-1.5 hover:bg-white/5 rounded-md transition-colors text-slate-400 hover:text-white"
+                                                className="p-1.5 hover:bg-slate-200 rounded-md transition-colors text-slate-400 hover:text-slate-700"
                                             >
                                                 <Copy className="w-4 h-4" />
                                             </button>
@@ -464,7 +501,7 @@ const Registration = () => {
                                 )}
                             </div>
 
-                            <div className="flex items-start gap-3 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-sm text-blue-200">
+                            <div className="flex items-start gap-3 p-3 rounded-lg bg-blue-50 border border-blue-100 text-sm text-blue-700">
                                 <Mail className="w-5 h-5 shrink-0 mt-0.5" />
                                 <p>A confirmation email has been sent to the member with these details.</p>
                             </div>
@@ -472,16 +509,16 @@ const Registration = () => {
                     </div>
 
                     {/* QR Code Card */}
-                    <div className="glass-card p-6 flex flex-col items-center justify-center space-y-6 relative overflow-hidden group">
-                        <div className="absolute inset-0 bg-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    <div className="premium-card p-6 flex flex-col items-center justify-center space-y-6 relative overflow-hidden group bg-white shadow-xl border-slate-200">
+                        <div className="absolute inset-0 bg-purple-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
                         <div className="relative w-full flex flex-col items-center space-y-6">
-                            <h3 className="text-lg font-semibold text-white flex items-center gap-2 self-start">
-                                <Sparkles className="w-5 h-5 text-purple-400" />
+                            <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2 self-start">
+                                <Sparkles className="w-5 h-5 text-purple-600" />
                                 Member QR Code
                             </h3>
 
-                            <div className="p-4 bg-white rounded-xl shadow-lg shadow-black/20">
+                            <div className="p-4 bg-white rounded-xl shadow-lg shadow-slate-200 border border-slate-100">
                                 <QRCode
                                     id="qr-code"
                                     value={createdMember.qrCode || ''}
@@ -492,7 +529,7 @@ const Registration = () => {
 
                             <button
                                 onClick={downloadQRCode}
-                                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors border border-slate-700 hover:border-slate-600 w-full justify-center"
+                                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white transition-colors border border-transparent w-full justify-center shadow-lg shadow-slate-200"
                             >
                                 <Download className="w-4 h-4" />
                                 Download QR Code
@@ -517,19 +554,19 @@ const Registration = () => {
     const showCourseAndYear = formData.isMakerereStudent || formData.classificationTagId === classificationTags.find(t => t.name === 'OTHER_CAMPUS_STUDENT')?.id;
 
     return (
-        <div className="max-w-2xl mx-auto">
-            <div className="glass-card p-8 relative overflow-hidden">
+        <div className="w-[90%] mx-auto">
+            <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-8 relative overflow-hidden">
                 {/* Background decoration */}
-                <div className="absolute top-0 right-0 w-64 h-64 bg-teal-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+                <div className="absolute top-0 right-0 w-64 h-64 bg-teal-50 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 opacity-60" />
 
                 <div className="relative">
                     <div className="flex items-center gap-3 mb-8">
-                        <div className="p-3 rounded-xl bg-teal-500/10 text-teal-400 ring-1 ring-teal-500/20">
+                        <div className="p-3 rounded-xl" style={{ backgroundColor: '#e9f5e1', color: '#48A111', outline: '1.5px solid #c5e3b0' }}>
                             <UserPlus className="w-6 h-6" />
                         </div>
                         <div>
-                            <h2 className="text-2xl font-bold text-white">Register New Member</h2>
-                            <p className="text-slate-400">Enter member details to generate fellowship number and QR code</p>
+                            <h2 className="text-2xl font-bold text-slate-900">Register New Member</h2>
+                            <p className="text-slate-500">Enter member details to generate fellowship number and QR code</p>
                         </div>
                     </div>
 
@@ -540,21 +577,37 @@ const Registration = () => {
                             onChange={(mode) => setFormData({ ...formData, registrationMode: mode, assignFirstTimerTag: undefined })}
                         />
 
+                        {/* Offline Warning Banner */}
+                        {!isOnline && (
+                            <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-start gap-3">
+                                <div className="p-2 rounded-lg bg-amber-500/20 text-amber-400 shrink-0">
+                                    <Loader2 className="w-5 h-5 animate-pulse" />
+                                </div>
+                                <div>
+                                    <h3 className="text-sm font-semibold text-amber-200">You are currently offline</h3>
+                                    <p className="text-sm text-amber-200/70 mt-1">
+                                        Registration requires an active internet connection.
+                                        Please reconnect to submit this form.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Conditional First-Timer Tag Override (only for TRANSFER and READMISSION) */}
                         {(formData.registrationMode === 'TRANSFER' || formData.registrationMode === 'READMISSION') && (
-                            <div className="p-4 rounded-xl bg-slate-800/40 border border-slate-700 space-y-3">
+                            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
                                 <label className="flex items-start gap-3 cursor-pointer group">
                                     <input
                                         type="checkbox"
                                         checked={formData.assignFirstTimerTag === true}
                                         onChange={(e) => setFormData({ ...formData, assignFirstTimerTag: e.target.checked ? true : false })}
-                                        className="mt-1 w-4 h-4 rounded border-slate-600 bg-slate-700 text-teal-500 focus:ring-teal-500 focus:ring-offset-slate-900 transition-colors cursor-pointer"
+                                        className="mt-1 w-4 h-4 rounded border-slate-300 bg-white text-teal-600 focus:ring-teal-500 transition-colors cursor-pointer"
                                     />
                                     <div className="flex-1">
-                                        <span className="text-sm font-medium text-slate-300 group-hover:text-white transition-colors">
+                                        <span className="text-sm font-medium text-slate-700 group-hover:text-slate-900 transition-colors">
                                             Mark as pending first attendance
                                         </span>
-                                        <p className="text-xs text-slate-400 mt-1">
+                                        <p className="text-xs text-slate-500 mt-1">
                                             Enable only if this member has never attended any fellowship event.
                                             They will be counted as a first-timer on their first attendance.
                                         </p>
@@ -563,44 +616,62 @@ const Registration = () => {
                             </div>
                         )}
 
-                        {/* Full Name */}
-                        <div className="space-y-2">
-                            <label className="text-sm font-semibold text-slate-300 flex items-center gap-2">
-                                Full Name
-                                <span className="text-red-400">*</span>
-                            </label>
-                            <input
-                                type="text"
-                                placeholder="e.g. John Doe"
-                                className="input transition-smooth"
-                                value={formData.fullName}
-                                onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                                required
-                            />
-                        </div>
+                        {/* Personal & Contact Information - Grid Layout */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {/* Full Name - spans 2 columns */}
+                            <div className="space-y-2 md:col-span-2">
+                                <label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                                    Full Name
+                                    <span className="text-red-400">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    placeholder="e.g. John Doe"
+                                    className="input transition-smooth"
+                                    value={formData.fullName}
+                                    onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                                    required
+                                />
+                            </div>
 
-                        {/* Email */}
-                        <div className="space-y-2">
-                            <label className="text-sm font-semibold text-slate-300 flex items-center gap-2">
-                                Email Address
-                                <span className="text-red-400">*</span>
-                            </label>
-                            <input
-                                type="email"
-                                placeholder="john@example.com"
-                                className="input transition-smooth"
-                                value={formData.email}
-                                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                required
-                            />
-                        </div>
+                            {/* Gender */}
+                            <div className="space-y-2">
+                                <label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                                    Gender
+                                    <span className="text-red-500">*</span>
+                                </label>
+                                <CustomSelect
+                                    value={formData.gender}
+                                    onChange={(v) => setFormData({ ...formData, gender: v })}
+                                    required
+                                    options={[
+                                        { value: 'MALE', label: 'Male' },
+                                        { value: 'FEMALE', label: 'Female' },
+                                    ]}
+                                />
+                            </div>
 
-                        <div className="grid md:grid-cols-2 gap-6">
+                            {/* Email - spans 2 columns */}
+                            <div className="space-y-2 md:col-span-2">
+                                <label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                                    Email Address
+                                    <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="email"
+                                    placeholder="john@example.com"
+                                    className="input transition-smooth"
+                                    value={formData.email}
+                                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                    required
+                                />
+                            </div>
+
                             {/* Phone Number */}
                             <div className="space-y-2">
-                                <label className="text-sm font-semibold text-slate-300 flex items-center gap-2">
+                                <label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
                                     Phone Number
-                                    <span className="text-red-400">*</span>
+                                    <span className="text-red-500">*</span>
                                 </label>
                                 <PhoneInput
                                     value={formData.phoneNumber as E164Number | undefined}
@@ -609,335 +680,316 @@ const Registration = () => {
                                     placeholder="700 123 456"
                                 />
                             </div>
-
-                            {/* Gender */}
-                            <div className="space-y-2">
-                                <label className="text-sm font-semibold text-slate-300 flex items-center gap-2">
-                                    Gender
-                                    <span className="text-red-400">*</span>
-                                </label>
-                                <select
-                                    className="input transition-smooth cursor-pointer"
-                                    value={formData.gender}
-                                    onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
-                                >
-                                    <option value="MALE">Male</option>
-                                    <option value="FEMALE">Female</option>
-                                </select>
-                            </div>
                         </div>
 
-                        {/* Makerere Student Toggle */}
-                        <div className="space-y-2">
-                            <label className="text-sm font-semibold text-slate-300 flex items-center gap-2">
-                                <GraduationCap className="w-4 h-4 text-teal-400" />
-                                Is this person a Makerere student?
-                                <span className="text-red-400">*</span>
-                            </label>
-                            <div className="flex gap-4">
-                                <button
-                                    type="button"
-                                    onClick={() => setFormData({ ...formData, isMakerereStudent: true })}
-                                    className={`flex-1 px-4 py-3 rounded-lg font-medium transition-all ${formData.isMakerereStudent
-                                        ? 'bg-teal-600 text-white shadow-lg'
-                                        : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
-                                        }`}
-                                >
-                                    Yes
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setFormData({ ...formData, isMakerereStudent: false })}
-                                    className={`flex-1 px-4 py-3 rounded-lg font-medium transition-all ${!formData.isMakerereStudent
-                                        ? 'bg-teal-600 text-white shadow-lg'
-                                        : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
-                                        }`}
-                                >
-                                    No
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Classification Tag - Only for non-Makerere students */}
-                        {!formData.isMakerereStudent && (
-                            <div className="space-y-2">
-                                <label className="text-sm font-semibold text-slate-300 flex items-center gap-2">
-                                    Classification
-                                    <span className="text-red-400">*</span>
+                        {/* Student Status & Location - Grid Layout */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {/* Makerere Student Toggle - spans 2 columns */}
+                            <div className="space-y-2 md:col-span-2">
+                                <label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                                    <GraduationCap className="w-4 h-4" style={{ color: '#48A111' }} />
+                                    Is this person a Makerere student?
+                                    <span className="text-red-500">*</span>
                                 </label>
-                                <select
-                                    className="input transition-smooth cursor-pointer"
-                                    value={formData.classificationTagId}
-                                    onChange={(e) => setFormData({ ...formData, classificationTagId: e.target.value })}
-                                    required={!formData.isMakerereStudent}
-                                >
-                                    <option value="">Select classification</option>
-                                    {classificationTags.map((tag) => (
-                                        <option key={tag.id} value={tag.id}>
-                                            {tag.name.replace(/_/g, ' ')}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-                        )}
-
-                        {/* Region */}
-                        <div className="space-y-2">
-                            <label className="text-sm font-semibold text-slate-300 flex items-center gap-2">
-                                <MapPin className="w-4 h-4 text-teal-400" />
-                                Region
-                                <span className="text-red-400">*</span>
-                            </label>
-                            <select
-                                className="input transition-smooth cursor-pointer"
-                                value={formData.regionId}
-                                onChange={(e) => setFormData({ ...formData, regionId: e.target.value })}
-                                required
-                                disabled={!formData.isMakerereStudent}
-                            >
-                                <option value="">Select a region</option>
-                                {regions.filter(r => formData.isMakerereStudent ? r.name !== 'Non-Resident' : r.name === 'Non-Resident').map((region) => (
-                                    <option key={region.id} value={region.id}>
-                                        {region.name}
-                                    </option>
-                                ))}
-                            </select>
-                            {!formData.isMakerereStudent && (
-                                <p className="text-xs text-amber-400 mt-1">
-                                    Non-resident members are auto-assigned to Non-Resident region
-                                </p>
-                            )}
-                        </div>
-
-                        {/* Family Assignment - Only for Makerere students with selected region */}
-                        {formData.isMakerereStudent && formData.regionId && (
-                            <div className="space-y-2">
-                                <label className="text-sm font-semibold text-slate-300 flex items-center gap-2">
-                                    <Users className="w-4 h-4 text-purple-400" />
-                                    Family Group
-                                    <span className="text-red-400">*</span>
-                                </label>
-
-                                {loadingFamilies ? (
-                                    <div className="input flex items-center gap-2 text-slate-400">
-                                        <Loader2 className="w-4 h-4 animate-spin" />
-                                        Loading families...
-                                    </div>
-                                ) : families.length === 0 ? (
-                                    <div className="input text-slate-500 italic">
-                                        No families available in this region yet
-                                    </div>
-                                ) : (
-                                    <select
-                                        className="input transition-smooth cursor-pointer"
-                                        value={formData.familyId}
-                                        onChange={(e) => setFormData({ ...formData, familyId: e.target.value })}
-                                        required
+                                <div className="flex gap-4">
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormData({ ...formData, isMakerereStudent: true })}
+                                        className={`flex-1 px-4 py-2.5 rounded-lg transition-all cursor-pointer ${formData.isMakerereStudent
+                                            ? 'text-white font-bold shadow-lg'
+                                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium'
+                                            }`}
+                                        style={formData.isMakerereStudent ? { backgroundColor: '#F2B50B' } : {}}
                                     >
-                                        <option value="">Select a family</option>
-                                        {families.map((family) => (
-                                            <option key={family.id} value={family.id}>
-                                                {family.name}
-                                                {family.familyHead && ` - ${family.familyHead.fullName}`}
-                                                {` (${family.memberCount} member${family.memberCount !== 1 ? 's' : ''})`}
-                                            </option>
-                                        ))}
-                                    </select>
-                                )}
-
-                                <p className="text-xs text-slate-500">
-                                    You can assign the member to a family now or later
-                                </p>
+                                        Yes
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormData({ ...formData, isMakerereStudent: false })}
+                                        className={`flex-1 px-4 py-2.5 rounded-lg transition-all cursor-pointer ${!formData.isMakerereStudent
+                                            ? 'text-white font-bold shadow-lg'
+                                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium'
+                                            }`}
+                                        style={!formData.isMakerereStudent ? { backgroundColor: '#F2B50B' } : {}}
+                                    >
+                                        No
+                                    </button>
+                                </div>
                             </div>
-                        )}
 
-                        {/* Residence/Hostel - Based on Region */}
-                        {formData.regionId && formData.isMakerereStudent && (() => {
-                            const selectedRegion = regions.find(r => r.id === formData.regionId);
-                            const isCentral = selectedRegion?.name === 'Central';
-                            const isNonResident = selectedRegion?.name === 'Non-Resident';
+                            {/* Classification Tag - Only for non-Makerere students */}
+                            {!formData.isMakerereStudent && (
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                                        Classification
+                                        <span className="text-red-500">*</span>
+                                    </label>
+                                    <CustomSelect
+                                        value={formData.classificationTagId}
+                                        onChange={(v) => setFormData({ ...formData, classificationTagId: v })}
+                                        required={!formData.isMakerereStudent}
+                                        placeholder="Select classification"
+                                        options={[
+                                            { value: '', label: 'Select classification', disabled: true },
+                                            ...classificationTags.map(tag => ({ value: tag.id, label: tag.name.replace(/_/g, ' ') }))
+                                        ]}
+                                    />
+                                </div>
+                            )}
 
-                            if (isCentral) {
-                                return (
+                            {/* Region */}
+                            <div className="space-y-2">
+                                <label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                                    <MapPin className="w-4 h-4" style={{ color: '#48A111' }} />
+                                    Region
+                                    <span className="text-red-500">*</span>
+                                </label>
+                                <CustomSelect
+                                    value={formData.regionId}
+                                    onChange={(v) => setFormData({ ...formData, regionId: v })}
+                                    required
+                                    disabled={!formData.isMakerereStudent}
+                                    placeholder="Select a region"
+                                    options={[
+                                        { value: '', label: 'Select a region', disabled: true },
+                                        ...regions
+                                            .filter(r => formData.isMakerereStudent ? r.name !== 'Non-Resident' : r.name === 'Non-Resident')
+                                            .map(region => ({ value: region.id, label: region.name }))
+                                    ]}
+                                />
+                                {!formData.isMakerereStudent && (
+                                    <p className="text-xs text-slate-500 mt-1">
+                                        Non-resident members are auto-assigned to Non-Resident region
+                                    </p>
+                                )}
+                            </div>
+
+                            {/* Family Assignment - Only for Makerere students with selected region */}
+                            {formData.isMakerereStudent && formData.regionId && (
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                                        <Users className="w-4 h-4" style={{ color: '#48A111' }} />
+                                        Family Group
+                                        <span className="text-red-500">*</span>
+                                    </label>
+
+                                    {loadingFamilies ? (
+                                        <div className="input flex items-center gap-2 text-slate-500">
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                            Loading families...
+                                        </div>
+                                    ) : families.length === 0 ? (
+                                        <div className="input text-slate-500 italic">
+                                            No families available in this region yet
+                                        </div>
+                                    ) : (
+                                        <CustomSelect
+                                            value={formData.familyId}
+                                            onChange={(v) => setFormData({ ...formData, familyId: v })}
+                                            required
+                                            placeholder="Select a family"
+                                            options={[
+                                                { value: '', label: 'Select a family', disabled: true },
+                                                ...families.map(family => ({
+                                                    value: family.id,
+                                                    label: `${family.name}${family.familyHead ? ` - ${family.familyHead.fullName}` : ''} (${family.memberCount} member${family.memberCount !== 1 ? 's' : ''})`
+                                                }))
+                                            ]}
+                                        />
+                                    )}
+
+                                    <p className="text-xs text-slate-500">
+                                        You can assign the member to a family now or later
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* Residence/Hostel - Based on Region */}
+                            {formData.regionId && formData.isMakerereStudent && (() => {
+                                const selectedRegion = regions.find(r => r.id === formData.regionId);
+                                const isCentral = selectedRegion?.name === 'Central';
+                                const isNonResident = selectedRegion?.name === 'Non-Resident';
+
+                                if (isCentral) {
+                                    return (
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-semibold text-slate-700 flex items-center justify-between">
+                                                <span className="flex items-center gap-2">
+                                                    <Building className="w-4 h-4" style={{ color: '#48A111' }} />
+                                                    Hall / Residence
+                                                    <span className="text-red-500">*</span>
+                                                </span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setIsResidenceModalOpen(true)}
+                                                    className="text-xs font-semibold flex items-center gap-1 hover:opacity-75 transition-opacity"
+                                                    style={{ color: '#48A111' }}
+                                                >
+                                                    <Plus size={12} /> Add New Hall
+                                                </button>
+                                            </label>
+                                            <CustomSelect
+                                                value={formData.residenceId}
+                                                onChange={(v) => setFormData({ ...formData, residenceId: v })}
+                                                required
+                                                placeholder="Select Hall"
+                                                options={[
+                                                    { value: '', label: 'Select Hall', disabled: true },
+                                                    ...residences.filter(r => r.type === 'HALL').map(r => ({ value: r.id, label: r.name }))
+                                                ]}
+                                            />
+                                        </div>
+                                    );
+                                } else if (!isNonResident) {
+                                    return (
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                                                <MapPin className="w-4 h-4" style={{ color: '#48A111' }} />
+                                                Hostel Name
+                                                <span className="text-red-500">*</span>
+                                            </label>
+                                            <input
+                                                type="text"
+                                                placeholder="e.g. Olympia, Dream Land"
+                                                className="input transition-smooth"
+                                                value={formData.hostelName}
+                                                onChange={(e) => setFormData({ ...formData, hostelName: e.target.value })}
+                                                required
+                                            />
+                                            <p className="text-xs text-slate-500">Enter the hostel where they reside</p>
+                                        </div>
+                                    );
+                                }
+                                return null;
+                            })()}
+                        </div>
+
+                        {/* Academic Information - Grid Layout */}
+                        {(formData.isMakerereStudent || showCourseAndYear) && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {/* College - Only for Makerere students */}
+                                {formData.isMakerereStudent && (
                                     <div className="space-y-2">
-                                        <label className="text-sm font-semibold text-slate-300 flex items-center justify-between">
+                                        <label className="text-sm font-semibold text-slate-700 flex items-center justify-between">
                                             <span className="flex items-center gap-2">
-                                                <Building className="w-4 h-4 text-teal-400" />
-                                                Hall / Residence
-                                                <span className="text-red-400">*</span>
+                                                <Building className="w-4 h-4" style={{ color: '#48A111' }} />
+                                                College
+                                                <span className="text-red-500">*</span>
                                             </span>
                                             <button
                                                 type="button"
-                                                onClick={() => setIsResidenceModalOpen(true)}
-                                                className="text-xs text-teal-400 hover:text-teal-300 flex items-center gap-1"
+                                                onClick={() => setIsCollegeModalOpen(true)}
+                                                className="text-xs font-semibold flex items-center gap-1 hover:opacity-75 transition-opacity"
+                                                style={{ color: '#48A111' }}
                                             >
-                                                <Plus size={12} /> Add New Hall
+                                                <Plus size={12} /> Add New
                                             </button>
                                         </label>
-                                        <select
-                                            className="input transition-smooth cursor-pointer"
-                                            value={formData.residenceId}
-                                            onChange={(e) => setFormData({ ...formData, residenceId: e.target.value })}
+                                        <CustomSelect
+                                            value={formData.collegeId}
+                                            onChange={handleCollegeChange}
                                             required
-                                        >
-                                            <option value="">Select Hall</option>
-                                            {residences.filter(r => r.type === 'HALL').map((residence) => (
-                                                <option key={residence.id} value={residence.id}>
-                                                    {residence.name}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                );
-                            } else if (!isNonResident) {
-                                return (
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-semibold text-slate-300 flex items-center gap-2">
-                                            <MapPin className="w-4 h-4 text-teal-400" />
-                                            Hostel Name
-                                            <span className="text-red-400">*</span>
-                                        </label>
-                                        <input
-                                            type="text"
-                                            placeholder="e.g. Olympia, Dream Land"
-                                            className="input transition-smooth"
-                                            value={formData.hostelName}
-                                            onChange={(e) => setFormData({ ...formData, hostelName: e.target.value })}
-                                            required
+                                            placeholder="Select College"
+                                            options={[
+                                                { value: '', label: 'Select College', disabled: true },
+                                                ...colleges.map(college => ({ value: college.id, label: college.code ? `${college.code} - ${college.name}` : college.name })),
+                                                ...(colleges.length > 0 ? [{ value: '__sep__', label: '──────────', disabled: true }] : []),
+                                                { value: 'NEW_COLLEGE', label: '+ Add New College...', className: 'font-semibold' },
+                                            ]}
                                         />
-                                        <p className="text-xs text-slate-500">Enter the hostel where they reside</p>
                                     </div>
-                                );
-                            }
-                            return null;
-                        })()}
+                                )}
 
-                        {/* College - Only for Makerere students */}
-                        {formData.isMakerereStudent && (
-                            <div className="space-y-2">
-                                <label className="text-sm font-semibold text-slate-300 flex items-center justify-between">
-                                    <span className="flex items-center gap-2">
-                                        <Building className="w-4 h-4 text-teal-400" />
-                                        College
-                                        <span className="text-red-400">*</span>
-                                    </span>
-                                    <button
-                                        type="button"
-                                        onClick={() => setIsCollegeModalOpen(true)}
-                                        className="text-xs text-teal-400 hover:text-teal-300 flex items-center gap-1"
-                                    >
-                                        <Plus size={12} /> Add New
-                                    </button>
-                                </label>
-                                <select
-                                    className="input transition-smooth cursor-pointer"
-                                    value={formData.collegeId}
-                                    onChange={handleCollegeChange}
-                                    required
-                                >
-                                    <option value="">Select College</option>
-                                    {colleges.map((college) => (
-                                        <option key={college.id} value={college.id}>
-                                            {college.code ? `${college.code} - ${college.name}` : college.name}
-                                        </option>
-                                    ))}
-                                    {colleges.length > 0 && <option disabled>──────────</option>}
-                                    <option value="NEW_COLLEGE" className="font-bold text-teal-400">
-                                        + Add New College...
-                                    </option>
-                                </select>
-                            </div>
-                        )}
+                                {/* Course - Conditional */}
+                                {showCourseAndYear && (
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-semibold text-slate-700 flex items-center justify-between">
+                                            <span className="flex items-center gap-2">
+                                                Course
+                                                <span className="text-red-500">*</span>
+                                            </span>
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsCourseModalOpen(true)}
+                                                className="text-xs font-semibold flex items-center gap-1 hover:opacity-75 transition-opacity"
+                                                style={{ color: '#48A111' }}
+                                            >
+                                                <Plus size={12} /> Add New
+                                            </button>
+                                        </label>
+                                        <CustomSelect
+                                            value={formData.courseId}
+                                            onChange={handleCourseChange}
+                                            disabled={formData.isMakerereStudent && !formData.collegeId && courses.length === 0}
+                                            required
+                                            placeholder="Select Course"
+                                            options={[
+                                                { value: '', label: 'Select Course', disabled: true },
+                                                ...courses.map(course => ({ value: course.id, label: course.name.length > 50 ? `${course.name.substring(0, 50)}...` : course.name })),
+                                                ...(courses.length > 0 ? [{ value: '__sep_course__', label: '──────────', disabled: true }] : []),
+                                                { value: 'NEW_COURSE', label: '+ Add New Course...', className: 'font-semibold' },
+                                            ]}
+                                        />
+                                        {formData.isMakerereStudent && !formData.collegeId && (
+                                            <p className="text-xs text-slate-500 mt-1">
+                                                Please select a college first
+                                            </p>
+                                        )}
+                                    </div>
+                                )}
 
-                        {/* Course and Year - Conditional */}
-                        {showCourseAndYear && (
-                            <div className="grid md:grid-cols-2 gap-6">
-                                {/* Course */}
-                                <div className="space-y-2">
-                                    <label className="text-sm font-semibold text-slate-300 flex items-center justify-between">
-                                        <span className="flex items-center gap-2">
-                                            Course
-                                            <span className="text-red-400">*</span>
-                                        </span>
-                                        <button
-                                            type="button"
-                                            onClick={() => setIsCourseModalOpen(true)}
-                                            className="text-xs text-teal-400 hover:text-teal-300 flex items-center gap-1"
-                                        >
-                                            <Plus size={12} /> Add New
-                                        </button>
-                                    </label>
-                                    <select
-                                        className="input transition-smooth cursor-pointer"
-                                        value={formData.courseId}
-                                        onChange={handleCourseChange}
-                                        disabled={formData.isMakerereStudent && !formData.collegeId && courses.length === 0}
-                                        required
-                                    >
-                                        <option value="">Select Course</option>
-                                        {courses.map((course) => (
-                                            <option key={course.id} value={course.id}>
-                                                {course.code}
-                                            </option>
-                                        ))}
-                                        {courses.length > 0 && <option disabled>──────────</option>}
-                                        <option value="NEW_COURSE" className="font-bold text-teal-400">
-                                            + Add New Course...
-                                        </option>
-                                    </select>
-                                    {formData.isMakerereStudent && !formData.collegeId && (
-                                        <p className="text-xs text-amber-400 mt-1">
-                                            Please select a college first
-                                        </p>
-                                    )}
-                                </div>
+                                {/* Year of Study - Conditional */}
+                                {showCourseAndYear && (
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                                            Current Year of Study
+                                            <span className="text-red-500">*</span>
+                                        </label>
+                                        <CustomSelect
+                                            value={String(formData.initialYearOfStudy)}
+                                            onChange={(v) => setFormData({ ...formData, initialYearOfStudy: parseInt(v) })}
+                                            required
+                                            placeholder="Select year"
+                                            options={[
+                                                { value: '', label: 'Select year', disabled: true },
+                                                ...(() => {
+                                                    const selectedCourse = courses.find(c => c.id === formData.courseId);
+                                                    const maxYears = selectedCourse?.durationYears || 5;
+                                                    return Array.from({ length: maxYears }, (_, i) => i + 1).map(year => ({ value: String(year), label: `Yr ${year}` }));
+                                                })()
+                                            ]}
+                                        />
+                                    </div>
+                                )}
 
-                                {/* Year of Study */}
-                                <div className="space-y-2">
-                                    <label className="text-sm font-semibold text-slate-300 flex items-center gap-2">
-                                        Current Year of Study
-                                        <span className="text-red-400">*</span>
-                                    </label>
-                                    <select
-                                        className="input transition-smooth cursor-pointer"
-                                        value={formData.initialYearOfStudy}
-                                        onChange={(e) => setFormData({ ...formData, initialYearOfStudy: parseInt(e.target.value) })}
-                                        required
-                                    >
-                                        <option value="">Select year</option>
-                                        <option value="1">Yr 1</option>
-                                        <option value="2">Yr 2</option>
-                                        <option value="3">Yr 3</option>
-                                        <option value="4">Yr 4</option>
-                                        <option value="5">Yr 5</option>
-                                    </select>
-                                </div>
-
-                                {/* Current Semester */}
-                                <div className="space-y-2">
-                                    <label className="text-sm font-semibold text-slate-300 flex items-center gap-2">
-                                        Current Semester
-                                        <span className="text-red-400">*</span>
-                                    </label>
-                                    <select
-                                        className="input transition-smooth cursor-pointer"
-                                        value={formData.initialSemester}
-                                        onChange={(e) => setFormData({ ...formData, initialSemester: parseInt(e.target.value) })}
-                                        required
-                                    >
-                                        <option value="">Select semester</option>
-                                        <option value="1">Semester 1</option>
-                                        <option value="2">Semester 2</option>
-                                    </select>
-                                </div>
+                                {/* Current Semester - Conditional */}
+                                {showCourseAndYear && (
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                                            Current Semester
+                                            <span className="text-red-500">*</span>
+                                        </label>
+                                        <CustomSelect
+                                            value={String(formData.initialSemester)}
+                                            onChange={(v) => setFormData({ ...formData, initialSemester: parseInt(v) })}
+                                            required
+                                            placeholder="Select semester"
+                                            options={[
+                                                { value: '', label: 'Select semester', disabled: true },
+                                                { value: '1', label: 'Semester 1' },
+                                                { value: '2', label: 'Semester 2' },
+                                            ]}
+                                        />
+                                    </div>
+                                )}
                             </div>
                         )}
 
                         {/* Additional Tags */}
                         {additionalTags.length > 0 && (
                             <div className="space-y-2">
-                                <label className="text-sm font-semibold text-slate-300 flex items-center gap-2">
-                                    <TagIcon className="w-4 h-4 text-purple-400" />
+                                <label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                                    <TagIcon className="w-4 h-4 text-purple-600" />
                                     Additional Tags (Optional)
                                 </label>
                                 <div className="flex flex-wrap gap-2">
@@ -947,8 +999,8 @@ const Registration = () => {
                                             type="button"
                                             onClick={() => toggleAdditionalTag(tag.id)}
                                             className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${formData.additionalTagIds.includes(tag.id)
-                                                ? 'text-white shadow-lg'
-                                                : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                                                ? 'text-white shadow-lg shadow-purple-200'
+                                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                                                 }`}
                                             style={formData.additionalTagIds.includes(tag.id) ? { backgroundColor: tag.color } : {}}
                                         >
@@ -959,43 +1011,65 @@ const Registration = () => {
                             </div>
                         )}
 
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="btn-primary w-full flex items-center justify-center gap-2 mt-8 group"
-                        >
-                            {loading ? (
-                                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                            ) : (
-                                <>
-                                    <UserPlus className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                                    Register Member
-                                </>
-                            )}
-                        </button>
+                        {/* Submit Button */}
+                        <div className="pt-6 flex justify-center w-full">
+                            <div className="w-full max-w-md">
+                                <button
+                                    type="submit"
+                                    disabled={loading || !isOnline}
+                                    className="w-full text-white font-semibold py-3 px-6 text-[15px] rounded-xl transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                    style={{
+                                        backgroundColor: '#48A111',
+                                    }}
+                                    onMouseEnter={(e) => !loading && (e.currentTarget.style.backgroundColor = '#F2B50B')}
+                                    onMouseLeave={(e) => !loading && (e.currentTarget.style.backgroundColor = '#48A111')}
+                                >
+                                    {loading ? (
+                                        <>
+                                            <Loader2 className="w-5 h-5 animate-spin" />
+                                            Creating Member Profile...
+                                        </>
+                                    ) : !isOnline ? (
+                                        <>
+                                            <Loader2 className="w-5 h-5 animate-pulse" />
+                                            Waiting for Connection...
+                                        </>
+                                    ) : (
+                                        <>
+                                            Register
+                                            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                                        </>
+                                    )}
+                                </button>
+                                <p className="text-center text-xs text-slate-500 mt-4">
+                                    By registering, you agree to our data collection policies.
+                                    A digital ID card will be generated automatically.
+                                </p>
+                            </div>
+                        </div>
                     </form>
                 </div>
-
-                {/* Modals */}
-                <AddCollegeModal
-                    isOpen={isCollegeModalOpen}
-                    onClose={() => setIsCollegeModalOpen(false)}
-                    onSuccess={handleCollegeSaved}
-                />
-
-                <AddCourseModal
-                    isOpen={isCourseModalOpen}
-                    onClose={() => setIsCourseModalOpen(false)}
-                    onSuccess={handleCourseSaved}
-                    preSelectedCollegeId={formData.isMakerereStudent ? formData.collegeId : undefined}
-                />
-
-                <AddResidenceModal
-                    isOpen={isResidenceModalOpen}
-                    onClose={() => setIsResidenceModalOpen(false)}
-                    onSuccess={handleResidenceSaved}
-                />
             </div>
+
+            {/* Modals */}
+            <AddCollegeModal
+                isOpen={isCollegeModalOpen}
+                onClose={() => setIsCollegeModalOpen(false)}
+                onSuccess={handleCollegeSaved}
+            />
+
+            <AddCourseModal
+                isOpen={isCourseModalOpen}
+                onClose={() => setIsCourseModalOpen(false)}
+                onSuccess={handleCourseSaved}
+                preSelectedCollegeId={formData.isMakerereStudent ? formData.collegeId : undefined}
+            />
+
+            <AddResidenceModal
+                isOpen={isResidenceModalOpen}
+                onClose={() => setIsResidenceModalOpen(false)}
+                onSuccess={handleResidenceSaved}
+            />
         </div>
     );
 };

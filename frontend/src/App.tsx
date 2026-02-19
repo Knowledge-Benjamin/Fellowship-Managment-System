@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import Registration from './pages/Registration';
 import CheckIn from './pages/CheckIn';
 import TransportBooking from './pages/TransportBooking';
@@ -29,23 +29,27 @@ import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import CheckInPermissionGuard from './components/CheckInPermissionGuard';
 import Navbar from './components/Navbar';
+import { NetworkStatusListener } from './components/NetworkStatusListener';
 
 
 
 function AppContent() {
+  const location = useLocation();
+  const isRegistrationPage = location.pathname === '/';
+
   return (
-    <div className="min-h-screen bg-[#0a0f1e] relative">
+    <div className="min-h-screen bg-slate-50 relative">
       {/* Decorative Background Elements */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-indigo-600 opacity-5 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-teal-500 opacity-5 rounded-full blur-3xl"></div>
+        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-indigo-400 opacity-10 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-teal-400 opacity-10 rounded-full blur-3xl"></div>
       </div>
 
       <Navbar />
 
       {/* Main Content */}
-      <main className="relative pt-32 pb-12 px-6 min-h-screen">
-        <div className="max-w-7xl mx-auto">
+      <main className={`relative pt-32 pb-12 min-h-screen ${isRegistrationPage ? '' : 'px-6'}`}>
+        <div className={isRegistrationPage ? 'w-full' : 'max-w-7xl mx-auto'}>
           <Routes>
             <Route path="/login" element={<Login />} />
 
@@ -202,7 +206,7 @@ function AppContent() {
       </main>
 
       {/* Footer Decoration */}
-      <div className="fixed bottom-0 left-0 right-0 h-px bg-slate-700/50 pointer-events-none"></div>
+      <div className="fixed bottom-0 left-0 right-0 h-px bg-slate-200 pointer-events-none"></div>
     </div>
   );
 }
@@ -212,6 +216,7 @@ function App() {
     <Router>
       <AuthProvider>
         <ToastProvider>
+          <NetworkStatusListener />
           <AppContent />
         </ToastProvider>
       </AuthProvider>

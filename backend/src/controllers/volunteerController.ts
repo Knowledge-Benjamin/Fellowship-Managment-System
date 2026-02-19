@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import prisma from '../prisma';
 
 // Assign a volunteer to an event
-export const assignVolunteer = async (req: Request, res: Response) => {
+export const assignVolunteer = async (req: Request<{ eventId: string }>, res: Response) => {
     try {
         const { eventId } = req.params;
         const { memberId } = req.body;
@@ -130,7 +130,7 @@ export const assignVolunteer = async (req: Request, res: Response) => {
 };
 
 // Remove a volunteer from an event
-export const removeVolunteer = async (req: Request, res: Response) => {
+export const removeVolunteer = async (req: Request<{ eventId: string; memberId: string }>, res: Response) => {
     try {
         const { eventId, memberId } = req.params;
 
@@ -177,7 +177,7 @@ export const removeVolunteer = async (req: Request, res: Response) => {
 };
 
 // List volunteers for an event
-export const getEventVolunteers = async (req: Request, res: Response) => {
+export const getEventVolunteers = async (req: Request<{ eventId: string }>, res: Response) => {
     try {
         const { eventId } = req.params;
 
@@ -207,7 +207,7 @@ export const getEventVolunteers = async (req: Request, res: Response) => {
 };
 
 // Check if current user has permission for an event
-export const checkPermission = async (req: Request, res: Response) => {
+export const checkPermission = async (req: Request<{ eventId: string }>, res: Response) => {
     try {
         const { eventId } = req.params;
         const userId = (req as any).user.id;

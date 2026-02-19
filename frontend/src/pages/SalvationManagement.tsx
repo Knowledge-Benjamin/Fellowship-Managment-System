@@ -89,13 +89,13 @@ const SalvationManagement = () => {
 
     const getStatusColor = (status: string) => {
         switch (status) {
-            case 'PENDING': return 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20';
-            case 'FIRST_CONTACT_MADE': return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
-            case 'ONGOING_DISCIPLESHIP': return 'bg-purple-500/10 text-purple-400 border-purple-500/20';
-            case 'BAPTIZED': return 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20';
-            case 'INTEGRATED': return 'bg-green-500/10 text-green-400 border-green-500/20';
-            case 'LOST_CONTACT': return 'bg-red-500/10 text-red-400 border-red-500/20';
-            default: return 'bg-slate-500/10 text-slate-400 border-slate-500/20';
+            case 'PENDING': return 'bg-yellow-50 text-yellow-700 border-yellow-200';
+            case 'FIRST_CONTACT_MADE': return 'bg-blue-50 text-blue-700 border-blue-200';
+            case 'ONGOING_DISCIPLESHIP': return 'bg-purple-50 text-purple-700 border-purple-200';
+            case 'BAPTIZED': return 'bg-indigo-50 text-indigo-700 border-indigo-200';
+            case 'INTEGRATED': return 'bg-green-50 text-green-700 border-green-200';
+            case 'LOST_CONTACT': return 'bg-red-50 text-red-700 border-red-200';
+            default: return 'bg-slate-50 text-slate-600 border-slate-200';
         }
     };
 
@@ -106,23 +106,23 @@ const SalvationManagement = () => {
     };
 
     return (
-        <div className="min-h-screen bg-[#0a0f1e] text-white p-6">
+        <div className="min-h-screen bg-slate-50 text-slate-900 p-6">
             <div className="max-w-7xl mx-auto space-y-6">
                 <div className="flex justify-between items-center">
                     <div>
-                        <h1 className="text-4xl font-bold text-teal-400">
+                        <h1 className="text-4xl font-bold text-slate-900">
                             Salvation & Follow-up
                         </h1>
-                        <p className="text-slate-400 mt-2">Track spiritual decisions and discipleship progress</p>
+                        <p className="text-slate-500 mt-2">Track spiritual decisions and discipleship progress</p>
                     </div>
                     <div className="flex gap-3">
-                        <div className="glass-card p-4">
-                            <span className="block text-sm text-slate-400">Total Decisions</span>
-                            <span className="block text-2xl font-bold text-teal-400">{salvations.length}</span>
+                        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                            <span className="block text-sm text-slate-500">Total Decisions</span>
+                            <span className="block text-2xl font-bold text-teal-600">{salvations.length}</span>
                         </div>
-                        <div className="glass-card p-4">
-                            <span className="block text-sm text-slate-400">Pending Follow-up</span>
-                            <span className="block text-2xl font-bold text-orange-400">
+                        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                            <span className="block text-sm text-slate-500">Pending Follow-up</span>
+                            <span className="block text-2xl font-bold text-orange-500">
                                 {salvations.filter(s => s.followUpStatus === 'PENDING').length}
                             </span>
                         </div>
@@ -130,7 +130,7 @@ const SalvationManagement = () => {
                 </div>
 
                 {/* Filters */}
-                <div className="glass-card p-4 flex flex-wrap gap-4 items-center">
+                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-wrap gap-4 items-center">
                     <div className="relative flex-1 min-w-[240px]">
                         <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400" size={20} />
                         <input
@@ -138,7 +138,7 @@ const SalvationManagement = () => {
                             placeholder="Search by name or phone..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full pl-12 pr-4 py-3 bg-[#0a0f1e] rounded-xl border border-slate-800 focus:border-teal-500 focus:outline-none text-white placeholder-slate-500 transition-colors"
+                            className="w-full pl-12 pr-4 py-3 bg-slate-50 rounded-xl border border-slate-200 focus:border-teal-500 focus:outline-none text-slate-900 placeholder-slate-400 transition-colors"
                         />
                     </div>
 
@@ -147,7 +147,7 @@ const SalvationManagement = () => {
                         <select
                             value={statusFilter}
                             onChange={(e) => setStatusFilter(e.target.value)}
-                            className="px-4 py-3 bg-[#0a0f1e] border border-slate-800 rounded-xl focus:border-teal-500 focus:outline-none text-white transition-colors cursor-pointer"
+                            className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-teal-500 focus:outline-none text-slate-900 transition-colors cursor-pointer"
                         >
                             <option value="ALL">All Statuses</option>
                             <option value="PENDING">Pending</option>
@@ -162,7 +162,7 @@ const SalvationManagement = () => {
                     <select
                         value={typeFilter}
                         onChange={(e) => setTypeFilter(e.target.value)}
-                        className="px-4 py-3 bg-[#0a0f1e] border border-slate-800 rounded-xl focus:border-teal-500 focus:outline-none text-white transition-colors cursor-pointer"
+                        className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-teal-500 focus:outline-none text-slate-900 transition-colors cursor-pointer"
                     >
                         <option value="ALL">All Decision Types</option>
                         <option value="SALVATION">Salvation</option>
@@ -184,37 +184,37 @@ const SalvationManagement = () => {
                         description={searchTerm ? "Try a different search term" : "Records will appear here as decisions are recorded"}
                     />
                 ) : (
-                    <div className="glass-card overflow-hidden">
+                    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                         <div className="overflow-x-auto">
                             <table className="w-full text-left">
-                                <thead className="bg-slate-900/50 border-b border-slate-800">
+                                <thead className="bg-slate-50 border-b border-slate-200">
                                     <tr>
-                                        <th className="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Date & Event</th>
-                                        <th className="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Person</th>
-                                        <th className="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Decision</th>
-                                        <th className="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Status</th>
-                                        <th className="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Counselor</th>
-                                        <th className="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Actions</th>
+                                        <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Date & Event</th>
+                                        <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Person</th>
+                                        <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Decision</th>
+                                        <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+                                        <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Counselor</th>
+                                        <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-800">
+                                <tbody className="divide-y divide-slate-100">
                                     {filteredSalvations.map((record) => (
-                                        <tr key={record.id} className="hover:bg-slate-900/30 transition-colors">
+                                        <tr key={record.id} className="hover:bg-slate-50 transition-colors">
                                             <td className="px-6 py-4">
-                                                <div className="text-sm font-medium text-white">
+                                                <div className="text-sm font-medium text-slate-900">
                                                     {new Date(record.decisionDate).toLocaleDateString()}
                                                 </div>
                                                 <div className="text-xs text-slate-500">{record.event.name}</div>
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center">
-                                                    <div className="p-2 rounded-lg bg-teal-500/10 text-teal-400 mr-3">
+                                                    <div className="p-2 rounded-lg bg-teal-50 text-teal-600 mr-3">
                                                         <User size={16} />
                                                     </div>
                                                     <div>
-                                                        <div className="text-sm font-medium text-white">
+                                                        <div className="text-sm font-medium text-slate-900">
                                                             {record.member?.fullName || record.guestName}
-                                                            {record.member && <span className="ml-2 px-2 py-0.5 bg-teal-500/10 text-teal-400 text-[10px] rounded-full border border-teal-500/20">Member</span>}
+                                                            {record.member && <span className="ml-2 px-2 py-0.5 bg-teal-50 text-teal-700 text-[10px] rounded-full border border-teal-200">Member</span>}
                                                         </div>
                                                         <div className="text-xs text-slate-500">
                                                             {record.member?.phoneNumber || record.guestPhone}
@@ -223,11 +223,11 @@ const SalvationManagement = () => {
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <span className="text-sm text-slate-300">
+                                                <span className="text-sm text-slate-600">
                                                     {record.decisionType.replace('_', ' ')}
                                                 </span>
                                                 {record.baptismInterest && (
-                                                    <span className="ml-2 px-2 py-0.5 bg-blue-500/10 text-blue-400 text-[10px] rounded-full border border-blue-500/20">
+                                                    <span className="ml-2 px-2 py-0.5 bg-blue-50 text-blue-700 text-[10px] rounded-full border border-blue-200">
                                                         Wants Baptism
                                                     </span>
                                                 )}
@@ -237,7 +237,7 @@ const SalvationManagement = () => {
                                                     {formatStatus(record.followUpStatus)}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-4 text-sm text-slate-400">
+                                            <td className="px-6 py-4 text-sm text-slate-500">
                                                 {record.counselor?.fullName || '-'}
                                             </td>
                                             <td className="px-6 py-4">
@@ -245,7 +245,7 @@ const SalvationManagement = () => {
                                                     <select
                                                         value={record.followUpStatus}
                                                         onChange={(e) => handleStatusUpdate(record.id, e.target.value)}
-                                                        className="appearance-none bg-slate-900 border border-slate-700 text-slate-300 py-2 pl-3 pr-10 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer hover:border-teal-500 transition-colors"
+                                                        className="appearance-none bg-white border border-slate-200 text-slate-700 py-2 pl-3 pr-10 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer hover:border-teal-500 transition-colors"
                                                     >
                                                         <option value="PENDING">Pending</option>
                                                         <option value="FIRST_CONTACT_MADE">First Contact</option>

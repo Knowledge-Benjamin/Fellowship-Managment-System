@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
 import { useToast } from '../components/ToastProvider';
-import { Users, Search, Tag as TagIcon, X, Loader2, Check, UserPlus } from 'lucide-react';
+import { Users, Search, Tag as TagIcon, X, Loader2, Check, UserPlus, Trash } from 'lucide-react';
 import TagBadge from '../components/TagBadge';
 import EmptyState from '../components/EmptyState';
 
@@ -126,6 +126,48 @@ const MemberManagement = () => {
         }
     };
 
+    const handleDelete = async (memberId: string, memberName: string) => {
+        if (!window.confirm(`Are you sure you want to delete ${memberName}? This will remove them from active lists but preserve their history.`)) {
+            return;
+        }
+
+        try {
+            await api.delete(`/members/${memberId}`);
+            showToast('success', 'Member deleted successfully');
+            fetchData();
+            // Remove from selection if present
+            if (selectedMembers.has(memberId)) {
+                const newSelected = new Set(selectedMembers);
+                newSelected.delete(memberId);
+                setSelectedMembers(newSelected);
+            }
+        } catch (error) {
+            console.error('Failed to delete member:', error);
+            showToast('error', 'Failed to delete member');
+        }
+    };
+
+    const handleBulkDelete = async () => {
+        if (selectedMembers.size === 0) return;
+
+        if (!window.confirm(`Are you sure you want to delete ${selectedMembers.size} members? This will remove them from active lists but preserve their history.`)) {
+            return;
+        }
+
+        try {
+            await api.post('/members/bulk-delete', {
+                memberIds: Array.from(selectedMembers)
+            });
+            showToast('success', `${selectedMembers.size} members deleted successfully`);
+            setSelectedMembers(new Set());
+            fetchData();
+        } catch (error) {
+            console.error('Failed to delete members:', error);
+            showToast('error', 'Failed to delete members');
+        }
+    };
+
+
     const filteredMembers = members.filter(member =>
         member.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         member.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -164,6 +206,13 @@ const MemberManagement = () => {
                             >
                                 <X size={16} />
                                 Remove Tags
+                            </button>
+                            <button
+                                onClick={handleBulkDelete}
+                                className="px-4 py-2 bg-red-700 hover:bg-red-800 rounded-lg font-medium flex items-center gap-2 transition-all"
+                            >
+                                <Trash size={16} />
+                                Delete Selected
                             </button>
                         </div>
                     )}
@@ -211,6 +260,7 @@ const MemberManagement = () => {
                                         <th className="text-left py-4 px-4 text-slate-400 font-medium">Region</th>
                                         <th className="text-left py-4 px-4 text-slate-400 font-medium">Academic Status</th>
                                         <th className="text-left py-4 px-4 text-slate-400 font-medium">Tags</th>
+                                        <th className="text-left py-4 px-4 text-slate-400 font-medium">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -268,6 +318,15 @@ const MemberManagement = () => {
                                                 ) : (
                                                     <span className="text-sm text-slate-500">No tags</span>
                                                 )}
+                                            </td>
+                                            <td className="py-3 px-4">
+                                                <button
+                                                    onClick={() => handleDelete(member.id, member.fullName)}
+                                                    className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-all"
+                                                    title="Delete member"
+                                                >
+                                                    <Trash size={18} />
+                                                </button>
                                             </td>
                                         </tr>
                                     ))}

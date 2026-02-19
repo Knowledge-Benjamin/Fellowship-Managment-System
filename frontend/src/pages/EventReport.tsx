@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api';
-import { ArrowLeft, Users, UserPlus, Calendar, TrendingUp, UserCheck, Download, MapPin, ChevronDown, Heart, Tag } from 'lucide-react';
+import { ArrowLeft, Users, UserPlus, Calendar, TrendingUp, UserCheck, Download, MapPin, ChevronDown, Heart, Tag, Send, Lock } from 'lucide-react';
 import {
     BarChart,
     Bar,
@@ -57,17 +57,20 @@ interface EventReportData {
 }
 
 interface ComparativeData {
-    currentEvent: {
-        totalAttendance: number;
-    };
-    comparison: {
-        previousEvent: {
-            name: string;
-            date: string;
-            totalAttendance: number;
-        };
+    labels: string[];
+    data: number[];
+    comparison?: {
         difference: number;
         percentageChange: number;
+    };
+}
+
+interface ReportStatus {
+    isPublished: boolean;
+    publishedAt: string | null;
+    publisher: {
+        id: string;
+        fullName: string;
     } | null;
 }
 
@@ -77,12 +80,21 @@ const EventReport = () => {
     const [report, setReport] = useState<EventReportData | null>(null);
     const [comparison, setComparison] = useState<ComparativeData | null>(null);
     const [loading, setLoading] = useState(true);
+    const [reportStatus, setReportStatus] = useState<ReportStatus | null>(null);
+    const [publishing, setPublishing] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+    const isFellowshipManager = currentUser.role === 'FELLOWSHIP_MANAGER';
 
     useEffect(() => {
         fetchReport();
+        if (isFellowshipManager) {
+            fetchReportStatus();
+        }
     }, [id]);
 
     const fetchReport = async () => {
+        setError(null);
         try {
             const [reportRes, compareRes] = await Promise.all([
                 api.get(`/reports/${id}`),
@@ -90,10 +102,55 @@ const EventReport = () => {
             ]);
             setReport(reportRes.data);
             setComparison(compareRes.data);
-        } catch (error) {
+        } catch (error: any) {
             console.error('Failed to fetch report:', error);
+            if (error.response?.status === 403) {
+                setError(error.response.data.message || 'Report not yet available');
+            } else {
+                setError('Failed to load report');
+            }
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchReportStatus = async () => {
+        try {
+            const response = await api.get(`/reports/${id}/status`);
+            setReportStatus(response.data);
+        } catch (error) {
+            console.error('Failed to fetch report status:', error);
+        }
+    };
+
+    const handlePublish = async () => {
+        setPublishing(true);
+        try {
+            await api.post(`/reports/${id}/publish`);
+            await fetchReportStatus();
+            alert('Report published successfully!');
+        } catch (error) {
+            console.error('Failed to publish report:', error);
+            alert('Failed to publish report');
+        } finally {
+            setPublishing(false);
+        }
+    };
+
+    const handleUnpublish = async () => {
+        if (!confirm('Are you sure you want to unpublish this report? Leaders will no longer be able to access it.')) {
+            return;
+        }
+        setPublishing(true);
+        try {
+            await api.post(`/reports/${id}/unpublish`);
+            await fetchReportStatus();
+            alert('Report unpublished successfully!');
+        } catch (error) {
+            console.error('Failed to unpublish report:', error);
+            alert('Failed to unpublish report');
+        } finally {
+            setPublishing(false);
         }
     };
 
@@ -191,6 +248,31 @@ const EventReport = () => {
         return (
             <div className="min-h-screen bg-purple-900 flex items-center justify-center">
                 <div className="text-white text-xl">Loading report...</div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="dashboard-container">
+                <div className="page-header">
+                    <h1>Event Report</h1>
+                    <button className="btn btn-secondary" onClick={() => navigate('/admin/reports')}>
+                        <ArrowLeft size={18} />
+                        Back to Reports
+                    </button>
+                </div>
+                <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>
+                    <Lock size={64} strokeWidth={1.5} style={{ margin: '0 auto 1.5rem', color: '#e74c3c' }} />
+                    <h2 style={{ marginBottom: '1rem' }}>Report Not Yet Available</h2>
+                    <p style={{ color: '#666', marginBottom: '1.5rem', fontSize: '1.05rem' }}>
+                        {error}
+                    </p>
+                    <button className="btn btn-secondary" onClick={() => navigate('/admin/reports')}>
+                        <ArrowLeft size={18} />
+                        Back to Reports
+                    </button>
+                </div>
             </div>
         );
     }

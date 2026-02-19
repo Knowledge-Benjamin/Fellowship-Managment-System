@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { z } from 'zod';
 import prisma from '../prisma';
 import { getNowInEAT, getEventTimeInEAT } from '../utils/timezone';
+import { activeMemberFilter } from '../utils/queryHelpers';
 
 // Validation schemas
 const checkInSchema = z.object({
@@ -35,7 +36,7 @@ export const checkIn = async (req: Request, res: Response) => {
             },
         });
 
-        if (!member) {
+        if (!member || member.isDeleted) {
             return res.status(404).json({ error: 'Member not found. Please register first.' });
         }
 
@@ -282,9 +283,12 @@ export const getMembersForCheckIn = async (req: Request, res: Response) => {
             memberWhere.gender = gender;
         }
 
-        // Fetch all members with attendance status
+        // Fetch all active members with attendance status
         const members = await prisma.member.findMany({
-            where: memberWhere,
+            where: {
+                ...memberWhere,
+                ...activeMemberFilter
+            },
             include: {
                 region: true,
                 attendances: {

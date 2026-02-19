@@ -61,7 +61,7 @@ export const createCollege = async (req: Request, res: Response) => {
 };
 
 // Update a college
-export const updateCollege = async (req: Request, res: Response) => {
+export const updateCollege = async (req: Request<{ id: string }>, res: Response) => {
     try {
         const { id } = req.params;
         const validatedData = updateCollegeSchema.parse(req.body);
@@ -82,7 +82,7 @@ export const updateCollege = async (req: Request, res: Response) => {
 };
 
 // Delete a college
-export const deleteCollege = async (req: Request, res: Response) => {
+export const deleteCollege = async (req: Request<{ id: string }>, res: Response) => {
     try {
         const { id } = req.params;
 

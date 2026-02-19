@@ -1,8 +1,10 @@
 import prisma from '../prisma';
+import { Prisma } from '@prisma/client';
 import {
     isMemberFinalist,
     isMemberAlumni,
 } from './academicProgressionHelper';
+
 
 /**
  * Check if a member qualifies as a finalist (deprecated - use isMemberFinalist from academicProgressionHelper)
@@ -31,16 +33,19 @@ export async function isFinalist(memberId: string): Promise<boolean> {
     });
 }
 
+
 /**
  * Update both FINALIST and ALUMNI tag assignments for a member
  * Ensures mutual exclusion: member can only have one or neither
  */
 export async function updateMemberTags(
     memberId: string,
-    assignedByUserId: string
+    assignedByUserId: string,
+    tx?: Prisma.TransactionClient
 ): Promise<void> {
+    const db = tx || prisma;
     try {
-        const member = await prisma.member.findUnique({
+        const member = await db.member.findUnique({
             where: { id: memberId },
             select: {
                 registrationDate: true,
@@ -62,8 +67,8 @@ export async function updateMemberTags(
 
         // Get both system tags
         const [finalistTag, alumniTag] = await Promise.all([
-            prisma.tag.findUnique({ where: { name: 'FINALIST' } }),
-            prisma.tag.findUnique({ where: { name: 'ALUMNI' } }),
+            db.tag.findUnique({ where: { name: 'FINALIST' } }),
+            db.tag.findUnique({ where: { name: 'ALUMNI' } }),
         ]);
 
         if (!finalistTag || !alumniTag) {
@@ -73,14 +78,14 @@ export async function updateMemberTags(
 
         // Get current assignments
         const [currentFinalistTag, currentAlumniTag] = await Promise.all([
-            prisma.memberTag.findFirst({
+            db.memberTag.findFirst({
                 where: {
                     memberId,
                     tagId: finalistTag.id,
                     isActive: true,
                 },
             }),
-            prisma.memberTag.findFirst({
+            db.memberTag.findFirst({
                 where: {
                     memberId,
                     tagId: alumniTag.id,
@@ -93,7 +98,7 @@ export async function updateMemberTags(
         if (isNowFinalist) {
             // Should be FINALIST only
             if (!currentFinalistTag) {
-                await prisma.memberTag.create({
+                await db.memberTag.create({
                     data: {
                         memberId,
                         tagId: finalistTag.id,
@@ -104,7 +109,7 @@ export async function updateMemberTags(
                 console.log(`[FINALIST] Tag assigned to member ${memberId}`);
             }
             if (currentAlumniTag) {
-                await prisma.memberTag.update({
+                await db.memberTag.update({
                     where: { id: currentAlumniTag.id },
                     data: {
                         isActive: false,
@@ -118,7 +123,7 @@ export async function updateMemberTags(
         } else if (isNowAlumni) {
             // Should be ALUMNI only
             if (!currentAlumniTag) {
-                await prisma.memberTag.create({
+                await db.memberTag.create({
                     data: {
                         memberId,
                         tagId: alumniTag.id,
@@ -129,7 +134,7 @@ export async function updateMemberTags(
                 console.log(`[ALUMNI] Tag assigned to member ${memberId}`);
             }
             if (currentFinalistTag) {
-                await prisma.memberTag.update({
+                await db.memberTag.update({
                     where: { id: currentFinalistTag.id },
                     data: {
                         isActive: false,
@@ -143,7 +148,7 @@ export async function updateMemberTags(
         } else {
             // Should have neither tag
             if (currentFinalistTag) {
-                await prisma.memberTag.update({
+                await db.memberTag.update({
                     where: { id: currentFinalistTag.id },
                     data: {
                         isActive: false,
@@ -155,7 +160,7 @@ export async function updateMemberTags(
                 console.log(`[FINALIST] Tag removed from member ${memberId}`);
             }
             if (currentAlumniTag) {
-                await prisma.memberTag.update({
+                await db.memberTag.update({
                     where: { id: currentAlumniTag.id },
                     data: {
                         isActive: false,
@@ -172,6 +177,7 @@ export async function updateMemberTags(
         // Don't throw - this is a background operation
     }
 }
+
 
 /**
  * Legacy function for backward compatibility

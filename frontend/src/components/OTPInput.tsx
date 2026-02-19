@@ -4,9 +4,11 @@ interface OTPInputProps {
     length?: number;
     onComplete: (otp: string) => void;
     loading?: boolean;
+    isError?: boolean;
+    isSuccess?: boolean;
 }
 
-const OTPInput: React.FC<OTPInputProps> = ({ length = 6, onComplete, loading = false }) => {
+const OTPInput: React.FC<OTPInputProps> = ({ length = 6, onComplete, loading = false, isError = false, isSuccess = false }) => {
     const [otp, setOtp] = useState<string[]>(new Array(length).fill(''));
     const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -84,7 +86,7 @@ const OTPInput: React.FC<OTPInputProps> = ({ length = 6, onComplete, loading = f
     };
 
     return (
-        <div className="flex gap-3 justify-center mb-6">
+        <div className="flex gap-2 justify-center mb-6">
             {otp.map((digit, index) => (
                 <input
                     key={index}
@@ -97,10 +99,15 @@ const OTPInput: React.FC<OTPInputProps> = ({ length = 6, onComplete, loading = f
                     onKeyDown={(e) => handleKeyDown(index, e)}
                     onPaste={handlePaste}
                     disabled={loading}
-                    className={`w-12 h-14 text-center text-2xl font-bold bg-slate-900/50 border-2 rounded-xl text-white 
-                        focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 
-                        transition-all disabled:opacity-50 disabled:cursor-not-allowed
-                        ${digit ? 'border-teal-500' : 'border-slate-700'}
+                    className={`w-8 h-10 text-center text-lg font-bold bg-slate-50 border-2 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed
+                        ${isError ? 'text-red-500' : 'text-slate-900'} 
+                        ${isError
+                            ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
+                            : isSuccess
+                                ? 'border-[#48A111] focus:border-[#48A111] focus:ring-[#48A111]/20'
+                                : digit
+                                    ? 'border-[#F2B50B] focus:border-[#F2B50B] focus:ring-[#F2B50B]/20'
+                                    : 'border-slate-200 focus:border-[#48A111] focus:ring-[#48A111]/20'}
                     `}
                     autoComplete="off"
                     autoFocus={index === 0}

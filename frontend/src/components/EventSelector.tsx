@@ -15,11 +15,12 @@ const EventSelector: React.FC<EventSelectorProps> = ({
     onEventChange,
     loading = false,
 }) => {
+    // Loading state
     if (loading) {
         return (
-            <div className="glass-card p-4 mb-6 flex items-center gap-3">
-                <Loader2 className="w-5 h-5 text-teal-500 animate-spin" />
-                <span className="text-slate-400">Loading active events...</span>
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-6 flex items-center gap-3">
+                <Loader2 className="w-5 h-5 animate-spin shrink-0" style={{ color: '#48A111' }} />
+                <span className="text-slate-500 text-sm">Loading active events...</span>
             </div>
         );
     }
@@ -27,32 +28,35 @@ const EventSelector: React.FC<EventSelectorProps> = ({
     // No events
     if (events.length === 0) {
         return (
-            <div className="glass-card p-6 mb-6 border-2 border-red-500/30 bg-red-500/10">
+            <div className="bg-red-50 border border-red-200 rounded-xl p-5 mb-6">
                 <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center">
-                        <Calendar className="text-red-400" size={24} />
+                    <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                        <Calendar className="text-red-500" size={20} />
                     </div>
                     <div>
-                        <h3 className="text-lg font-bold text-white">No Active Events</h3>
-                        <p className="text-red-200 text-sm">There are no events currently accepting check-ins</p>
+                        <h3 className="font-bold text-slate-900">No Active Events</h3>
+                        <p className="text-slate-500 text-sm">There are no events currently accepting check-ins</p>
                     </div>
                 </div>
             </div>
         );
     }
 
-    // Single event - auto-selected, no dropdown
+    // Single event — auto-selected, show as info card
     if (events.length === 1) {
         const event = events[0];
         return (
-            <div className="glass-card accent-border p-6 mb-6 bg-teal-600/10">
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 mb-6">
                 <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-teal-600 flex items-center justify-center shadow-lg glow-primary shrink-0">
-                        <Calendar className="text-white" size={24} />
+                    <div
+                        className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
+                        style={{ backgroundColor: '#e9f5e1', color: '#48A111' }}
+                    >
+                        <Calendar size={20} />
                     </div>
-                    <div className="flex-1">
-                        <h3 className="text-xl font-bold text-white mb-1">{event.name}</h3>
-                        <p className="text-slate-400 text-sm">
+                    <div className="flex-1 min-w-0">
+                        <h3 className="text-base font-bold text-slate-900 truncate">{event.name}</h3>
+                        <p className="text-slate-500 text-sm mt-0.5">
                             {new Date(event.date).toLocaleDateString('en-US', {
                                 weekday: 'long',
                                 year: 'numeric',
@@ -60,26 +64,32 @@ const EventSelector: React.FC<EventSelectorProps> = ({
                                 day: 'numeric',
                             })}
                         </p>
-                        <p className="text-teal-400 text-sm font-medium mt-1">
-                            {event.startTime} - {event.endTime}
+                        <p className="text-sm font-semibold mt-1" style={{ color: '#48A111' }}>
+                            {event.startTime} – {event.endTime}
                         </p>
                     </div>
-                    <div className="px-3 py-1 rounded-full bg-green-500/20 text-green-400 text-xs font-bold border border-green-500/30">
+                    <span
+                        className="px-2.5 py-1 rounded-full text-xs font-bold shrink-0"
+                        style={{ backgroundColor: '#e9f5e1', color: '#48A111' }}
+                    >
                         ACTIVE
-                    </div>
+                    </span>
                 </div>
             </div>
         );
     }
 
-    // Multiple events - show dropdown
+    // Multiple events — dropdown
     return (
-        <div className="glass-card p-6 mb-6">
-            <label className="block text-sm font-semibold text-slate-300 mb-3 flex items-center gap-2">
-                <Calendar size={18} className="text-teal-400" />
+        <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 mb-6">
+            <label className="block text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                <Calendar size={16} style={{ color: '#48A111' }} />
                 Select Active Event
-                <span className="ml-auto px-2 py-0.5 rounded-full bg-teal-500/20 text-teal-400 text-xs font-bold">
-                    {events.length} Events Active
+                <span
+                    className="ml-auto px-2 py-0.5 rounded-full text-xs font-bold"
+                    style={{ backgroundColor: '#e9f5e1', color: '#48A111' }}
+                >
+                    {events.length} Active
                 </span>
             </label>
 
@@ -90,27 +100,30 @@ const EventSelector: React.FC<EventSelectorProps> = ({
                         const event = events.find(ev => ev.id === e.target.value);
                         if (event) onEventChange(event);
                     }}
-                    className="w-full px-4 py-3 pr-10 bg-[#0a0f1e] border-2 border-slate-700 rounded-xl text-white text-base font-medium focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/50 transition-all cursor-pointer appearance-none"
+                    className="input w-full pr-10 appearance-none cursor-pointer text-slate-900 font-medium"
                 >
                     <option value="" disabled>Choose an event to check into...</option>
                     {events.map((event) => (
                         <option key={event.id} value={event.id}>
-                            {event.name} • {new Date(event.date).toLocaleDateString()} • {event.startTime}-{event.endTime}
+                            {event.name} • {new Date(event.date).toLocaleDateString()} • {event.startTime}–{event.endTime}
                         </option>
                     ))}
                 </select>
                 <ChevronDown
-                    size={20}
+                    size={18}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
                 />
             </div>
 
             {selectedEvent && (
-                <div className="mt-4 p-4 bg-teal-600/10 rounded-xl border border-teal-600/30">
-                    <p className="text-teal-300 text-sm font-medium">
-                        ✓ Selected: <span className="text-white font-bold">{selectedEvent.name}</span>
+                <div
+                    className="mt-4 p-4 rounded-xl border"
+                    style={{ backgroundColor: '#e9f5e1', borderColor: '#c5e3b0' }}
+                >
+                    <p className="text-sm font-semibold" style={{ color: '#48A111' }}>
+                        ✓ Selected: <span className="text-slate-900">{selectedEvent.name}</span>
                     </p>
-                    <p className="text-slate-400 text-xs mt-1">
+                    <p className="text-slate-500 text-xs mt-1">
                         All check-ins will be recorded for this event
                     </p>
                 </div>

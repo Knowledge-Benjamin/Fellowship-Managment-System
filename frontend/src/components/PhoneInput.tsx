@@ -133,7 +133,7 @@ const PhoneInput: React.FC<PhoneInputProps> = ({
                 placeholder={placeholder}
                 required={required}
                 disabled={disabled}
-                className="flex-1 px-4 py-3 bg-slate-800/50 border border-slate-700/50 rounded-lg text-slate-200 text-sm placeholder-slate-500 transition-all duration-300 hover:bg-slate-800/70 hover:border-slate-600/50 focus:outline-none focus:bg-slate-800/80 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+                className="flex-1 input transition-smooth text-base"
             />
         </div>
     );

@@ -140,7 +140,7 @@ export const getAllTeams = async (req: Request, res: Response) => {
 };
 
 // Get team by ID with full details
-export const getTeamById = async (req: Request, res: Response) => {
+export const getTeamById = async (req: Request<{ id: string }>, res: Response) => {
     try {
         const { id } = req.params;
 
@@ -220,7 +220,7 @@ export const getTeamById = async (req: Request, res: Response) => {
 };
 
 // Update team
-export const updateTeam = async (req: Request, res: Response) => {
+export const updateTeam = async (req: Request<{ id: string }>, res: Response) => {
     try {
         const { id } = req.params;
         const validatedData = updateTeamSchema.parse(req.body);
@@ -315,7 +315,7 @@ export const updateTeam = async (req: Request, res: Response) => {
 };
 
 // Delete team (soft delete - deactivates team and tags)
-export const deleteTeam = async (req: Request, res: Response) => {
+export const deleteTeam = async (req: Request<{ id: string }>, res: Response) => {
     try {
         const { id } = req.params;
 
@@ -362,7 +362,7 @@ export const deleteTeam = async (req: Request, res: Response) => {
 };
 
 // Add member to team
-export const addTeamMember = async (req: Request, res: Response) => {
+export const addTeamMember = async (req: Request<{ id: string }>, res: Response) => {
     try {
         const { id } = req.params;
         const { memberId, role, notes } = req.body;
@@ -437,7 +437,7 @@ export const addTeamMember = async (req: Request, res: Response) => {
 };
 
 // Remove member from team
-export const removeTeamMember = async (req: Request, res: Response) => {
+export const removeTeamMember = async (req: Request<{ id: string; memberId: string }>, res: Response) => {
     try {
         const { id, memberId } = req.params;
         const removerId = req.user?.id;
@@ -500,7 +500,7 @@ export const removeTeamMember = async (req: Request, res: Response) => {
 };
 
 // Assign team leader
-export const assignTeamLeader = async (req: Request, res: Response) => {
+export const assignTeamLeader = async (req: Request<{ id: string }>, res: Response) => {
     try {
         const { id } = req.params;
         const { memberId } = req.body;
@@ -516,6 +516,19 @@ export const assignTeamLeader = async (req: Request, res: Response) => {
 
         if (!team) {
             return res.status(404).json({ message: 'Team not found' });
+        }
+
+        // Validate member exists and is not deleted
+        const member = await prisma.member.findUnique({
+            where: { id: memberId },
+        });
+
+        if (!member) {
+            return res.status(404).json({ message: 'Member not found' });
+        }
+
+        if (member.isDeleted) {
+            return res.status(400).json({ message: 'Cannot assign deleted member as team leader' });
         }
 
         // Get leader tag
@@ -569,7 +582,7 @@ export const assignTeamLeader = async (req: Request, res: Response) => {
 };
 
 // Remove team leader
-export const removeTeamLeader = async (req: Request, res: Response) => {
+export const removeTeamLeader = async (req: Request<{ id: string }>, res: Response) => {
     try {
         const { id } = req.params;
         const removerId = req.user?.id;

@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { activeMemberFilter } from '../utils/queryHelpers';
 import { z } from 'zod';
 import prisma from '../prisma';
 import bcrypt from 'bcryptjs';
@@ -55,8 +56,12 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     const { email, password } = result.data;
 
     // Find user with all necessary relations for privilege check
-    const user = await prisma.member.findUnique({
-        where: { email },
+    // Use findFirst instead of findUnique to allow soft-delete filtering
+    const user = await prisma.member.findFirst({
+        where: {
+            email,
+            ...activeMemberFilter // Prevent login for deleted users
+        },
         include: {
             memberTags: {
                 where: { isActive: true },
@@ -314,8 +319,11 @@ export const verifyOTP = asyncHandler(async (req: Request, res: Response) => {
     }
 
     // Fetch user with tags
-    const user = await prisma.member.findUnique({
-        where: { id: memberId },
+    const user = await prisma.member.findFirst({
+        where: {
+            id: memberId,
+            ...activeMemberFilter
+        },
         include: {
             memberTags: {
                 where: { isActive: true },
@@ -410,8 +418,11 @@ export const resendOTP = asyncHandler(async (req: Request, res: Response) => {
     console.log(`[RESEND OTP] Resending OTP for member ${memberId}`);
 
     // Fetch user
-    const user = await prisma.member.findUnique({
-        where: { id: memberId },
+    const user = await prisma.member.findFirst({
+        where: {
+            id: memberId,
+            ...activeMemberFilter
+        },
     });
 
     if (!user) {

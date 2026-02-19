@@ -76,7 +76,7 @@ export const createResidence = async (req: Request, res: Response) => {
 };
 
 // Update a residence
-export const updateResidence = async (req: Request, res: Response) => {
+export const updateResidence = async (req: Request<{ id: string }>, res: Response) => {
     try {
         const { id } = req.params;
         const validatedData = updateResidenceSchema.parse(req.body);
@@ -100,7 +100,7 @@ export const updateResidence = async (req: Request, res: Response) => {
 };
 
 // Delete a residence
-export const deleteResidence = async (req: Request, res: Response) => {
+export const deleteResidence = async (req: Request<{ id: string }>, res: Response) => {
     try {
         const { id } = req.params;
 

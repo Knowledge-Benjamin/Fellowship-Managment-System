@@ -87,7 +87,7 @@ export const createCourse = async (req: Request, res: Response) => {
     }
 };
 
-export const updateCourse = async (req: Request, res: Response) => {
+export const updateCourse = async (req: Request<{ id: string }>, res: Response) => {
     try {
         const { id } = req.params;
         const validatedData = updateCourseSchema.parse(req.body);
@@ -127,7 +127,7 @@ export const updateCourse = async (req: Request, res: Response) => {
     }
 };
 
-export const deleteCourse = async (req: Request, res: Response) => {
+export const deleteCourse = async (req: Request<{ id: string }>, res: Response) => {
     try {
         const { id } = req.params;
 

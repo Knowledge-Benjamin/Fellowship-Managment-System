@@ -4,6 +4,8 @@ import api from '../api';
 import { Scan, CheckCircle, XCircle, Zap, Camera, AlertTriangle, Loader2, RefreshCw, Hash, User } from 'lucide-react';
 import EventSelector from '../components/EventSelector';
 import type { Event } from '../types/event';
+import { useLiveQuery } from 'dexie-react-hooks';
+import db from '../db';
 
 interface MemberData {
     id: string;
@@ -32,6 +34,19 @@ const CheckIn = () => {
     const [fellowshipLookupLoading, setFellowshipLookupLoading] = useState(false);
     const [memberData, setMemberData] = useState<MemberData | null>(null);
     const [showConfirmation, setShowConfirmation] = useState(false);
+
+    // Offline Roster state
+    const [isSyncingRoster, setIsSyncingRoster] = useState(false);
+    const pendingSyncCount = useLiveQuery(
+        () => selectedEvent ? db.syncQueue.where('eventId').equals(selectedEvent.id).count() : 0,
+        [selectedEvent?.id]
+    ) || 0;
+
+    // Check if the current event has a roster downloaded
+    const rosterCount = useLiveQuery(
+        () => selectedEvent ? db.roster.where('eventId').equals(selectedEvent.id).count() : 0,
+        [selectedEvent?.id]
+    ) || 0;
 
     const checkPermission = async (eventId: string) => {
         try {
@@ -69,6 +84,119 @@ const CheckIn = () => {
         fetchActiveEvent();
     }, []);
 
+    // ─── OFFLINE SYNCING ───────────────────────────────────────────────
+    const syncEventRoster = async () => {
+        if (!selectedEvent) return;
+        try {
+            setIsSyncingRoster(true);
+            const response = await api.get(`/attendance/${selectedEvent.id}/offline-roster`);
+            const members = response.data.members;
+
+            // Map server data to Dexie schema
+            const rosterRecords = members.map((m: any) => ({
+                id: m.id,
+                eventId: selectedEvent.id,
+                fullName: m.fullName,
+                fellowshipNumber: m.fellowshipNumber,
+                phoneNumber: m.phoneNumber,
+                qrCode: m.qrCode,
+                regionName: m.region?.name || 'Unknown'
+            }));
+
+            // Wipe old roster for this event and replace with fresh data
+            await db.transaction('rw', db.roster, async () => {
+                await db.roster.where('eventId').equals(selectedEvent.id).delete();
+                await db.roster.bulkPut(rosterRecords);
+            });
+
+            setStatus('success');
+            setMessage(`Downloaded ${members.length} members for offline check-in!`);
+            setTimeout(() => setStatus('idle'), 3000);
+        } catch (error) {
+            console.error('Failed to sync roster:', error);
+            setStatus('error');
+            setMessage('Failed to download roster. Ensure you have internet connection.');
+            setTimeout(() => setStatus('idle'), 5000);
+        } finally {
+            setIsSyncingRoster(false);
+        }
+    };
+
+    // ─── OFFLINE VERIFICATION WRAPPER ───────────────────────────────────────────────
+    const processOfflineCheckIn = async (method: 'QR' | 'FELLOWSHIP_NUMBER', identifier: string) => {
+        if (!selectedEvent) return;
+
+        try {
+            // Find member in local DB
+            let member;
+            if (method === 'QR') {
+                member = await db.roster.where('qrCode').equals(identifier).and(m => m.eventId === selectedEvent.id).first();
+            } else {
+                member = await db.roster.where('fellowshipNumber').equals(identifier).and(m => m.eventId === selectedEvent.id).first();
+            }
+
+            if (!member) {
+                // Not found locally. Provide distinct error depending on roster state
+                throw new Error(rosterCount > 0
+                    ? 'Member not found or inactive. Verify they are registered.'
+                    : 'Roster not synced! Please download the roster first.');
+            }
+
+            // Check if already checked in locally in the queue
+            const alreadyInQueue = await db.syncQueue.where({
+                memberId: member.id,
+                eventId: selectedEvent.id
+            }).first();
+
+            if (alreadyInQueue) {
+                throw new Error('Already scanned today! (Pending sync)');
+            }
+
+            // Save to offline queue
+            await db.syncQueue.add({
+                memberId: member.id,
+                eventId: selectedEvent.id,
+                method: method,
+                timestamp: new Date().toISOString(),
+                fullName: member.fullName
+            });
+
+            setMemberData({
+                id: member.id,
+                fullName: member.fullName,
+                fellowshipNumber: member.fellowshipNumber,
+                phoneNumber: member.phoneNumber,
+                region: { id: '', name: member.regionName || 'Unknown' }
+            });
+            setShowConfirmation(true);
+            setStatus('success');
+            setMessage(`${member.fullName} checked in locally (Pending queue)`);
+
+            // Auto-dismiss scanner UI
+            if (method === 'QR') {
+                setTimeout(() => {
+                    setStatus('idle');
+                    setResult('');
+                    setShowConfirmation(false);
+                    setMemberData(null);
+                }, 4000);
+            } else {
+                setTimeout(() => {
+                    setStatus('idle');
+                    setFellowshipNumber('');
+                    setShowConfirmation(false);
+                    setMemberData(null);
+                }, 4000);
+            }
+
+        } catch (error: any) {
+            console.error('Offline Check-in error:', error);
+            setStatus('error');
+            setMessage(error.message || 'Check-in Failed. Please try again.');
+            setTimeout(() => setStatus('idle'), 5000);
+        }
+    };
+
     useEffect(() => {
         if (scanning && selectedEvent && !accessDenied) {
             setPermissionDenied(false);
@@ -95,22 +223,9 @@ const CheckIn = () => {
                     scanner.clear();
 
                     try {
-                        const response = await api.post('/attendance/check-in', {
-                            qrCode: decodedText,
-                            method: 'QR',
-                            eventId: selectedEvent.id,
-                        });
-                        setStatus('success');
-                        setMessage(`${response.data.member.fullName} checked in successfully!`);
-                        setTimeout(() => {
-                            setStatus('idle');
-                            setResult('');
-                        }, 4000);
+                        await processOfflineCheckIn('QR', decodedText);
                     } catch (error: any) {
-                        console.error(error);
-                        setStatus('error');
-                        setMessage(error?.response?.data?.error || 'Check-in Failed. Please try again.');
-                        setTimeout(() => setStatus('idle'), 5000);
+                        // Error is handled inside processOfflineCheckIn
                     }
                 },
                 (errorMessage) => {
@@ -154,28 +269,9 @@ const CheckIn = () => {
         setShowConfirmation(false);
 
         try {
-            const response = await api.post('/attendance/check-in', {
-                fellowshipNumber: fellowshipNumber.toUpperCase(),
-                method: 'FELLOWSHIP_NUMBER',
-                eventId: selectedEvent.id,
-            });
-
-            setMemberData(response.data.member);
-            setShowConfirmation(true);
-            setStatus('success');
-            setMessage(`${response.data.member.fullName} checked in successfully!`);
-
-            setTimeout(() => {
-                setStatus('idle');
-                setFellowshipNumber('');
-                setShowConfirmation(false);
-                setMemberData(null);
-            }, 4000);
+            await processOfflineCheckIn('FELLOWSHIP_NUMBER', fellowshipNumber.toUpperCase());
         } catch (error: any) {
-            console.error(error);
-            setStatus('error');
-            setMessage(error?.response?.data?.error || 'Check-in failed. Please verify the fellowship number.');
-            setTimeout(() => setStatus('idle'), 5000);
+            // Error handles inside process
         } finally {
             setFellowshipLookupLoading(false);
         }
@@ -258,14 +354,40 @@ const CheckIn = () => {
                     )}
 
                     {/* Event Selector */}
-                    <EventSelector
-                        events={activeEvents}
-                        selectedEvent={selectedEvent}
-                        onEventChange={(event: Event) => {
-                            setSelectedEvent(event);
-                            checkPermission(event.id);
-                        }}
-                    />
+                    <div className="mb-4">
+                        <EventSelector
+                            events={activeEvents}
+                            selectedEvent={selectedEvent}
+                            onEventChange={(event: Event) => {
+                                setSelectedEvent(event);
+                                checkPermission(event.id);
+                            }}
+                        />
+                    </div>
+
+                    {/* Offline Roster Status */}
+                    {!accessDenied && selectedEvent && (
+                        <div className="mb-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-4 rounded-xl border" style={{ backgroundColor: rosterCount > 0 ? '#f8fafc' : '#fffbeb', borderColor: rosterCount > 0 ? '#e2e8f0' : '#fef3c7' }}>
+                            <div className="flex flex-col">
+                                <span className={`text-sm font-bold ${rosterCount > 0 ? 'text-slate-700' : 'text-amber-700'} flex items-center gap-1.5`}>
+                                    {rosterCount > 0 ? <CheckCircle size={16} className="text-[#48A111]" /> : <AlertTriangle size={16} />}
+                                    {rosterCount > 0 ? 'Offline Environment Ready' : 'Warning: Not Ready for Offline'}
+                                </span>
+                                <span className="text-xs text-slate-500 mt-0.5">
+                                    {rosterCount} members loaded • {pendingSyncCount} check-ins waiting to sync
+                                </span>
+                            </div>
+
+                            <button
+                                onClick={syncEventRoster}
+                                disabled={isSyncingRoster || !navigator.onLine}
+                                className="px-4 py-2 text-xs font-semibold rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                            >
+                                {isSyncingRoster ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+                                Download Roster
+                            </button>
+                        </div>
+                    )}
 
                     {/* Main Content - Only show if access is granted */}
                     {!accessDenied && selectedEvent && (

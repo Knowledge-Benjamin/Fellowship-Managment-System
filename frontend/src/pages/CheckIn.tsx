@@ -64,19 +64,44 @@ const CheckIn = () => {
 
     const fetchActiveEvent = async () => {
         try {
-            const response = await api.get('/events/active');
-            const events = Array.isArray(response.data) ? response.data : [response.data];
-            setActiveEvents(events);
-            if (events.length === 1) {
-                setSelectedEvent(events[0]);
-                checkPermission(events[0].id);
-            }
-        } catch (error: any) {
-            if (error.response?.status === 404) {
-                setMessage('No active event. Please wait for an event to start.');
+            if (navigator.onLine) {
+                const response = await api.get('/events/active');
+                setActiveEvents(response.data);
+                if (response.data.length > 0) {
+                    setSelectedEvent(response.data[0]);
+                    checkPermission(response.data[0].id);
+                }
+
+                // Cache events for full offline capability
+                await db.transaction('rw', db.events, async () => {
+                    await db.events.clear();
+                    await db.events.bulkPut(response.data);
+                });
             } else {
-                setMessage('Failed to load event information');
+                throw new Error('Offline mode - Loading cached events');
             }
+        } catch (error) {
+            console.log('Unable to fetch live events. Falling back to offline events cache...', error);
+            try {
+                const cachedEvents = await db.events.toArray();
+                setActiveEvents(cachedEvents);
+                if (cachedEvents.length > 0) {
+                    setSelectedEvent(cachedEvents[0]);
+                    // Let's assume permission is valid offline if they have the roster downloaded.
+                    setAccessDenied(false);
+                    setPermissionDenied(false);
+                } else {
+                    console.error('No cached events found.');
+                    setMessage('No active event and no cached events found. Please connect to the internet to load events.');
+                }
+            } catch (cacheError) {
+                console.error('Failed to load cached events', cacheError);
+                setMessage('Failed to load cached events. Please connect to the internet.');
+            }
+        } finally {
+            // Assuming setLoading is defined elsewhere or will be added by the user.
+            // For now, we'll just leave it as is.
+            // setLoading(false);
         }
     };
 

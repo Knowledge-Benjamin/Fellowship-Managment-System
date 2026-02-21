@@ -12,8 +12,10 @@ import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
     ResponsiveContainer, Cell,
 } from 'recharts';
+import * as XLSX from 'xlsx';
 
 // ── Types ────────────────────────────────────────────────────────────────────
+
 
 interface EventReportData {
     event: {
@@ -217,11 +219,11 @@ function DrilldownTable({
 }) {
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
                 <div className="flex items-center gap-4">
                     <button
                         onClick={onClose}
-                        className="p-2 hover:bg-slate-100 rounded-full transition-colors"
+                        className="p-2 hover:bg-slate-100 rounded-full transition-colors cursor-pointer"
                         title="Back to Report"
                     >
                         <ArrowLeft size={20} className="text-slate-500" />
@@ -231,6 +233,43 @@ function DrilldownTable({
                         <p className="text-sm text-slate-500">{attendees.length} people</p>
                     </div>
                 </div>
+
+                <button
+                    onClick={() => {
+                        const exportData = attendees.map(a => ({
+                            Name: a.name,
+                            Gender: a.gender || '-',
+                            Phone: a.contactPhone || '-',
+                            'Role/Type': a.isGuest ? 'Guest' : 'Member',
+                            College: a.college || '-',
+                            Course: a.course || '-',
+                            Year: a.year || '-',
+                            Region: a.region || '-',
+                            Families: a.families?.join(', ') || '-',
+                            'Ministry Teams': a.teams?.join(', ') || '-',
+                            'Tags/Groups': a.tags?.join(', ') || '-'
+                        }));
+
+                        const ws = XLSX.utils.json_to_sheet(exportData);
+
+                        // Set basic column widths
+                        ws['!cols'] = [
+                            { wch: 30 }, { wch: 10 }, { wch: 15 }, { wch: 15 },
+                            { wch: 30 }, { wch: 35 }, { wch: 10 }, { wch: 20 },
+                            { wch: 30 }, { wch: 30 }, { wch: 30 }
+                        ];
+
+                        const wb = XLSX.utils.book_new();
+                        XLSX.utils.book_append_sheet(wb, ws, "Subset Data");
+
+                        // Clean filename
+                        const safeTitle = title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+                        XLSX.writeFile(wb, `Report_Drilldown_${safeTitle}.xlsx`);
+                    }}
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-medium transition-colors cursor-pointer shadow-sm self-start sm:self-auto"
+                >
+                    <Download size={15} /> Export Detailed List
+                </button>
             </div>
 
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">

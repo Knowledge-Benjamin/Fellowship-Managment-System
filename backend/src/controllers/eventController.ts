@@ -20,31 +20,97 @@ const updateEventSchema = createEventSchema.partial();
 
 
 
-// Create a new event
+// Helper to generate recurring dates
+const generateRecurringDates = (startDate: Date, rule: string, count: number): Date[] => {
+    const dates: Date[] = [];
+    let currentDate = new Date(startDate);
+
+    for (let i = 0; i < count; i++) {
+        dates.push(new Date(currentDate));
+
+        switch (rule) {
+            case 'DAILY':
+                currentDate.setDate(currentDate.getDate() + 1);
+                break;
+            case 'WEEKLY':
+                currentDate.setDate(currentDate.getDate() + 7);
+                break;
+            case 'MONTHLY':
+                currentDate.setMonth(currentDate.getMonth() + 1);
+                break;
+            default:
+                // Default to weekly if unknown
+                currentDate.setDate(currentDate.getDate() + 7);
+                break;
+        }
+    }
+    return dates;
+};
+
+// Create a new event or recurring events
 export const createEvent = async (req: Request, res: Response) => {
     try {
         // Validate input
         const validatedData = createEventSchema.parse(req.body);
 
-        const event = await prisma.event.create({
-            data: {
+        const isRecurring = validatedData.isRecurring || false;
+        const recurrenceRule = isRecurring ? validatedData.recurrenceRule : null;
+        const startDate = new Date(validatedData.date);
+
+        if (isRecurring && recurrenceRule) {
+            // Determine how many events to generate based on rule
+            // E.g., 30 daily, 12 weekly (3 months), 6 monthly (6 months)
+            let count = 12; // default
+            if (recurrenceRule === 'DAILY') count = 30;
+            if (recurrenceRule === 'MONTHLY') count = 6;
+
+            const eventDates = generateRecurringDates(startDate, recurrenceRule, count);
+
+            const eventsToCreate = eventDates.map(date => ({
                 name: validatedData.name,
-                date: new Date(validatedData.date),
+                date: date,
                 startTime: validatedData.startTime,
                 endTime: validatedData.endTime,
                 type: validatedData.type,
                 venue: validatedData.venue,
-                isRecurring: validatedData.isRecurring || false,
-                recurrenceRule: validatedData.isRecurring ? validatedData.recurrenceRule : null,
+                isRecurring: true,
+                recurrenceRule: recurrenceRule,
                 allowGuestCheckin: validatedData.allowGuestCheckin || false,
                 isActive: false,
-            },
-        });
+            }));
 
-        res.status(201).json({
-            message: 'Event created successfully',
-            event,
-        });
+            // Bulk create events
+            await prisma.event.createMany({
+                data: eventsToCreate
+            });
+
+            res.status(201).json({
+                message: `Successfully created ${count} recurring events`,
+                eventCount: count
+            });
+
+        } else {
+            // Create single event
+            const event = await prisma.event.create({
+                data: {
+                    name: validatedData.name,
+                    date: startDate,
+                    startTime: validatedData.startTime,
+                    endTime: validatedData.endTime,
+                    type: validatedData.type,
+                    venue: validatedData.venue,
+                    isRecurring: false,
+                    recurrenceRule: null,
+                    allowGuestCheckin: validatedData.allowGuestCheckin || false,
+                    isActive: false,
+                },
+            });
+
+            res.status(201).json({
+                message: 'Event created successfully',
+                event,
+            });
+        }
     } catch (error) {
         if (error instanceof z.ZodError) {
             return res.status(400).json({

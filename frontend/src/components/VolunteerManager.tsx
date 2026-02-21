@@ -91,53 +91,53 @@ const VolunteerManager: React.FC<VolunteerManagerProps> = ({ eventId, onClose })
     };
 
     return (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-[#151d30]/95 backdrop-blur-xl rounded-2xl border border-slate-700 shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
-                <div className="flex justify-between items-center p-6 border-b border-slate-700">
-                    <h2 className="text-xl font-semibold text-white flex items-center gap-2">
-                        <UserCheck className="w-6 h-6 text-teal-400" />
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                <div className="flex justify-between items-center p-6 border-b border-slate-100 bg-white">
+                    <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                        <UserCheck className="w-6 h-6 text-[#48A111]" />
                         Manage Check-in Volunteers
                     </h2>
-                    <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
-                        <X className="w-6 h-6" />
+                    <button onClick={onClose} className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-2 rounded-full transition-colors">
+                        <X className="w-5 h-5" />
                     </button>
                 </div>
 
-                <div className="p-6 overflow-y-auto flex-1">
+                <div className="p-6 overflow-y-auto flex-1 bg-slate-50/50">
                     {/* Add Volunteer Section */}
-                    <div className="mb-8">
-                        <h3 className="text-sm font-medium text-slate-300 mb-3">Add New Volunteer</h3>
-                        <form onSubmit={handleSearch} className="flex gap-2 mb-4">
+                    <div className="mb-8 p-5 bg-white rounded-xl border border-slate-200 shadow-sm">
+                        <h3 className="text-sm font-semibold text-slate-800 mb-3">Add New Volunteer</h3>
+                        <form onSubmit={handleSearch} className="flex gap-2">
                             <div className="relative flex-1">
-                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500 w-5 h-5" />
+                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
                                 <input
                                     type="text"
                                     placeholder="Search by name or email..."
-                                    className="w-full pl-10 pr-4 py-2 border bg-slate-900/50 border-slate-700 text-white placeholder-slate-500 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                    className="w-full pl-10 pr-4 py-2 border border-slate-200 text-slate-900 placeholder-slate-400 rounded-lg focus:ring-2 focus:ring-[#48A111]/20 focus:border-[#48A111] transition-all outline-none"
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                 />
                             </div>
                             <button
                                 type="submit"
-                                disabled={loading}
-                                className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50 transition-colors"
+                                disabled={loading || !searchQuery.trim()}
+                                className="px-5 py-2 bg-[#48A111] text-white font-medium rounded-lg hover:brightness-110 disabled:opacity-50 disabled:hover:brightness-100 transition-all shadow-sm"
                             >
                                 {loading ? 'Searching...' : 'Search'}
                             </button>
                         </form>
 
                         {searchResults.length > 0 && (
-                            <div className="bg-slate-900/50 rounded-lg border border-slate-700 p-2 max-h-48 overflow-y-auto">
+                            <div className="mt-3 bg-white rounded-lg border border-slate-200 shadow-sm p-2 max-h-48 overflow-y-auto">
                                 {searchResults.map((member) => (
-                                    <div key={member.id} className="flex justify-between items-center p-2 hover:bg-slate-800/50 rounded transition-colors">
+                                    <div key={member.id} className="flex justify-between items-center p-3 hover:bg-slate-50 rounded-lg transition-colors group">
                                         <div>
-                                            <p className="font-medium text-white">{member.fullName}</p>
-                                            <p className="text-sm text-slate-400">{member.email}</p>
+                                            <p className="font-medium text-slate-900">{member.fullName}</p>
+                                            <p className="text-sm text-slate-500">{member.email}</p>
                                         </div>
                                         <button
                                             onClick={() => addVolunteer(member.id)}
-                                            className="p-1.5 bg-teal-600/20 text-teal-400 rounded-full hover:bg-teal-600/30 transition-colors"
+                                            className="p-2 bg-[#48A111]/10 text-[#48A111] rounded-full hover:bg-[#48A111]/20 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
                                             title="Add as volunteer"
                                         >
                                             <Plus className="w-5 h-5" />
@@ -150,27 +150,31 @@ const VolunteerManager: React.FC<VolunteerManagerProps> = ({ eventId, onClose })
 
                     {/* Current Volunteers List */}
                     <div>
-                        <h3 className="text-sm font-medium text-slate-300 mb-3">Current Volunteers</h3>
+                        <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 ml-1">Current Volunteers</h3>
                         {volunteers.length === 0 ? (
-                            <p className="text-slate-500 text-center py-4 bg-slate-900/30 rounded-lg border border-slate-700">
-                                No volunteers assigned yet.
-                            </p>
+                            <div className="text-center py-10 bg-white rounded-xl border border-slate-200 border-dashed">
+                                <p className="text-slate-500 text-sm">No volunteers assigned to this event yet.</p>
+                            </div>
                         ) : (
-                            <div className="space-y-2">
+                            <div className="space-y-3">
                                 {volunteers.map((vol) => (
-                                    <div key={vol.id} className="flex justify-between items-center p-3 bg-slate-900/50 border border-slate-700 rounded-lg shadow-sm hover:bg-slate-800/50 transition-colors">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 bg-teal-600/20 rounded-full flex items-center justify-center text-teal-400 font-bold">
+                                    <div key={vol.id} className="flex justify-between items-center p-4 bg-white border border-slate-200 rounded-xl shadow-sm hover:shadow-md transition-shadow group">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-10 h-10 bg-[#48A111]/10 rounded-full flex items-center justify-center text-[#48A111] font-bold text-lg">
                                                 {vol.member.fullName.charAt(0)}
                                             </div>
                                             <div>
-                                                <p className="font-medium text-white">{vol.member.fullName}</p>
-                                                <p className="text-xs text-slate-400">{vol.member.email}</p>
+                                                <p className="font-semibold text-slate-900">{vol.member.fullName}</p>
+                                                <p className="text-xs text-slate-500 flex items-center gap-2">
+                                                    <span>{vol.member.email}</span>
+                                                    <span className="text-slate-300">•</span>
+                                                    <span className="font-mono text-slate-400">{vol.member.fellowshipNumber || 'No ID'}</span>
+                                                </p>
                                             </div>
                                         </div>
                                         <button
                                             onClick={() => removeVolunteer(vol.member.id)}
-                                            className="text-red-400 hover:text-red-300 p-2 hover:bg-red-500/10 rounded-full transition-colors"
+                                            className="text-slate-400 hover:text-red-600 p-2 hover:bg-red-50 rounded-full transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
                                             title="Remove volunteer"
                                         >
                                             <X className="w-5 h-5" />
@@ -182,9 +186,14 @@ const VolunteerManager: React.FC<VolunteerManagerProps> = ({ eventId, onClose })
                     </div>
                 </div>
 
-                <div className="p-6 border-t border-slate-700 bg-slate-900/30">
-                    <p className="text-xs text-slate-500">
-                        Volunteers will have access to the check-in screen for this event only. Access is automatically revoked when the event ends.
+                <div className="p-5 border-t border-slate-100 bg-slate-50 flex items-start gap-3">
+                    <div className="p-1 min-w-max mt-0.5">
+                        <div className="w-4 h-4 rounded-full bg-blue-100 flex items-center justify-center">
+                            <span className="text-blue-600 text-[10px] font-bold">i</span>
+                        </div>
+                    </div>
+                    <p className="text-xs text-slate-500 leading-relaxed">
+                        Volunteers will have temporary access to the live event check-in screen. Access is automatically revoked when the event ends.
                     </p>
                 </div>
             </div>

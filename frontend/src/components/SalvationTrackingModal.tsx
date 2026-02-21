@@ -107,17 +107,17 @@ const SalvationTrackingModal: React.FC<SalvationTrackingModalProps> = ({
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-200">
-            <div className="bg-[#151d30] rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto border border-slate-800">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-200">
+            <div className="bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto border border-slate-200">
                 {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b border-slate-800 bg-teal-600 rounded-t-2xl">
+                <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50 rounded-t-2xl">
                     <div>
-                        <h2 className="text-xl font-bold text-white">Record Salvation/Decision</h2>
-                        <p className="text-teal-100 text-sm mt-1">{eventName}</p>
+                        <h2 className="text-xl font-bold text-slate-900">Record Salvation/Decision</h2>
+                        <p className="text-slate-500 text-sm mt-1">{eventName}</p>
                     </div>
                     <button
                         onClick={onClose}
-                        className="text-white hover:bg-white/20 p-2 rounded-lg transition-all"
+                        className="text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 p-2 rounded-xl transition-all"
                     >
                         <X size={20} />
                     </button>
@@ -128,21 +128,21 @@ const SalvationTrackingModal: React.FC<SalvationTrackingModalProps> = ({
                     {/* Member or Guest Selection */}
                     {isMember === null && (
                         <div className="space-y-3">
-                            <label className="block text-sm font-semibold text-slate-300">
+                            <label className="block text-sm font-semibold text-slate-700">
                                 Is this person a registered member?
                             </label>
                             <div className="grid grid-cols-2 gap-3">
                                 <button
                                     type="button"
                                     onClick={() => setIsMember(true)}
-                                    className="px-4 py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-medium transition-all shadow-lg hover:shadow-teal-500/30"
+                                    className="px-4 py-3 bg-[#48A111] hover:bg-[#3d8b0e] text-white rounded-xl font-semibold transition-all shadow-sm hover:shadow-md"
                                 >
                                     Yes, Member
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => setIsMember(false)}
-                                    className="px-4 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-xl font-medium transition-all shadow-lg hover:shadow-orange-500/30"
+                                    className="px-4 py-3 bg-white border-2 border-[#48A111] text-[#48A111] hover:bg-green-50 rounded-xl font-semibold transition-all"
                                 >
                                     No, Guest
                                 </button>
@@ -152,23 +152,23 @@ const SalvationTrackingModal: React.FC<SalvationTrackingModalProps> = ({
 
                     {/* Member Selection */}
                     {isMember === true && (
-                        <div className="space-y-3">
-                            <label className="block text-sm font-semibold text-slate-300">
-                                Search for Member <span className="text-red-400">*</span>
+                        <div className="space-y-3 animate-in slide-in-from-top-2 duration-300">
+                            <label className="block text-sm font-semibold text-slate-700">
+                                Search for Member <span className="text-red-500">*</span>
                             </label>
                             <input
                                 type="text"
                                 placeholder="Search by name or phone..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full px-4 py-3 bg-[#0a0f1e] rounded-xl border border-slate-700 focus:border-teal-500 focus:outline-none text-white placeholder-slate-500 transition-colors"
+                                className="w-full px-4 py-3 bg-slate-50 rounded-xl border border-slate-200 focus:border-[#48A111] focus:ring-2 focus:ring-[#48A111]/20 focus:outline-none text-slate-900 placeholder-slate-400 transition-all"
                             />
                             {searchTerm && (
                                 <select
                                     value={selectedMemberId}
                                     onChange={(e) => setSelectedMemberId(e.target.value)}
                                     required
-                                    className="w-full px-4 py-3 bg-[#0a0f1e] rounded-xl border border-slate-700 focus:border-teal-500 focus:outline-none text-white cursor-pointer transition-colors"
+                                    className="w-full px-4 py-3 bg-slate-50 rounded-xl border border-slate-200 focus:border-[#48A111] focus:ring-2 focus:ring-[#48A111]/20 focus:outline-none text-slate-900 cursor-pointer transition-all appearance-none"
                                 >
                                     <option value="">Select a member</option>
                                     {filteredMembers.map((member) => (
@@ -183,42 +183,42 @@ const SalvationTrackingModal: React.FC<SalvationTrackingModalProps> = ({
 
                     {/* Guest Information */}
                     {isMember === false && (
-                        <div className="space-y-3">
+                        <div className="space-y-4 animate-in slide-in-from-top-2 duration-300">
                             <div>
-                                <label className="block text-sm font-semibold text-slate-300 mb-2">
-                                    Guest Name <span className="text-red-400">*</span>
+                                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                                    Guest Name <span className="text-red-500">*</span>
                                 </label>
                                 <input
                                     type="text"
                                     value={guestName}
                                     onChange={(e) => setGuestName(e.target.value)}
                                     required
-                                    className="w-full px-4 py-3 bg-[#0a0f1e] rounded-xl border border-slate-700 focus:border-teal-500 focus:outline-none text-white placeholder-slate-500 transition-colors"
+                                    className="w-full px-4 py-3 bg-slate-50 rounded-xl border border-slate-200 focus:border-[#48A111] focus:ring-2 focus:ring-[#48A111]/20 focus:outline-none text-slate-900 placeholder-slate-400 transition-all"
                                     placeholder="Enter guest name"
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-semibold text-slate-300 mb-2">
-                                    Phone Number <span className="text-red-400">*</span>
+                                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                                    Phone Number <span className="text-red-500">*</span>
                                 </label>
                                 <input
                                     type="tel"
                                     value={guestPhone}
                                     onChange={(e) => setGuestPhone(e.target.value)}
                                     required
-                                    className="w-full px-4 py-3 bg-[#0a0f1e] rounded-xl border border-slate-700 focus:border-teal-500 focus:outline-none text-white placeholder-slate-500 transition-colors"
+                                    className="w-full px-4 py-3 bg-slate-50 rounded-xl border border-slate-200 focus:border-[#48A111] focus:ring-2 focus:ring-[#48A111]/20 focus:outline-none text-slate-900 placeholder-slate-400 transition-all"
                                     placeholder="+256 700 000 000"
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-semibold text-slate-300 mb-2">
+                                <label className="block text-sm font-semibold text-slate-700 mb-2">
                                     Email (Optional)
                                 </label>
                                 <input
                                     type="email"
                                     value={guestEmail}
                                     onChange={(e) => setGuestEmail(e.target.value)}
-                                    className="w-full px-4 py-3 bg-[#0a0f1e] rounded-xl border border-slate-700 focus:border-teal-500 focus:outline-none text-white placeholder-slate-500 transition-colors"
+                                    className="w-full px-4 py-3 bg-slate-50 rounded-xl border border-slate-200 focus:border-[#48A111] focus:ring-2 focus:ring-[#48A111]/20 focus:outline-none text-slate-900 placeholder-slate-400 transition-all"
                                     placeholder="guest@example.com"
                                 />
                             </div>
@@ -227,15 +227,15 @@ const SalvationTrackingModal: React.FC<SalvationTrackingModalProps> = ({
 
                     {/* Decision Details */}
                     {isMember !== null && (
-                        <>
+                        <div className="animate-in slide-in-from-bottom-2 duration-300 space-y-4 pt-2 border-t border-slate-100">
                             <div>
-                                <label className="block text-sm font-semibold text-slate-300 mb-2">
-                                    Decision Type <span className="text-red-400">*</span>
+                                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                                    Decision Type <span className="text-red-500">*</span>
                                 </label>
                                 <select
                                     value={decisionType}
                                     onChange={(e) => setDecisionType(e.target.value)}
-                                    className="w-full px-4 py-3 bg-[#0a0f1e] rounded-xl border border-slate-700 focus:border-teal-500 focus:outline-none text-white cursor-pointer transition-colors"
+                                    className="w-full px-4 py-3 bg-slate-50 rounded-xl border border-slate-200 focus:border-[#48A111] focus:ring-2 focus:ring-[#48A111]/20 focus:outline-none text-slate-900 cursor-pointer transition-all appearance-none"
                                 >
                                     <option value="SALVATION">Salvation</option>
                                     <option value="REDEDICATION">Rededication</option>
@@ -245,13 +245,13 @@ const SalvationTrackingModal: React.FC<SalvationTrackingModalProps> = ({
                             </div>
 
                             <div>
-                                <label className="block text-sm font-semibold text-slate-300 mb-2">
+                                <label className="block text-sm font-semibold text-slate-700 mb-2">
                                     Counselor (Optional)
                                 </label>
                                 <select
                                     value={counselorId}
                                     onChange={(e) => setCounselorId(e.target.value)}
-                                    className="w-full px-4 py-3 bg-[#0a0f1e] rounded-xl border border-slate-700 focus:border-teal-500 focus:outline-none text-white cursor-pointer transition-colors"
+                                    className="w-full px-4 py-3 bg-slate-50 rounded-xl border border-slate-200 focus:border-[#48A111] focus:ring-2 focus:ring-[#48A111]/20 focus:outline-none text-slate-900 cursor-pointer transition-all appearance-none"
                                 >
                                     <option value="">Select counselor</option>
                                     {members.map((member) => (
@@ -262,48 +262,48 @@ const SalvationTrackingModal: React.FC<SalvationTrackingModalProps> = ({
                                 </select>
                             </div>
 
-                            <div className="flex items-center gap-3 p-4 bg-slate-900/50 rounded-xl border border-slate-800">
+                            <div className="flex items-center gap-3 p-4 bg-blue-50/50 rounded-xl border border-blue-100 mt-2">
                                 <input
                                     type="checkbox"
                                     id="baptismInterest"
                                     checked={baptismInterest}
                                     onChange={(e) => setBaptismInterest(e.target.checked)}
-                                    className="w-5 h-5 rounded border-slate-700 bg-slate-900 text-teal-600 focus:ring-2 focus:ring-teal-500 focus:ring-offset-0 cursor-pointer"
+                                    className="w-5 h-5 rounded border-blue-200 text-blue-600 focus:ring-2 focus:ring-blue-500/20 focus:ring-offset-0 cursor-pointer transition-colors"
                                 />
-                                <label htmlFor="baptismInterest" className="text-sm text-slate-300 cursor-pointer">
+                                <label htmlFor="baptismInterest" className="text-sm font-medium text-blue-900 cursor-pointer">
                                     Interested in Baptism
                                 </label>
                             </div>
 
                             <div>
-                                <label className="block text-sm font-semibold text-slate-300 mb-2">
+                                <label className="block text-sm font-semibold text-slate-700 mb-2 mt-2">
                                     Notes (Optional)
                                 </label>
                                 <textarea
                                     value={notes}
                                     onChange={(e) => setNotes(e.target.value)}
                                     rows={3}
-                                    className="w-full px-4 py-3 bg-[#0a0f1e] rounded-xl border border-slate-700 focus:border-teal-500 focus:outline-none text-white placeholder-slate-500 resize-none transition-colors"
+                                    className="w-full px-4 py-3 bg-slate-50 rounded-xl border border-slate-200 focus:border-[#48A111] focus:ring-2 focus:ring-[#48A111]/20 focus:outline-none text-slate-900 placeholder-slate-400 resize-none transition-all"
                                     placeholder="Additional notes or testimony..."
                                 />
                             </div>
 
-                            <div className="flex gap-3 pt-4">
+                            <div className="flex gap-3 pt-6">
                                 <button
                                     type="button"
                                     onClick={onClose}
-                                    className="flex-1 px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-medium transition-colors"
+                                    className="flex-1 px-4 py-3 bg-white border border-slate-200 hover:bg-slate-50 hover:text-slate-900 text-slate-600 rounded-xl font-semibold transition-all shadow-sm"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={loading}
-                                    className="flex-1 px-4 py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                    className="flex-1 px-4 py-3 bg-[#48A111] hover:bg-[#3d8b0e] text-white rounded-xl font-semibold transition-all shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                                 >
                                     {loading ? (
                                         <>
-                                            <Loader2 size={16} className="animate-spin" />
+                                            <Loader2 size={18} className="animate-spin" />
                                             Saving...
                                         </>
                                     ) : (
@@ -311,7 +311,7 @@ const SalvationTrackingModal: React.FC<SalvationTrackingModalProps> = ({
                                     )}
                                 </button>
                             </div>
-                        </>
+                        </div>
                     )}
                 </form>
             </div>

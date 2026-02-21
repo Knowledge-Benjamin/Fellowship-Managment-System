@@ -344,6 +344,22 @@ export const getEventReport = async (req: Request<{ eventId: string }>, res: Res
             isGuest: true,
         }));
 
+        const mappedSalvations = event.salvations.map((s: any) => ({
+            id: `salvation-${s.id}`,
+            name: s.member?.fullName || s.guestName || 'Unknown',
+            gender: s.member?.gender,
+            contactPhone: s.member?.contactPhone || s.guestPhone,
+            region: s.member?.region?.name || s.guestResidence,
+            college: s.member?.courseRelation?.college?.name,
+            course: s.member?.courseRelation?.name,
+            year: s.member?.initialYearOfStudy,
+            families: s.member?.familyMemberships?.map((fm: any) => fm.family.name) || [],
+            teams: s.member?.ministryMemberships?.map((mm: any) => mm.team.name) || [],
+            tags: s.member?.memberTags?.map((mt: any) => mt.tag.name) || [],
+            isGuest: !s.member,
+            purpose: s.decisionType,
+        }));
+
         res.json({
             event: {
                 id: event.id,
@@ -354,6 +370,7 @@ export const getEventReport = async (req: Request<{ eventId: string }>, res: Res
             },
             stats,
             attendees: [...mappedAttendees, ...mappedGuests],
+            salvations: mappedSalvations,
             guests: mappedGuests.map((g: any) => ({ name: g.name, purpose: g.purpose })), // Keep for backward compatibility if needed, though attendees is better
             scope: {
                 type: scope.regionId ? 'region' : scope.familyIds.length > 0 ? 'family' : scope.teamIds.length > 0 ? 'team' : 'all',
@@ -625,147 +642,25 @@ export const exportEventReportPDF = async (req: Request<{ eventId: string }>, re
                         member: {
                             include: {
                                 region: true,
-                                memberTags: {
+                                courseRelation: {
+                                    include: { college: true }
+                                },
+                                familyMemberships: {
                                     where: { isActive: true },
-                                    include: { tag: true }
-                                }
-                            }
-                        },
-                    },
-                },
-                guestAttendances: true,
-                salvations: true,
-            },
-        });
-
-        if (!event) {
-            return res.status(404).json({ error: 'Event not found' });
-        }
-
-        const memberCount = event.attendances.length;
-        const guestCount = event.guestAttendances.length;
-        const totalAttendance = memberCount + guestCount;
-
-        const genderBreakdown: { MALE: number; FEMALE: number } = event.attendances.reduce(
-            (acc: { MALE: number; FEMALE: number }, curr: any) => {
-                const gender = curr.member.gender as 'MALE' | 'FEMALE';
-                if (gender === 'MALE' || gender === 'FEMALE') {
-                    acc[gender] = (acc[gender] || 0) + 1;
-                }
-                return acc;
-            },
-            { MALE: 0, FEMALE: 0 }
-        );
-
-        const memberIds = event.attendances.map((a: any) => a.memberId);
-
-        // Tag-based first-timer detection with fallback
-        const firstTimerTagCount = await prisma.memberTag.count({
-            where: {
-                memberId: { in: memberIds },
-                tag: { name: 'PENDING_FIRST_ATTENDANCE' },
-                isActive: true,
-            },
-        });
-
-        let firstTimersCount = firstTimerTagCount;
-
-        // Fallback to attendance history if no tags found
-        if (firstTimersCount === 0 && memberIds.length > 0) {
-            const previousAttendances = await prisma.attendance.findMany({
-                where: {
-                    memberId: { in: memberIds },
-                    event: {
-                        date: { lt: event.date },
-                    },
-                },
-                select: { memberId: true },
-                distinct: ['memberId'],
-            });
-
-            const returningMemberIds = new Set(previousAttendances.map((a: any) => a.memberId));
-            firstTimersCount = memberIds.filter((id: string) => !returningMemberIds.has(id)).length;
-        }
-
-        const guestDetails = event.guestAttendances.map((g: any) => ({
-            name: g.guestName,
-            purpose: g.purpose,
-        }));
-
-        const regionBreakdown = event.attendances.reduce(
-            (acc: Record<string, number>, curr: any) => {
-                const regionName = curr.member.region.name;
-                acc[regionName] = (acc[regionName] || 0) + 1;
-                return acc;
-            },
-            {} as Record<string, number>
-        );
-
-        const salvationBreakdown = event.salvations.reduce(
-            (acc: Record<string, number>, curr: any) => {
-                acc[curr.decisionType] = (acc[curr.decisionType] || 0) + 1;
-                return acc;
-            },
-            {} as Record<string, number>
-        );
-
-        const tagDistribution = event.attendances.reduce(
-            (acc: Record<string, number>, curr: any) => {
-                curr.member.memberTags.forEach((mt: any) => {
-                    const tagName = mt.tag.name;
-                    acc[tagName] = (acc[tagName] || 0) + 1;
-                });
-                return acc;
-            },
-            {} as Record<string, number>
-        );
-
-        const reportData = {
-            event: {
-                id: event.id,
-                name: event.name,
-                date: event.date,
-                type: event.type,
-                status: getEventStatus(event),
-            },
-            stats: {
-                totalAttendance,
-                memberCount,
-                guestCount,
-                genderBreakdown,
-                regionBreakdown,
-                firstTimersCount,
-                salvationBreakdown,
-                tagDistribution,
-            },
-            guests: guestDetails,
-        };
-
-        await generateEventReportPDF(reportData, res);
-    } catch (error) {
-        console.error('PDF export error:', error);
-        res.status(500).json({ error: 'Failed to generate PDF' });
-    }
-};
-
-/**
- * Export Event Report as Excel
- * GET /reports/:eventId/export/excel
- */
-export const exportEventReportExcel = async (req: Request<{ eventId: string }>, res: Response) => {
-    try {
-        const { eventId } = req.params;
-
-        const event = await prisma.event.findUnique({
-            where: { id: eventId },
-            include: {
-                attendances: {
-                    include: {
-                        member: {
-                            include: {
-                                region: true,
-                                memberTags: {
+                                    include: { family: true }
+                                },
+                                ministryMemberships: {
                                     where: { isActive: true },
+                                    include: { team: true }
+                                },
+                                memberTags: {
+                                    where: {
+                                        isActive: true,
+                                        OR: [
+                                            { expiresAt: null },
+                                            { expiresAt: { gt: new Date() } },
+                                        ],
+                                    },
                                     include: { tag: true }
                                 }
                             }
@@ -798,6 +693,103 @@ export const exportEventReportExcel = async (req: Request<{ eventId: string }>, 
             },
             stats,
             guests: guestDetails,
+        };
+
+        await generateEventReportPDF(reportData, res);
+    } catch (error) {
+        console.error('PDF export error:', error);
+        res.status(500).json({ error: 'Failed to generate PDF' });
+    }
+};
+
+/**
+ * Export Event Report as Excel
+ * GET /reports/:eventId/export/excel
+ */
+export const exportEventReportExcel = async (req: Request<{ eventId: string }>, res: Response) => {
+    try {
+        const { eventId } = req.params;
+
+        const event = await prisma.event.findUnique({
+            where: { id: eventId },
+            include: {
+                attendances: {
+                    include: {
+                        member: {
+                            include: {
+                                region: true,
+                                courseRelation: {
+                                    include: { college: true }
+                                },
+                                familyMemberships: {
+                                    where: { isActive: true },
+                                    include: { family: true }
+                                },
+                                ministryMemberships: {
+                                    where: { isActive: true },
+                                    include: { team: true }
+                                },
+                                memberTags: {
+                                    where: {
+                                        isActive: true,
+                                        OR: [
+                                            { expiresAt: null },
+                                            { expiresAt: { gt: new Date() } },
+                                        ],
+                                    },
+                                    include: { tag: true }
+                                }
+                            }
+                        },
+                    },
+                },
+                guestAttendances: true,
+                salvations: true,
+            },
+        });
+
+        if (!event) {
+            return res.status(404).json({ error: 'Event not found' });
+        }
+
+        const stats = await aggregateAttendanceStats(event.attendances, event.guestAttendances, event.salvations, event.date);
+
+        const mappedAttendees = event.attendances.map((a: any) => ({
+            name: a.member.fullName,
+            gender: a.member.gender,
+            contactPhone: a.member.contactPhone,
+            region: a.member.region?.name,
+            college: a.member.courseRelation?.college?.name,
+            course: a.member.courseRelation?.name,
+            year: a.member.initialYearOfStudy,
+            families: a.member.familyMemberships.map((fm: any) => fm.family.name),
+            teams: a.member.ministryMemberships.map((mm: any) => mm.team.name),
+            tags: a.member.memberTags.map((mt: any) => mt.tag.name),
+            isGuest: false,
+        }));
+
+        const mappedGuests = event.guestAttendances.map((g: any) => ({
+            name: g.guestName,
+            purpose: g.purpose,
+            isGuest: true,
+        }));
+
+        const guestDetails = mappedGuests.map((g: any) => ({
+            name: g.name,
+            purpose: g.purpose,
+        }));
+
+        const reportData = {
+            event: {
+                id: event.id,
+                name: event.name,
+                date: event.date,
+                type: event.type,
+                status: getEventStatus(event),
+            },
+            stats,
+            guests: guestDetails,
+            attendees: [...mappedAttendees, ...mappedGuests]
         };
         await generateEventReportExcel(reportData, res);
     } catch (error) {

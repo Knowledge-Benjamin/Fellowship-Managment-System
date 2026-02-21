@@ -106,23 +106,23 @@ const SalvationManagement = () => {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 text-slate-900 p-6">
+        <div className="min-h-screen bg-slate-50 text-slate-900 p-6 animate-in fade-in duration-300">
             <div className="max-w-7xl mx-auto space-y-6">
-                <div className="flex justify-between items-center">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div>
-                        <h1 className="text-4xl font-bold text-slate-900">
+                        <h1 className="text-3xl font-bold text-slate-900">
                             Salvation & Follow-up
                         </h1>
-                        <p className="text-slate-500 mt-2">Track spiritual decisions and discipleship progress</p>
+                        <p className="text-slate-500 mt-1">Track spiritual decisions and discipleship progress</p>
                     </div>
-                    <div className="flex gap-3">
-                        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                            <span className="block text-sm text-slate-500">Total Decisions</span>
-                            <span className="block text-2xl font-bold text-teal-600">{salvations.length}</span>
+                    <div className="flex gap-4 w-full md:w-auto">
+                        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex-1 md:flex-none min-w-[140px]">
+                            <span className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Total Decisions</span>
+                            <span className="block text-3xl font-bold text-[#48A111]">{salvations.length}</span>
                         </div>
-                        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                            <span className="block text-sm text-slate-500">Pending Follow-up</span>
-                            <span className="block text-2xl font-bold text-orange-500">
+                        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex-1 md:flex-none min-w-[140px]">
+                            <span className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Pending Follow-up</span>
+                            <span className="block text-3xl font-bold text-orange-500">
                                 {salvations.filter(s => s.followUpStatus === 'PENDING').length}
                             </span>
                         </div>
@@ -130,122 +130,128 @@ const SalvationManagement = () => {
                 </div>
 
                 {/* Filters */}
-                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-wrap gap-4 items-center">
-                    <div className="relative flex-1 min-w-[240px]">
-                        <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400" size={20} />
+                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4 items-center">
+                    <div className="relative flex-1 w-full">
+                        <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
                         <input
                             type="text"
                             placeholder="Search by name or phone..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full pl-12 pr-4 py-3 bg-slate-50 rounded-xl border border-slate-200 focus:border-teal-500 focus:outline-none text-slate-900 placeholder-slate-400 transition-colors"
+                            className="w-full pl-11 pr-4 py-2.5 bg-slate-50 rounded-xl border border-slate-200 focus:border-[#48A111] focus:ring-2 focus:ring-[#48A111]/20 focus:outline-none text-slate-900 placeholder-slate-400 transition-all font-medium"
                         />
                     </div>
 
-                    <div className="flex items-center gap-2">
-                        <Filter size={20} className="text-slate-400" />
+                    <div className="flex items-center gap-3 w-full md:w-auto">
+                        <div className="flex items-center gap-2 flex-1 md:flex-none">
+                            <Filter size={18} className="text-[#48A111] hidden sm:block" />
+                            <select
+                                value={statusFilter}
+                                onChange={(e) => setStatusFilter(e.target.value)}
+                                className="w-full md:w-auto px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#48A111] focus:ring-2 focus:ring-[#48A111]/20 focus:outline-none text-slate-700 font-semibold transition-all cursor-pointer appearance-none"
+                            >
+                                <option value="ALL">All Statuses</option>
+                                <option value="PENDING">Pending</option>
+                                <option value="FIRST_CONTACT_MADE">First Contact Made</option>
+                                <option value="ONGOING_DISCIPLESHIP">Ongoing Discipleship</option>
+                                <option value="BAPTIZED">Baptized</option>
+                                <option value="INTEGRATED">Integrated</option>
+                                <option value="LOST_CONTACT">Lost Contact</option>
+                            </select>
+                        </div>
+
                         <select
-                            value={statusFilter}
-                            onChange={(e) => setStatusFilter(e.target.value)}
-                            className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-teal-500 focus:outline-none text-slate-900 transition-colors cursor-pointer"
+                            value={typeFilter}
+                            onChange={(e) => setTypeFilter(e.target.value)}
+                            className="w-full md:w-auto px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#48A111] focus:ring-2 focus:ring-[#48A111]/20 focus:outline-none text-slate-700 font-semibold transition-all cursor-pointer appearance-none flex-1 md:flex-none"
                         >
-                            <option value="ALL">All Statuses</option>
-                            <option value="PENDING">Pending</option>
-                            <option value="FIRST_CONTACT_MADE">First Contact Made</option>
-                            <option value="ONGOING_DISCIPLESHIP">Ongoing Discipleship</option>
-                            <option value="BAPTIZED">Baptized</option>
-                            <option value="INTEGRATED">Integrated</option>
-                            <option value="LOST_CONTACT">Lost Contact</option>
+                            <option value="ALL">All Decision Types</option>
+                            <option value="SALVATION">Salvation</option>
+                            <option value="REDEDICATION">Rededication</option>
+                            <option value="BAPTISM_INTEREST">Baptism Interest</option>
+                            <option value="PRAYER_REQUEST">Prayer Request</option>
                         </select>
                     </div>
-
-                    <select
-                        value={typeFilter}
-                        onChange={(e) => setTypeFilter(e.target.value)}
-                        className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-teal-500 focus:outline-none text-slate-900 transition-colors cursor-pointer"
-                    >
-                        <option value="ALL">All Decision Types</option>
-                        <option value="SALVATION">Salvation</option>
-                        <option value="REDEDICATION">Rededication</option>
-                        <option value="BAPTISM_INTEREST">Baptism Interest</option>
-                        <option value="PRAYER_REQUEST">Prayer Request</option>
-                    </select>
                 </div>
 
                 {/* Content */}
                 {loading ? (
-                    <div className="flex justify-center py-16">
-                        <Loader2 className="w-8 h-8 text-teal-500 animate-spin" />
+                    <div className="flex justify-center py-20 bg-white rounded-2xl border border-slate-200 shadow-sm">
+                        <Loader2 className="w-10 h-10 text-[#48A111] animate-spin" />
                     </div>
                 ) : filteredSalvations.length === 0 ? (
-                    <EmptyState
-                        icon={Heart}
-                        title={searchTerm ? "No records found" : "No salvation records yet"}
-                        description={searchTerm ? "Try a different search term" : "Records will appear here as decisions are recorded"}
-                    />
+                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden min-h-[400px] flex items-center justify-center">
+                        <EmptyState
+                            icon={Heart}
+                            title={searchTerm ? "No records found" : "No salvation records yet"}
+                            description={searchTerm ? "Try a different search term" : "Records will appear here as decisions are recorded"}
+                        />
+                    </div>
                 ) : (
-                    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-12">
                         <div className="overflow-x-auto">
-                            <table className="w-full text-left">
+                            <table className="w-full text-left border-collapse">
                                 <thead className="bg-slate-50 border-b border-slate-200">
                                     <tr>
-                                        <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Date & Event</th>
-                                        <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Person</th>
-                                        <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Decision</th>
-                                        <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
-                                        <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Counselor</th>
-                                        <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Date & Event</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Person</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Decision</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Counselor</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider w-48">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
                                     {filteredSalvations.map((record) => (
                                         <tr key={record.id} className="hover:bg-slate-50 transition-colors">
                                             <td className="px-6 py-4">
-                                                <div className="text-sm font-medium text-slate-900">
-                                                    {new Date(record.decisionDate).toLocaleDateString()}
+                                                <div className="text-sm font-bold text-slate-900">
+                                                    {new Date(record.decisionDate).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
                                                 </div>
-                                                <div className="text-xs text-slate-500">{record.event.name}</div>
+                                                <div className="text-xs text-slate-500 font-medium mt-0.5">{record.event.name}</div>
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center">
-                                                    <div className="p-2 rounded-lg bg-teal-50 text-teal-600 mr-3">
-                                                        <User size={16} />
+                                                    <div className="p-2.5 rounded-xl bg-[#48A111]/10 text-[#48A111] mr-3">
+                                                        <User size={18} />
                                                     </div>
                                                     <div>
-                                                        <div className="text-sm font-medium text-slate-900">
+                                                        <div className="text-sm font-bold text-slate-900 flex items-center gap-2">
                                                             {record.member?.fullName || record.guestName}
-                                                            {record.member && <span className="ml-2 px-2 py-0.5 bg-teal-50 text-teal-700 text-[10px] rounded-full border border-teal-200">Member</span>}
+                                                            {record.member && <span className="px-2 py-0.5 bg-[#48A111]/10 text-[#48A111] text-[10px] uppercase font-bold tracking-wider rounded-md border border-[#48A111]/20">Member</span>}
                                                         </div>
-                                                        <div className="text-xs text-slate-500">
+                                                        <div className="text-xs text-slate-500 font-medium mt-0.5">
                                                             {record.member?.phoneNumber || record.guestPhone}
                                                         </div>
                                                     </div>
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <span className="text-sm text-slate-600">
-                                                    {record.decisionType.replace('_', ' ')}
+                                                <span className="text-sm font-bold text-slate-700 capitalize">
+                                                    {record.decisionType.replace('_', ' ').toLowerCase()}
                                                 </span>
                                                 {record.baptismInterest && (
-                                                    <span className="ml-2 px-2 py-0.5 bg-blue-50 text-blue-700 text-[10px] rounded-full border border-blue-200">
-                                                        Wants Baptism
-                                                    </span>
+                                                    <div className="mt-1">
+                                                        <span className="inline-block px-2 py-0.5 bg-blue-50 text-blue-600 text-[10px] uppercase font-bold tracking-wider rounded-md border border-blue-100">
+                                                            Wants Baptism
+                                                        </span>
+                                                    </div>
                                                 )}
                                             </td>
                                             <td className="px-6 py-4">
-                                                <span className={`px-3 py-1 rounded-lg text-xs font-medium border ${getStatusColor(record.followUpStatus)}`}>
+                                                <span className={`px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wider border shadow-sm ${getStatusColor(record.followUpStatus)}`}>
                                                     {formatStatus(record.followUpStatus)}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-4 text-sm text-slate-500">
-                                                {record.counselor?.fullName || '-'}
+                                            <td className="px-6 py-4 text-sm font-medium text-slate-600">
+                                                {record.counselor?.fullName || <span className="text-slate-400 italic">Unassigned</span>}
                                             </td>
                                             <td className="px-6 py-4">
-                                                <div className="relative group">
+                                                <div className="relative group w-full">
                                                     <select
                                                         value={record.followUpStatus}
                                                         onChange={(e) => handleStatusUpdate(record.id, e.target.value)}
-                                                        className="appearance-none bg-white border border-slate-200 text-slate-700 py-2 pl-3 pr-10 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer hover:border-teal-500 transition-colors"
+                                                        className="w-full appearance-none bg-white border border-slate-200 text-slate-700 py-2 pl-3 pr-8 rounded-xl text-xs font-bold uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-[#48A111]/20 focus:border-[#48A111] cursor-pointer shadow-sm hover:shadow-md transition-all"
                                                     >
                                                         <option value="PENDING">Pending</option>
                                                         <option value="FIRST_CONTACT_MADE">First Contact</option>

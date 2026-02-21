@@ -3,6 +3,16 @@
 
 /* Premium Design System - Solid Colors */
 @layer base {
+
+  button,
+  a,
+  [role="button"],
+  label[for],
+  select,
+  summary {
+    cursor: pointer;
+  }
+
   :root {
     /* Premium Solid Color Palette */
     --color-primary: #14b8a6;

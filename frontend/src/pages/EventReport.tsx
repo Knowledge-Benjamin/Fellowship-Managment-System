@@ -56,6 +56,21 @@ interface EventReportData {
         isGuest: boolean;
         purpose?: string;
     }>;
+    salvations?: Array<{
+        id: string;
+        name: string;
+        gender: 'MALE' | 'FEMALE';
+        contactPhone?: string;
+        region?: string;
+        college?: string;
+        course?: string;
+        year?: number;
+        families?: string[];
+        teams?: string[];
+        tags?: string[];
+        isGuest: boolean;
+        purpose?: string;
+    }>;
     scope?: {
         type: 'all' | 'region' | 'family' | 'team';
         name: string;
@@ -188,6 +203,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 interface DrilldownState {
     title: string;
     filterFn: (attendee: any) => boolean;
+    dataSource?: 'attendees' | 'salvations';
 }
 
 function DrilldownTable({
@@ -642,7 +658,7 @@ const EventReport = () => {
                                 <div className="mb-8">
                                     <SectionHeader icon={Users} title="Member Demographics" />
                                     <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
-                                        <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-slate-100">
+                                        <div className={`grid grid-cols-1 ${typeEntries.length === 1 ? 'sm:grid-cols-1' : typeEntries.length === 2 ? 'sm:grid-cols-2' : 'sm:grid-cols-3'} divide-y sm:divide-y-0 sm:divide-x divide-slate-100`}>
                                             {typeEntries.map(([label, count]) => (
                                                 <div
                                                     key={label}
@@ -868,7 +884,7 @@ const EventReport = () => {
                                             {Object.entries(stats.salvationBreakdown).map(([type, count]) => (
                                                 <div
                                                     key={type}
-                                                    onClick={() => setActiveDrilldown({ title: `Decisions: ${type.replace(/_/g, ' ')}`, filterFn: a => a.purpose === type })}
+                                                    onClick={() => setActiveDrilldown({ title: `Decisions: ${type.replace(/_/g, ' ')}`, filterFn: a => a.purpose === type, dataSource: 'salvations' })}
                                                     className="border border-slate-100 rounded-lg p-4 bg-slate-50 cursor-pointer hover:bg-slate-100 transition-colors"
                                                 >
                                                     <p className="text-xs text-slate-500 uppercase tracking-wide mb-1 leading-tight">

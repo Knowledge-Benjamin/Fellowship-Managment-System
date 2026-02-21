@@ -36,6 +36,20 @@ interface EventReportData {
         };
     };
     guests: Array<{ name: string; purpose: string | null }>;
+    attendees?: Array<{
+        name: string;
+        gender?: string;
+        contactPhone?: string;
+        region?: string;
+        college?: string;
+        course?: string;
+        year?: number;
+        families?: string[];
+        teams?: string[];
+        tags?: string[];
+        isGuest: boolean;
+        purpose?: string;
+    }>;
 }
 
 interface CustomReportData {
@@ -337,6 +351,7 @@ export const generateEventReportExcel = async (
     // SUMMARY SHEET
     const summarySheet = workbook.addWorksheet('Summary', {
         views: [{ state: 'frozen', xSplit: 0, ySplit: 3 }],
+        properties: { tabColor: { argb: 'FF14b8a6' } }, // Teal
     });
 
     // Header Row
@@ -510,7 +525,9 @@ export const generateEventReportExcel = async (
 
     // GUEST LIST SHEET (if applicable)
     if (data.guests.length > 0) {
-        const guestSheet = workbook.addWorksheet('Guests');
+        const guestSheet = workbook.addWorksheet('Guests', {
+            properties: { tabColor: { argb: 'FF8b5cf6' } } // Purple
+        });
 
         // Header
         const headerRow = guestSheet.addRow(['Guest Name', 'Purpose']);
@@ -540,7 +557,9 @@ export const generateEventReportExcel = async (
 
     // ACADEMIC STATISTICS SHEET
     if (data.stats.yearOfStudyBreakdown || data.stats.collegeBreakdown || data.stats.courseBreakdown) {
-        const academicSheet = workbook.addWorksheet('Academic Stats');
+        const academicSheet = workbook.addWorksheet('Academic Stats', {
+            properties: { tabColor: { argb: 'FF3b82f6' } } // Blue
+        });
 
         // Header
         academicSheet.mergeCells('A1:B1');
@@ -589,7 +608,9 @@ export const generateEventReportExcel = async (
 
     // ORGANIZATIONAL STATISTICS SHEET
     if (data.stats.familyBreakdown || data.stats.teamBreakdown || data.stats.specialTagStats) {
-        const orgSheet = workbook.addWorksheet('Organizational Stats');
+        const orgSheet = workbook.addWorksheet('Organizational Stats', {
+            properties: { tabColor: { argb: 'FF10b981' } } // Green
+        });
 
         // Header
         orgSheet.mergeCells('A1:B1');
@@ -640,6 +661,80 @@ export const generateEventReportExcel = async (
         }
 
         orgSheet.columns = [{ width: 30 }, { width: 15 }];
+    }
+
+    // ATTENDEE DATA SHEET (Detailed List)
+    if (data.attendees && data.attendees.length > 0) {
+        const attendeeSheet = workbook.addWorksheet('Attendees Data', {
+            properties: { tabColor: { argb: 'FF0f172a' } } // Slate
+        });
+
+        // Header
+        const headerRow = attendeeSheet.addRow([
+            'Name',
+            'Gender',
+            'Phone',
+            'Status',
+            'College',
+            'Course',
+            'Year',
+            'Region',
+            'Families',
+            'Ministry Teams',
+            'Tags/Groups'
+        ]);
+
+        headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        headerRow.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FF0f172a' }, // Slate 900
+        };
+        headerRow.height = 25;
+        headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
+
+        // Freeze top header row and enable AutoFilter
+        attendeeSheet.views = [{ state: 'frozen', xSplit: 0, ySplit: 1 }];
+        attendeeSheet.autoFilter = 'A1:K1';
+
+        // Data rows with alternating colors
+        data.attendees.forEach((att, index) => {
+            const row = attendeeSheet.addRow([
+                att.name,
+                att.gender || '-',
+                att.contactPhone || '-',
+                att.isGuest ? 'Guest' : 'Member',
+                att.college || '-',
+                att.course || '-',
+                att.year || '-',
+                att.region || '-',
+                att.families?.join(', ') || '-',
+                att.teams?.join(', ') || '-',
+                att.tags?.join(', ') || '-'
+            ]);
+
+            if (index % 2 === 0) {
+                row.fill = {
+                    type: 'pattern',
+                    pattern: 'solid',
+                    fgColor: { argb: 'FFF8FAFC' }, // Slate 50
+                };
+            }
+        });
+
+        attendeeSheet.columns = [
+            { width: 30 }, // Name
+            { width: 15 }, // Gender
+            { width: 20 }, // Phone
+            { width: 15 }, // Status
+            { width: 35 }, // College
+            { width: 45 }, // Course
+            { width: 10 }, // Year
+            { width: 20 }, // Region
+            { width: 35 }, // Families
+            { width: 35 }, // Ministry
+            { width: 35 }, // Tags
+        ];
     }
 
     // Protect Summary sheet

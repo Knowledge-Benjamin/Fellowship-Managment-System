@@ -25,6 +25,7 @@ router.get('/:id', asyncHandler(getEventById));
 // Manager-only routes
 router.post('/', authorize('FELLOWSHIP_MANAGER'), asyncHandler(createEvent));
 router.put('/:id', authorize('FELLOWSHIP_MANAGER'), asyncHandler(updateEvent));
+router.patch('/:id', authorize('FELLOWSHIP_MANAGER'), asyncHandler(updateEvent));
 router.delete('/:id', authorize('FELLOWSHIP_MANAGER'), asyncHandler(deleteEvent));
 router.patch('/:id/toggle-active', authorize('FELLOWSHIP_MANAGER'), asyncHandler(toggleEventActive));
 router.patch('/:id/toggle-guest-checkin', authorize('FELLOWSHIP_MANAGER'), asyncHandler(toggleGuestCheckin));

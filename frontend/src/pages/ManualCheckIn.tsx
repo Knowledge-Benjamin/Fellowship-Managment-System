@@ -120,85 +120,85 @@ const ManualCheckIn = () => {
     };
 
     return (
-        <div className="min-h-screen bg-[#0a0f1e] p-6">
+        <div className="min-h-screen bg-slate-50 p-6 animate-in fade-in duration-300">
             <div className="max-w-7xl mx-auto">
                 {/* Header */}
                 <div className="flex items-center gap-4 mb-8">
                     <button
                         onClick={() => navigate('/events')}
-                        className="p-2 rounded-lg bg-white/10 text-white hover:bg-white/20 transition-all"
+                        className="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-all shadow-sm"
                     >
-                        <ArrowLeft size={24} />
+                        <ArrowLeft size={22} />
                     </button>
                     <div className="flex-1">
-                        <h1 className="text-3xl font-bold text-white">Manual Check-in</h1>
-                        <p className="text-slate-400">{eventName}</p>
+                        <h1 className="text-3xl font-bold text-slate-900">Manual Check-in</h1>
+                        <p className="text-slate-500 mt-1">{eventName}</p>
                     </div>
                 </div>
 
                 {/* Stats Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                    <div className="bg-[#151d30] p-6 rounded-2xl border border-slate-800">
-                        <div className="flex items-center gap-3 mb-2">
-                            <div className="p-2 rounded-lg bg-blue-500/20 text-blue-400">
-                                <Users size={20} />
+                    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm transition-shadow hover:shadow-md">
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="p-2.5 rounded-xl bg-blue-50 text-blue-600">
+                                <Users size={22} />
                             </div>
-                            <span className="text-slate-400 font-medium">Total Members</span>
+                            <span className="text-slate-500 font-semibold text-sm uppercase tracking-wider">Total Members</span>
                         </div>
-                        <p className="text-3xl font-bold text-white">{stats.total}</p>
+                        <p className="text-4xl font-bold text-slate-900">{stats.total}</p>
                     </div>
 
-                    <div className="bg-[#151d30] p-6 rounded-2xl border border-slate-800">
-                        <div className="flex items-center gap-3 mb-2">
-                            <div className="p-2 rounded-lg bg-green-500/20 text-green-400">
-                                <CheckCircle size={20} />
+                    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm transition-shadow hover:shadow-md">
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="p-2.5 rounded-xl bg-green-50 text-[#48A111]">
+                                <CheckCircle size={22} />
                             </div>
-                            <span className="text-slate-400 font-medium">Checked In</span>
+                            <span className="text-slate-500 font-semibold text-sm uppercase tracking-wider">Checked In</span>
                         </div>
-                        <p className="text-3xl font-bold text-white">{stats.checkedIn}</p>
+                        <p className="text-4xl font-bold text-slate-900">{stats.checkedIn}</p>
                     </div>
 
-                    <div className="bg-[#151d30] p-6 rounded-2xl border border-slate-800">
-                        <div className="flex items-center gap-3 mb-2">
-                            <div className="p-2 rounded-lg bg-orange-500/20 text-orange-400">
-                                <XCircle size={20} />
+                    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm transition-shadow hover:shadow-md">
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="p-2.5 rounded-xl bg-orange-50 text-orange-600">
+                                <XCircle size={22} />
                             </div>
-                            <span className="text-slate-400 font-medium">Not Checked In</span>
+                            <span className="text-slate-500 font-semibold text-sm uppercase tracking-wider">Not Checked In</span>
                         </div>
-                        <p className="text-3xl font-bold text-white">{stats.notCheckedIn}</p>
+                        <p className="text-4xl font-bold text-slate-900">{stats.notCheckedIn}</p>
                     </div>
                 </div>
 
                 {/* Filters */}
-                <div className="bg-[#151d30] p-6 rounded-2xl border border-slate-800 mb-6">
-                    <div className="flex items-center gap-2 mb-4">
-                        <Filter size={20} className="text-teal-400" />
-                        <h2 className="text-xl font-bold text-white">Filters</h2>
+                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm mb-6">
+                    <div className="flex items-center gap-2 mb-5">
+                        <Filter size={20} className="text-[#48A111]" />
+                        <h2 className="text-lg font-bold text-slate-900">Filters</h2>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
                         {/* Search */}
                         <div className="md:col-span-2">
-                            <label className="block text-slate-400 text-sm mb-2">Search</label>
+                            <label className="block text-slate-600 text-sm font-medium mb-2">Search</label>
                             <div className="relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
+                                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                                 <input
                                     type="text"
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     placeholder="Name, fellowship number, or email..."
-                                    className="w-full pl-10 pr-4 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                                    className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#48A111]/20 focus:border-[#48A111] transition-all"
                                 />
                             </div>
                         </div>
 
                         {/* Region Filter */}
                         <div>
-                            <label className="block text-slate-400 text-sm mb-2">Region</label>
+                            <label className="block text-slate-600 text-sm font-medium mb-2">Region</label>
                             <select
                                 value={selectedRegion}
                                 onChange={(e) => setSelectedRegion(e.target.value)}
-                                className="w-full px-4 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                                className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#48A111]/20 focus:border-[#48A111] transition-all appearance-none cursor-pointer"
                             >
                                 <option value="">All Regions</option>
                                 {regions.map((region) => (
@@ -211,11 +211,11 @@ const ManualCheckIn = () => {
 
                         {/* Gender Filter */}
                         <div>
-                            <label className="block text-slate-400 text-sm mb-2">Gender</label>
+                            <label className="block text-slate-600 text-sm font-medium mb-2">Gender</label>
                             <select
                                 value={selectedGender}
                                 onChange={(e) => setSelectedGender(e.target.value)}
-                                className="w-full px-4 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                                className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#48A111]/20 focus:border-[#48A111] transition-all appearance-none cursor-pointer"
                             >
                                 <option value="">All Genders</option>
                                 <option value="MALE">Male</option>
@@ -225,31 +225,31 @@ const ManualCheckIn = () => {
 
                         {/* Status Filter - Full width on new row */}
                         <div className="md:col-span-4">
-                            <label className="block text-slate-400 text-sm mb-2">Check-in Status</label>
-                            <div className="flex gap-2">
+                            <label className="block text-slate-600 text-sm font-medium mb-2">Check-in Status</label>
+                            <div className="flex gap-3">
                                 <button
                                     onClick={() => setSelectedStatus('')}
-                                    className={`flex-1 px-4 py-2 rounded-xl font-medium transition-all ${selectedStatus === ''
-                                            ? 'bg-teal-600 text-white'
-                                            : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                                    className={`flex-1 px-4 py-2.5 rounded-xl font-semibold transition-all shadow-sm ${selectedStatus === ''
+                                        ? 'bg-slate-800 text-white'
+                                        : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100'
                                         }`}
                                 >
                                     All
                                 </button>
                                 <button
                                     onClick={() => setSelectedStatus('checked-in')}
-                                    className={`flex-1 px-4 py-2 rounded-xl font-medium transition-all ${selectedStatus === 'checked-in'
-                                            ? 'bg-green-600 text-white'
-                                            : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                                    className={`flex-1 px-4 py-2.5 rounded-xl font-semibold transition-all shadow-sm ${selectedStatus === 'checked-in'
+                                        ? 'bg-[#48A111] text-white'
+                                        : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100'
                                         }`}
                                 >
                                     Checked In
                                 </button>
                                 <button
                                     onClick={() => setSelectedStatus('not-checked-in')}
-                                    className={`flex-1 px-4 py-2 rounded-xl font-medium transition-all ${selectedStatus === 'not-checked-in'
-                                            ? 'bg-orange-600 text-white'
-                                            : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                                    className={`flex-1 px-4 py-2.5 rounded-xl font-semibold transition-all shadow-sm ${selectedStatus === 'not-checked-in'
+                                        ? 'bg-orange-500 text-white'
+                                        : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100'
                                         }`}
                                 >
                                     Not Checked In
@@ -260,52 +260,54 @@ const ManualCheckIn = () => {
                 </div>
 
                 {/* Members Table */}
-                <div className="bg-[#151d30] rounded-2xl border border-slate-800 overflow-hidden">
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-12">
                     <div className="overflow-x-auto">
                         {loading ? (
-                            <div className="flex items-center justify-center py-16">
-                                <Loader2 className="animate-spin text-teal-500" size={48} />
+                            <div className="flex items-center justify-center py-20">
+                                <Loader2 className="animate-spin text-[#48A111]" size={40} />
                             </div>
                         ) : members.length === 0 ? (
-                            <div className="text-center py-16">
-                                <Users className="mx-auto mb-4 text-slate-600" size={64} />
-                                <p className="text-white text-xl mb-2">No members found</p>
-                                <p className="text-slate-400">Try adjusting your filters</p>
+                            <div className="text-center py-20 bg-slate-50/50">
+                                <Users className="mx-auto mb-4 text-slate-300" size={56} />
+                                <p className="text-slate-900 font-semibold text-lg mb-1">No members found</p>
+                                <p className="text-slate-500">Try adjusting your filters</p>
                             </div>
                         ) : (
-                            <table className="w-full">
-                                <thead className="bg-slate-900/50 text-slate-400">
+                            <table className="w-full text-left border-collapse">
+                                <thead className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider font-semibold border-b border-slate-200">
                                     <tr>
-                                        <th className="px-6 py-4 text-left font-medium">Fellowship #</th>
-                                        <th className="px-6 py-4 text-left font-medium">Name</th>
-                                        <th className="px-6 py-4 text-left font-medium">Region</th>
-                                        <th className="px-6 py-4 text-left font-medium">Gender</th>
-                                        <th className="px-6 py-4 text-left font-medium">Status</th>
-                                        <th className="px-6 py-4 text-left font-medium">Action</th>
+                                        <th className="px-6 py-4">Fellowship #</th>
+                                        <th className="px-6 py-4">Name</th>
+                                        <th className="px-6 py-4">Region</th>
+                                        <th className="px-6 py-4">Gender</th>
+                                        <th className="px-6 py-4">Status</th>
+                                        <th className="px-6 py-4">Action</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-800">
+                                <tbody className="divide-y divide-slate-100">
                                     {members.map((member) => (
-                                        <tr key={member.id} className="text-slate-300 hover:bg-slate-800/50 transition-colors">
-                                            <td className="px-6 py-4 font-mono font-semibold text-teal-400">
-                                                {member.fellowshipNumber}
+                                        <tr key={member.id} className="text-slate-600 hover:bg-slate-50 transition-colors">
+                                            <td className="px-6 py-4">
+                                                <span className="font-mono font-medium text-[#48A111] bg-[#48A111]/10 px-2.5 py-1 rounded-md text-sm">
+                                                    {member.fellowshipNumber}
+                                                </span>
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div>
-                                                    <p className="font-semibold text-white">{member.fullName}</p>
-                                                    <p className="text-sm text-slate-500">{member.phoneNumber}</p>
+                                                    <p className="font-bold text-slate-900">{member.fullName}</p>
+                                                    <p className="text-sm text-slate-500 mt-0.5">{member.phoneNumber}</p>
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <div className="flex items-center gap-2">
-                                                    <MapPin size={14} className="text-slate-500" />
+                                                <div className="flex items-center gap-1.5 text-sm">
+                                                    <MapPin size={14} className="text-slate-400" />
                                                     {member.region.name}
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${member.gender === 'MALE'
-                                                        ? 'bg-blue-500/20 text-blue-300'
-                                                        : 'bg-pink-500/20 text-pink-300'
+                                                <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${member.gender === 'MALE'
+                                                    ? 'bg-blue-50 text-blue-600 border border-blue-100'
+                                                    : 'bg-pink-50 text-pink-600 border border-pink-100'
                                                     }`}>
                                                     {member.gender}
                                                 </span>
@@ -313,16 +315,16 @@ const ManualCheckIn = () => {
                                             <td className="px-6 py-4">
                                                 {member.isCheckedIn ? (
                                                     <div>
-                                                        <div className="flex items-center gap-2 text-green-400 mb-1">
+                                                        <div className="flex items-center gap-1.5 text-[#48A111] mb-1">
                                                             <CheckCircle size={16} />
-                                                            <span className="font-semibold">Checked In</span>
+                                                            <span className="font-bold text-sm">Checked In</span>
                                                         </div>
-                                                        <p className="text-xs text-slate-500">
-                                                            {new Date(member.checkInTime!).toLocaleTimeString()} ({member.checkInMethod})
+                                                        <p className="text-xs text-slate-400 font-medium">
+                                                            {new Date(member.checkInTime!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {member.checkInMethod}
                                                         </p>
                                                     </div>
                                                 ) : (
-                                                    <span className="text-orange-400 flex items-center gap-2">
+                                                    <span className="text-orange-500 flex items-center gap-1.5 font-bold text-sm">
                                                         <XCircle size={16} />
                                                         Not Checked In
                                                     </span>
@@ -332,16 +334,16 @@ const ManualCheckIn = () => {
                                                 {member.isCheckedIn ? (
                                                     <button
                                                         disabled
-                                                        className="px-4 py-2 rounded-lg bg-slate-800 text-slate-600 cursor-not-allowed flex items-center gap-2"
+                                                        className="px-4 py-2 rounded-xl bg-slate-100 text-slate-400 cursor-not-allowed flex items-center gap-2 font-medium shadow-sm border border-slate-200/50"
                                                     >
                                                         <CheckCircle size={16} />
-                                                        Already Checked In
+                                                        Done
                                                     </button>
                                                 ) : (
                                                     <button
                                                         onClick={() => handleCheckIn(member.id, member.fellowshipNumber)}
                                                         disabled={checkingInMemberId === member.id}
-                                                        className="px-4 py-2 rounded-lg bg-teal-600 text-white hover:bg-teal-700 transition-all disabled:bg-slate-700 disabled:text-slate-500 flex items-center gap-2"
+                                                        className="px-4 py-2 rounded-xl bg-[#48A111] text-white hover:bg-[#3d8b0e] transition-all disabled:opacity-50 flex items-center gap-2 font-semibold shadow-sm hover:shadow-md"
                                                     >
                                                         {checkingInMemberId === member.id ? (
                                                             <>

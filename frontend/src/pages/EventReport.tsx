@@ -673,7 +673,7 @@ const EventReport = () => {
                             />
                             <StatCard
                                 icon={UserCheck} label="First Timers" value={stats.firstTimersCount} accent="#f59e0b"
-                                onClick={() => setActiveDrilldown({ title: 'First Timers', filterFn: a => a.tags?.includes('PENDING_FIRST_ATTENDANCE') })}
+                                onClick={() => setActiveDrilldown({ title: 'First Timers', filterFn: a => a.isFirstTimer === true })}
                                 sub={<span className="text-slate-400">{pct(stats.firstTimersCount, stats.memberCount)} of members</span>}
                             />
                             <StatCard

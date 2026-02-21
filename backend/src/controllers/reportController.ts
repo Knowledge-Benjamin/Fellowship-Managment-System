@@ -38,18 +38,19 @@ export const aggregateAttendanceStats = async (attendances: any[], guestAttendan
     const memberIds = attendances.map((a: any) => a.memberId);
 
     // Priority 1: Check for PENDING_FIRST_ATTENDANCE tag
-    const firstTimerTagCount = await prisma.memberTag.count({
+    const firstTimerTags = await prisma.memberTag.findMany({
         where: {
             memberId: { in: memberIds },
             tag: { name: 'PENDING_FIRST_ATTENDANCE' },
             isActive: true,
         },
+        select: { memberId: true }
     });
 
-    let firstTimersCount = firstTimerTagCount;
+    let firstTimerIds: string[] = firstTimerTags.map(t => t.memberId);
 
     // Priority 2: Fallback to attendance history if no tags found
-    if (firstTimersCount === 0 && memberIds.length > 0) {
+    if (firstTimerIds.length === 0 && memberIds.length > 0) {
         const previousAttendances = await prisma.attendance.findMany({
             where: {
                 memberId: { in: memberIds },
@@ -62,8 +63,11 @@ export const aggregateAttendanceStats = async (attendances: any[], guestAttendan
         });
 
         const returningMemberIds = new Set(previousAttendances.map((a: any) => a.memberId));
-        firstTimersCount = memberIds.filter((id: string) => !returningMemberIds.has(id)).length;
+        firstTimerIds = memberIds.filter((id: string) => !returningMemberIds.has(id));
     }
+
+    // Total count for summary stats
+    const firstTimersCount = firstTimerIds.length;
 
     // 5. Region Breakdown
     const regionBreakdown = attendances.reduce(
@@ -210,6 +214,8 @@ export const aggregateAttendanceStats = async (attendances: any[], guestAttendan
         firstTimersCount,
         salvationBreakdown,
         tagDistribution,
+        // Drilldown support
+        firstTimerIds,
         // Academic Statistics
         yearOfStudyBreakdown,
         collegeBreakdown,
@@ -329,6 +335,7 @@ export const getEventReport = async (req: Request<{ eventId: string }>, res: Res
             families: a.member.familyMemberships.map((fm: any) => fm.family.name),
             teams: a.member.ministryMemberships.map((mm: any) => mm.team.name),
             tags: a.member.memberTags.map((mt: any) => mt.tag.name),
+            isFirstTimer: stats.firstTimerIds.includes(a.member.id),
             isGuest: false,
         }));
 

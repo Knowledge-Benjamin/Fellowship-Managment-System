@@ -78,13 +78,7 @@ const Login = () => {
         }
     };
 
-    // Prevent body scroll
-    useEffect(() => {
-        document.body.style.overflow = 'hidden';
-        return () => {
-            document.body.style.overflow = 'unset';
-        };
-    }, []);
+    // No body scroll lock — the login card must be scrollable on short screens
 
     // Handle initial login (Step 1: Email/Password)
     const handleSubmit = async (e: React.FormEvent) => {
@@ -217,8 +211,8 @@ const Login = () => {
 
     if (showOTPScreen) {
         return (
-            <div className="min-h-screen flex items-start justify-center pt-2 sm:pt-6 pb-6 sm:pb-8 px-3 sm:px-4 bg-slate-100 overflow-y-auto">
-                <div className="max-w-md w-full rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-premium bg-premium-texture animate-slide-up relative z-10 overflow-hidden">
+            <div className="h-dvh overflow-hidden flex items-center justify-center px-3 sm:px-4 bg-slate-100">
+                <div className="max-w-md w-full rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-premium bg-premium-texture animate-slide-up relative z-10 max-h-[calc(100dvh-2rem)] overflow-y-auto">
                     <div className="text-center mb-4 relative z-20">
                         <div className="mx-auto mb-3 w-12 h-12 rounded-full flex items-center justify-center shadow-sm" style={{ backgroundColor: 'rgba(72, 161, 17, 0.1)' }}>
                             <Shield size={24} style={{ color: '#48A111' }} />
@@ -291,10 +285,10 @@ const Login = () => {
     }
 
     return (
-        <div className="min-h-screen flex items-start justify-center pt-4 sm:pt-8 pb-8 sm:pb-12 px-3 sm:px-4 bg-slate-100 overflow-y-auto">
-            <div className="max-w-md w-full rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-premium bg-premium-texture animate-slide-up relative z-10 overflow-hidden">
-                <div className="text-center mb-8 relative z-20">
-                    <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl mx-auto mb-4 sm:mb-6 p-1 bg-white shadow-lg rotate-3 hover:rotate-0 transition-transform duration-500 ease-out">
+        <div className="h-dvh overflow-hidden flex items-center justify-center px-3 sm:px-4 bg-slate-100">
+            <div className="max-w-md w-full rounded-2xl sm:rounded-3xl p-5 sm:p-7 shadow-premium bg-premium-texture animate-slide-up relative z-10 max-h-[calc(100dvh-2rem)] overflow-y-auto">
+                <div className="text-center mb-5 sm:mb-7 relative z-20">
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl mx-auto mb-3 sm:mb-5 p-1 bg-white shadow-lg rotate-3 hover:rotate-0 transition-transform duration-500 ease-out">
                         <img
                             src={logo}
                             alt="Fellowship Logo"
@@ -311,7 +305,7 @@ const Login = () => {
                     </div>
                 )}
 
-                <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6 relative z-20">
+                <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-5 relative z-20">
                     <div>
                         <label className="block text-black mb-2 text-sm font-medium">Email Address</label>
                         <div className="relative group">

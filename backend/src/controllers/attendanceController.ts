@@ -22,6 +22,13 @@ const guestCheckInSchema = z.object({
     purpose: z.string().max(200).optional(),
 });
 
+const offlineSyncSchema = z.array(z.object({
+    memberId: z.string().uuid('Invalid member ID'),
+    eventId: z.string().uuid('Invalid event ID'),
+    method: z.enum(['QR', 'FELLOWSHIP_NUMBER', 'MANUAL']),
+    timestamp: z.string().datetime(),
+}));
+
 export const checkIn = async (req: Request, res: Response) => {
     try {
         // Validate input
@@ -336,5 +343,117 @@ export const getMembersForCheckIn = async (req: Request, res: Response) => {
     } catch (error) {
         console.error('Get members for check-in error:', error);
         res.status(500).json({ error: 'Failed to fetch members' });
+    }
+};
+
+// ===================================
+// OFFLINE PWA CAPABILITIES
+// ===================================
+
+/**
+ * GET /api/attendance/:eventId/offline-roster
+ * Fetches lightweight, active member roster for IndexedDB caching
+ */
+export const getOfflineRoster = async (req: Request, res: Response) => {
+    try {
+        const { eventId } = req.params;
+        if (!eventId || typeof eventId !== 'string') return res.status(400).json({ error: 'Invalid event ID' });
+
+        // Ensure event exists
+        const event = await prisma.event.findUnique({ where: { id: eventId } });
+        if (!event) return res.status(404).json({ error: 'Event not found' });
+
+        // Fetch lightweight record of ALL active members
+        const members = await prisma.member.findMany({
+            where: { ...activeMemberFilter },
+            select: {
+                id: true,
+                fullName: true,
+                fellowshipNumber: true,
+                phoneNumber: true,
+                qrCode: true,
+                region: { select: { id: true, name: true } },
+            },
+        });
+
+        res.json({ eventId, members });
+    } catch (error) {
+        console.error('Offline Roster error:', error);
+        res.status(500).json({ error: 'Failed to load offline roster' });
+    }
+};
+
+/**
+ * POST /api/attendance/sync-batch
+ * Accepts an array of offline check-ins and sinks them idempotently.
+ */
+export const syncOfflineBatch = async (req: Request, res: Response) => {
+    try {
+        const records = offlineSyncSchema.parse(req.body);
+
+        if (records.length === 0) return res.json({ message: 'No records to sync', syncedCount: 0 });
+
+        // Ensure we are syncing to an event that actually exists and is active
+        const eventId = records[0].eventId;
+        const event = await prisma.event.findUnique({ where: { id: eventId } });
+
+        if (!event) return res.status(404).json({ error: 'Event not found' });
+
+        // We skip time validations intentionally because these are offline scans
+        // that could have happened hours ago.
+
+        let syncedCount = 0;
+        let errors = [];
+
+        // We process sequentially (or using createMany if possible, but we need side-effects for first timers)
+        for (const record of records) {
+            try {
+                // Check if already checked in (duplicate sync prevention)
+                const existing = await prisma.attendance.findUnique({
+                    where: { memberId_eventId: { memberId: record.memberId, eventId } },
+                });
+
+                if (existing) continue; // Ignore if they already synced
+
+                await prisma.attendance.create({
+                    data: {
+                        memberId: record.memberId,
+                        eventId: eventId,
+                        method: record.method,
+                        checkedInAt: new Date(record.timestamp), // Use the offline real time
+                    },
+                });
+
+                // Auto-remove PENDING_FIRST_ATTENDANCE
+                const firstTimerTag = await prisma.memberTag.findFirst({
+                    where: { memberId: record.memberId, tag: { name: 'PENDING_FIRST_ATTENDANCE' }, isActive: true },
+                    include: { tag: true },
+                });
+
+                if (firstTimerTag) {
+                    await prisma.memberTag.update({
+                        where: { id: firstTimerTag.id },
+                        data: { isActive: false, removedAt: new Date(), removedBy: record.memberId },
+                    });
+                }
+
+                syncedCount++;
+            } catch (err) {
+                console.error(`Failed to sync offline record: ${record.memberId}`, err);
+                errors.push({ memberId: record.memberId, error: 'Database error' });
+            }
+        }
+
+        res.json({
+            message: 'Batch sync complete',
+            syncedCount,
+            totalReceived: records.length,
+            errors: errors.length > 0 ? errors : undefined,
+        });
+
+    } catch (error) {
+        if (error instanceof z.ZodError) return res.status(400).json({ error: 'Invalid batch array format', details: error.issues });
+        console.error('Offline sync error:', error);
+        res.status(500).json({ error: 'Failed to process sync batch' });
     }
 };

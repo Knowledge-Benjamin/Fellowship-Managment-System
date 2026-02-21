@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { checkIn, guestCheckIn, getEventAttendance, getMembersForCheckIn } from '../controllers/attendanceController';
+import { checkIn, guestCheckIn, getEventAttendance, getMembersForCheckIn, getOfflineRoster, syncOfflineBatch } from '../controllers/attendanceController';
 import { asyncHandler } from '../utils/asyncHandler';
 import { protect, authorize } from '../middleware/authMiddleware';
 import { checkInPermission } from '../middleware/checkInPermission';
@@ -8,6 +8,10 @@ const router = Router();
 
 // Member check-in: Managers and assigned volunteers
 router.post('/check-in', protect, checkInPermission, asyncHandler(checkIn));
+
+// Offline Sync Support (PWA): Managers and assigned volunteers
+router.get('/:eventId/offline-roster', protect, checkInPermission, asyncHandler(getOfflineRoster));
+router.post('/sync-batch', protect, checkInPermission, asyncHandler(syncOfflineBatch));
 
 // Guest check-in: Managers only
 router.post('/guest-check-in', protect, authorize('FELLOWSHIP_MANAGER'), asyncHandler(guestCheckIn));

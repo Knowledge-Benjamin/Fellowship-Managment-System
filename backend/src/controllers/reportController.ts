@@ -253,21 +253,16 @@ export const getEventReport = async (req: Request<{ eventId: string }>, res: Res
             }
         }
 
-        // ── Cleanup: deactivate all expired CHECK_IN_VOLUNTEER tags ──────────
+        // ── Cleanup: delete all expired CHECK_IN_VOLUNTEER tags ──────────
         // This ensures the DB stays clean regardless of whether the per-member
-        // cleanup in volunteerController has been triggered.
-        await prisma.memberTag.updateMany({
+        // cleanup in volunteerController has been triggered. Deleting temporary
+        // role tags prevents Unique Constraint violations (P2002).
+        await prisma.memberTag.deleteMany({
             where: {
                 isActive: true,
                 expiresAt: { lt: new Date() },
                 tag: { name: 'CHECK_IN_VOLUNTEER' },
-            },
-            data: {
-                isActive: false,
-                removedAt: new Date(),
-                removedBy: 'SYSTEM',
-                notes: 'Auto-deactivated: tag expired (report load cleanup)',
-            },
+            }
         });
 
         // Get user's scope
@@ -507,19 +502,13 @@ export const getCustomReport = async (req: Request, res: Response) => {
             return res.status(401).json({ error: 'Unauthorized' });
         }
 
-        // ── Cleanup: deactivate all expired CHECK_IN_VOLUNTEER tags ──────────
-        await prisma.memberTag.updateMany({
+        // ── Cleanup: delete all expired CHECK_IN_VOLUNTEER tags ──────────
+        await prisma.memberTag.deleteMany({
             where: {
                 isActive: true,
                 expiresAt: { lt: new Date() },
                 tag: { name: 'CHECK_IN_VOLUNTEER' },
-            },
-            data: {
-                isActive: false,
-                removedAt: new Date(),
-                removedBy: 'SYSTEM',
-                notes: 'Auto-deactivated: tag expired (report load cleanup)',
-            },
+            }
         });
 
         // Get user's scope

@@ -250,17 +250,12 @@ export const checkPermission = async (req: Request<{ eventId: string }>, res: Re
                 });
 
                 if (volunteerTag) {
-                    await prisma.memberTag.updateMany({
+                    await prisma.memberTag.deleteMany({
                         where: {
                             memberId: userId,
                             tagId: volunteerTag.id,
                             isActive: true,
-                        },
-                        data: {
-                            isActive: false,
-                            removedAt: now,
-                            removedBy: 'SYSTEM', // Auto-removed by system
-                        },
+                        }
                     });
                 }
 

@@ -26,6 +26,9 @@ import TeamLeaderDashboard from './pages/Leadership/TeamLeaderDashboard';
 import LeaderReports from './pages/Leadership/LeaderReports';
 import AcademicCalendar from './pages/AcademicCalendar';
 import ProfileEditPage from './pages/Profile/ProfileEditPage';
+import SelfRegistration from './pages/SelfRegistration';
+import RegistrationTokens from './pages/RegistrationTokens';
+import PendingMembers from './pages/PendingMembers';
 
 // Roles that can view dispatched reports
 const LEADER_ROLES = ['FELLOWSHIP_MANAGER', 'REGIONAL_HEAD', 'FAMILY_HEAD', 'TEAM_LEADER'] as const;
@@ -40,7 +43,7 @@ import { NetworkStatusListener } from './components/NetworkStatusListener';
 
 function AppContent() {
   const location = useLocation();
-  const isRegistrationPage = location.pathname === '/';
+  const isRegistrationPage = location.pathname === '/' || location.pathname === '/register';
 
   return (
     <div className="min-h-screen bg-slate-50 relative">
@@ -57,6 +60,9 @@ function AppContent() {
         <div className={isRegistrationPage ? 'w-full' : 'max-w-7xl mx-auto'}>
           <Routes>
             <Route path="/login" element={<Login />} />
+
+            {/* Public self-registration (no auth required) */}
+            <Route path="/register" element={<SelfRegistration />} />
 
             {/* Protected Routes */}
             <Route path="/" element={
@@ -220,6 +226,19 @@ function AppContent() {
                 <AcademicCalendar />
               </ProtectedRoute>
             } />
+
+            <Route path="/registration-tokens" element={
+              <ProtectedRoute roles={['FELLOWSHIP_MANAGER']}>
+                <RegistrationTokens />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/pending-members" element={
+              <ProtectedRoute roles={['FELLOWSHIP_MANAGER']}>
+                <PendingMembers />
+              </ProtectedRoute>
+            } />
+
           </Routes>
         </div>
       </main>

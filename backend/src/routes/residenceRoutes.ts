@@ -10,8 +10,8 @@ import { protect, authorize } from '../middleware/authMiddleware';
 
 const router = Router();
 
-// Routes for authenticated users (Manager registration flow)
-router.get('/', protect, asyncHandler(getResidences));
+// Public routes for registration dropdowns
+router.get('/', asyncHandler(getResidences));
 
 // Manager-only routes
 router.post('/', protect, authorize('FELLOWSHIP_MANAGER'), asyncHandler(createResidence));

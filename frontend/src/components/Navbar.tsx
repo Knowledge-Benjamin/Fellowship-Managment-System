@@ -4,8 +4,9 @@ import { useAuth } from '../context/AuthContext';
 import { useCheckInAccess } from '../hooks/useCheckInAccess';
 import {
     Home, QrCode, Bus, Calendar, UserPlus, PieChart, LogIn, LogOut,
-    User, MapPin, Tag, Users, Menu, X, ChevronDown, BookOpen, Heart, FileText
+    User, MapPin, Tag, Users, Menu, X, ChevronDown, BookOpen, Heart, FileText, Link2, Clock
 } from 'lucide-react';
+import api from '../api';
 import logo from '../assets/logo.jpg';
 import { createPortal } from 'react-dom';
 
@@ -47,8 +48,21 @@ const Navbar = () => {
     const { hasAccess: hasCheckInAccess } = useCheckInAccess();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isManagementOpen, setIsManagementOpen] = useState(false);
+    const [pendingCount, setPendingCount] = useState(0);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const location = useLocation();
+
+    // Poll pending member count for badge
+    useEffect(() => {
+        if (!isManager) return;
+        const fetch = () =>
+            api.get('/pending-members/stats')
+                .then(r => setPendingCount(r.data.pending ?? 0))
+                .catch(() => { });
+        fetch();
+        const id = setInterval(fetch, 60000);
+        return () => clearInterval(id);
+    }, [isManager]);
 
     const isRegionalHead = hasTag('REGIONAL_HEAD');
     const isFamilyHead = hasTag('FAMILY_HEAD');
@@ -85,6 +99,8 @@ const Navbar = () => {
         { to: '/tags', label: 'Tags', icon: Tag },
         { to: '/guest-check-in', label: 'Guest Check-in', icon: UserPlus },
         { to: '/salvations', label: 'Salvations', icon: Heart },
+        { to: '/registration-tokens', label: 'Reg Links', icon: Link2 },
+        { to: '/pending-members', label: 'Pending Members', icon: Clock, badge: pendingCount },
     ];
 
     const isManagementActive = managementLinks.some(link => location.pathname === link.to);
@@ -165,7 +181,10 @@ const Navbar = () => {
                                                                     : {}}
                                                             >
                                                                 <link.icon size={16} />
-                                                                {link.label}
+                                                                <span className="flex-1">{link.label}</span>
+                                                                {(link as any).badge > 0 && (
+                                                                    <span className="ml-auto text-xs bg-amber-100 text-amber-700 font-bold px-1.5 py-0.5 rounded-full">{(link as any).badge}</span>
+                                                                )}
                                                             </Link>
                                                         ))}
                                                     </div>

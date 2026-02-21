@@ -82,6 +82,7 @@ model Region {
   members    Member[]
   residences Residence[]
   families   FamilyGroup[]
+  pendingMembers PendingMember[]
 
   @@index([name])
   @@index([regionalHeadId])
@@ -659,4 +660,72 @@ model ProfileEditRequest {
   @@index([memberId])
   @@index([status])
   @@index([reviewedBy])
+}
+
+// ===================================
+// SELF-REGISTRATION SYSTEM
+// ===================================
+
+enum PendingMemberStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model RegistrationToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  label     String?
+  createdBy String
+  expiresAt DateTime
+  maxUses   Int?
+  usedCount Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  pendingMembers PendingMember[]
+
+  @@index([token])
+  @@index([isActive])
+  @@index([expiresAt])
+}
+
+model PendingMember {
+  id                String              @id @default(uuid())
+  tokenId           String
+  token             RegistrationToken   @relation(fields: [tokenId], references: [id])
+
+  fullName          String
+  email             String              @unique
+  phoneNumber       String
+  gender            Gender
+  isMakerereStudent Boolean            @default(true)
+  registrationMode  RegistrationMode   @default(NEW_MEMBER)
+
+  regionId          String?
+  region            Region?             @relation(fields: [regionId], references: [id])
+
+  collegeId         String?
+  collegeSuggestion String?
+  courseId          String?
+  courseSuggestion  String?
+  initialYearOfStudy Int?
+  initialSemester    Int?
+
+  residenceId         String?
+  residenceSuggestion String?
+  hostelName          String?
+
+  status      PendingMemberStatus @default(PENDING)
+  reviewedBy  String?
+  reviewNote  String?
+  reviewedAt  DateTime?
+  ipAddress   String?
+  submittedAt DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@index([email])
+  @@index([status])
+  @@index([tokenId])
 }

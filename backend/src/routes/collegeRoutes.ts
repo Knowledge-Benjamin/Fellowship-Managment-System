@@ -10,8 +10,8 @@ import { protect, authorize } from '../middleware/authMiddleware';
 
 const router = Router();
 
-// Public routes (for authenticated users - e.g. registration dropdowns)
-router.get('/', protect, asyncHandler(getColleges));
+// Public routes (e.g. registration dropdowns)
+router.get('/', asyncHandler(getColleges));
 
 // Manager-only routes
 router.post('/', protect, authorize('FELLOWSHIP_MANAGER'), asyncHandler(createCollege));

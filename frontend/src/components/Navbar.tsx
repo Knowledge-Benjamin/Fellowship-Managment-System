@@ -125,7 +125,7 @@ const Navbar = () => {
                                     <div className="absolute -top-1 -right-1 w-3 h-3 bg-teal-500 rounded-full animate-pulse border-2 border-white"></div>
                                 </div>
                                 <div>
-                                    <h1 className="text-lg font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">Fellowship Manager</h1>
+                                    <h1 className="text-lg font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">Manifest Management Interface</h1>
                                     <p className="text-xs text-slate-500">Digital Registration System</p>
                                 </div>
                             </Link>

@@ -60,7 +60,8 @@ export const createToken = async (req: Request, res: Response) => {
             },
         });
 
-        const url = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/register?token=${token}`;
+        const baseUrl = req.get('origin') || process.env.FRONTEND_URL || 'http://localhost:5173';
+        const url = `${baseUrl}/register?token=${token}`;
 
         res.status(201).json({ ...regToken, url });
     } catch (error: any) {
@@ -83,7 +84,7 @@ export const listTokens = async (_req: Request, res: Response) => {
             },
         });
 
-        const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+        const baseUrl = _req.get('origin') || process.env.FRONTEND_URL || 'http://localhost:5173';
         const result = tokens.map(t => ({
             ...t,
             url: `${baseUrl}/register?token=${t.token}`,

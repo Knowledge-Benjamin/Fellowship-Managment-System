@@ -34,7 +34,11 @@ const RegistrationTokens = () => {
         try {
             setLoading(true);
             const res = await api.get('/reg-tokens');
-            setTokens(res.data);
+            const fetched = res.data.map((t: any) => ({
+                ...t,
+                url: `${window.location.origin}/register?token=${t.token}`
+            }));
+            setTokens(fetched);
         } catch {
             showToast('error', 'Failed to load registration tokens');
         } finally {

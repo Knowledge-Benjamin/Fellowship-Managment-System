@@ -122,11 +122,40 @@ const CheckIn = () => {
         }
     };
 
-    // ─── OFFLINE VERIFICATION WRAPPER ───────────────────────────────────────────────
-    const processOfflineCheckIn = async (method: 'QR' | 'FELLOWSHIP_NUMBER', identifier: string) => {
+    // ─── HYBRID VERIFICATION WRAPPER (ONLINE FIRST, OFFLINE FALLBACK) ───────────────────────────────────────────────
+    const processCheckIn = async (method: 'QR' | 'FELLOWSHIP_NUMBER', identifier: string) => {
         if (!selectedEvent) return;
 
+        setStatus('loading');
+
         try {
+            // OPTION A: LIVE ONLINE CHECK-IN (Default)
+            if (navigator.onLine) {
+                try {
+                    const payload = method === 'QR'
+                        ? { qrCode: identifier, method: 'QR', eventId: selectedEvent.id }
+                        : { fellowshipNumber: identifier, method: 'FELLOWSHIP_NUMBER', eventId: selectedEvent.id };
+
+                    const response = await api.post('/attendance/check-in', payload);
+
+                    setMemberData(response.data.member);
+                    setShowConfirmation(true);
+                    setStatus('success');
+                    setMessage(`[Live] ${response.data.member.fullName} checked in!`);
+
+                    autoDismiss(method);
+                    return; // Live check-in succeeded, exit early!
+                } catch (liveError: any) {
+                    // If it's a 400 or 409 error (e.g., already checked in, wrong QR), don't fallback to offline. Pass the live error down.
+                    if (liveError.response && [400, 403, 404].includes(liveError.response.status)) {
+                        throw new Error(liveError.response.data.error || 'Live Check-in Rejected.');
+                    }
+                    console.warn('Live checkin failed (Likely network). Falling back to Offline db...', liveError);
+                    // Otherwise, it's likely a 500 or network error. Continue down to Option B (Offline fallback).
+                }
+            }
+
+            // OPTION B: OFFLINE LOCAL DB FALLBACK
             // Find member in local DB
             let member;
             if (method === 'QR') {
@@ -136,18 +165,13 @@ const CheckIn = () => {
             }
 
             if (!member) {
-                // Not found locally. Provide distinct error depending on roster state
                 throw new Error(rosterCount > 0
-                    ? 'Member not found or inactive. Verify they are registered.'
-                    : 'Roster not synced! Please download the roster first.');
+                    ? 'Member not found. Verify they are registered.'
+                    : 'Roster not synced! Cannot verify offline. Please connect to internet and download the roster.');
             }
 
             // Check if already checked in locally in the queue
-            const alreadyInQueue = await db.syncQueue.where({
-                memberId: member.id,
-                eventId: selectedEvent.id
-            }).first();
-
+            const alreadyInQueue = await db.syncQueue.where({ memberId: member.id, eventId: selectedEvent.id }).first();
             if (alreadyInQueue) {
                 throw new Error('Already scanned today! (Pending sync)');
             }
@@ -170,31 +194,26 @@ const CheckIn = () => {
             });
             setShowConfirmation(true);
             setStatus('success');
-            setMessage(`${member.fullName} checked in locally (Pending queue)`);
+            setMessage(`[Offline] ${member.fullName} checked in locally.`);
 
-            // Auto-dismiss scanner UI
-            if (method === 'QR') {
-                setTimeout(() => {
-                    setStatus('idle');
-                    setResult('');
-                    setShowConfirmation(false);
-                    setMemberData(null);
-                }, 4000);
-            } else {
-                setTimeout(() => {
-                    setStatus('idle');
-                    setFellowshipNumber('');
-                    setShowConfirmation(false);
-                    setMemberData(null);
-                }, 4000);
-            }
+            autoDismiss(method);
 
         } catch (error: any) {
-            console.error('Offline Check-in error:', error);
+            console.error('Check-in error:', error);
             setStatus('error');
             setMessage(error.message || 'Check-in Failed. Please try again.');
             setTimeout(() => setStatus('idle'), 5000);
         }
+    };
+
+    const autoDismiss = (method: 'QR' | 'FELLOWSHIP_NUMBER') => {
+        setTimeout(() => {
+            setStatus('idle');
+            if (method === 'QR') setResult('');
+            if (method === 'FELLOWSHIP_NUMBER') setFellowshipNumber('');
+            setShowConfirmation(false);
+            setMemberData(null);
+        }, 4000);
     };
 
     useEffect(() => {
@@ -223,9 +242,9 @@ const CheckIn = () => {
                     scanner.clear();
 
                     try {
-                        await processOfflineCheckIn('QR', decodedText);
+                        await processCheckIn('QR', decodedText);
                     } catch (error: any) {
-                        // Error is handled inside processOfflineCheckIn
+                        // Error is handled inside processCheckIn
                     }
                 },
                 (errorMessage) => {
@@ -269,9 +288,9 @@ const CheckIn = () => {
         setShowConfirmation(false);
 
         try {
-            await processOfflineCheckIn('FELLOWSHIP_NUMBER', fellowshipNumber.toUpperCase());
+            await processCheckIn('FELLOWSHIP_NUMBER', fellowshipNumber.toUpperCase());
         } catch (error: any) {
-            // Error handles inside process
+            // Error handled inside process
         } finally {
             setFellowshipLookupLoading(false);
         }

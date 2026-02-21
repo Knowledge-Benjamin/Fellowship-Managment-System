@@ -159,6 +159,10 @@ model Member {
   loginAttempts            LoginAttempt[]
   otps                     OTP[]
 
+  // Profile edit requests
+  profileEditRequests      ProfileEditRequest[] @relation("EditRequester")
+  reviewedEditRequests     ProfileEditRequest[] @relation("EditReviewer")
+
   @@index([phoneNumber])
   @@index([email])
   @@index([fellowshipNumber])
@@ -619,4 +623,40 @@ model EmailQueue {
 
   @@index([status])
   @@index([createdAt])
+}
+
+// ===================================
+// PROFILE EDIT REQUESTS
+// ===================================
+
+enum EditRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model ProfileEditRequest {
+  id         String            @id @default(uuid())
+  memberId   String
+  member     Member            @relation("EditRequester", fields: [memberId], references: [id], onDelete: Cascade)
+
+  // JSON array: [{ field: "phoneNumber", oldValue: "...", newValue: "..." }]
+  changes    Json
+
+  // Member's justification for the change
+  reason     String
+
+  status     EditRequestStatus @default(PENDING)
+
+  reviewedBy String?
+  reviewer   Member?           @relation("EditReviewer", fields: [reviewedBy], references: [id], onDelete: SetNull)
+  reviewNote String?
+  reviewedAt DateTime?
+
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+
+  @@index([memberId])
+  @@index([status])
+  @@index([reviewedBy])
 }

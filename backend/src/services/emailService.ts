@@ -618,4 +618,209 @@ The Fellowship Management Team
     await queueEmail(tx, email, subject, html, text);
 };
 
+/**
+ * Notify a Regional Head that a member in their region has submitted a profile edit request.
+ */
+export const sendProfileEditRequestNotification = async (
+    rhEmail: string,
+    rhFullName: string,
+    memberFullName: string,
+    memberFellowshipNumber: string,
+    changes: Array<{ field: string; oldValue: string; newValue: string }>,
+    reason: string
+): Promise<boolean> => {
+    const subject = '📝 Profile Edit Request — Action Required';
 
+    const changesHtml = changes
+        .map(
+            (c) => `
+            <tr>
+                <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #0f172a; text-transform: capitalize;">${c.field.replace(/([A-Z])/g, ' $1')}</td>
+                <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0; color: #64748b;">${c.oldValue}</td>
+                <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0; color: #14b8a6; font-weight: 600;">${c.newValue}</td>
+            </tr>`
+        )
+        .join('');
+
+    const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                .header { background: linear-gradient(135deg, #48A111 0%, #2d7a08 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+                .content { background: #f8fafc; padding: 30px; border-radius: 0 0 10px 10px; }
+                .info-box { background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin: 20px 0; }
+                .reason-box { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0; border-radius: 4px; }
+                table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+                th { background: #f1f5f9; padding: 8px 12px; text-align: left; font-size: 12px; color: #64748b; text-transform: uppercase; }
+                .footer { text-align: center; padding: 20px; color: #64748b; font-size: 12px; }
+                .cta { display: inline-block; background: #48A111; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; margin: 16px 0; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1 style="margin: 0;">Profile Edit Request</h1>
+                    <p style="margin: 5px 0 0 0; opacity: 0.9;">Action Required</p>
+                </div>
+                <div class="content">
+                    <p>Hello <strong>${rhFullName}</strong>,</p>
+                    <p>A member in your region has submitted a profile edit request that requires your review.</p>
+
+                    <div class="info-box">
+                        <p style="margin: 0 0 6px 0; font-size: 13px; color: #64748b;">MEMBER</p>
+                        <p style="margin: 0; font-size: 18px; font-weight: bold; color: #0f172a;">${memberFullName}</p>
+                        <p style="margin: 4px 0 0 0; font-family: monospace; color: #64748b;">${memberFellowshipNumber}</p>
+                    </div>
+
+                    <h3 style="color: #0f172a;">Requested Changes</h3>
+                    <table>
+                        <thead><tr><th>Field</th><th>Current Value</th><th>New Value</th></tr></thead>
+                        <tbody>${changesHtml}</tbody>
+                    </table>
+
+                    <div class="reason-box">
+                        <strong>Member's Reason:</strong><br/>
+                        ${reason}
+                    </div>
+
+                    <p>Please log in to your Fellowship Manager account to review and approve or reject this request.</p>
+
+                    <p style="margin-top: 30px;">Best regards,<br/><strong>Fellowship Management System</strong></p>
+                </div>
+                <div class="footer">
+                    <p>This is an automated notification. Do not reply to this email.</p>
+                    <p>&copy; ${new Date().getFullYear()} Fellowship Manager. All rights reserved.</p>
+                </div>
+            </div>
+        </body>
+        </html>
+    `;
+
+    const text = `
+Hello ${rhFullName},
+
+A member in your region has submitted a profile edit request.
+
+Member: ${memberFullName} (${memberFellowshipNumber})
+
+Requested Changes:
+${changes.map((c) => `  ${c.field}: "${c.oldValue}" → "${c.newValue}"`).join('\n')}
+
+Reason: ${reason}
+
+Please log in to your Fellowship Manager account to review this request.
+
+Fellowship Management System
+    `.trim();
+
+    return await sendEmail(rhEmail, subject, html, text);
+};
+
+/**
+ * Notify a member that their profile edit request has been approved or rejected.
+ */
+export const sendProfileEditDecisionNotification = async (
+    memberEmail: string,
+    memberFullName: string,
+    decision: 'APPROVED' | 'REJECTED',
+    changes: Array<{ field: string; oldValue: string; newValue: string }>,
+    reviewNote?: string
+): Promise<boolean> => {
+    const isApproved = decision === 'APPROVED';
+    const subject = isApproved
+        ? '✅ Profile Edit Request Approved'
+        : '❌ Profile Edit Request Rejected';
+
+    const statusColor = isApproved ? '#16a34a' : '#dc2626';
+    const statusBg = isApproved ? '#f0fdf4' : '#fef2f2';
+    const statusText = isApproved ? 'APPROVED' : 'REJECTED';
+
+    const changesHtml = changes
+        .map(
+            (c) => `
+            <tr>
+                <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #0f172a; text-transform: capitalize;">${c.field.replace(/([A-Z])/g, ' $1')}</td>
+                <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0; color: #64748b;">${c.oldValue}</td>
+                <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0; color: ${isApproved ? '#14b8a6' : '#64748b'}; ${isApproved ? 'font-weight: 600;' : 'text-decoration: line-through;'}">${c.newValue}</td>
+            </tr>`
+        )
+        .join('');
+
+    const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                .header { background: linear-gradient(135deg, ${isApproved ? '#48A111 0%, #2d7a08' : '#dc2626 0%, #991b1b'} 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+                .content { background: #f8fafc; padding: 30px; border-radius: 0 0 10px 10px; }
+                .status-badge { display: inline-block; background: ${statusBg}; color: ${statusColor}; border: 1px solid ${statusColor}; padding: 8px 20px; border-radius: 999px; font-weight: bold; font-size: 14px; margin: 12px 0; }
+                .note-box { background: #f1f5f9; border-left: 4px solid #94a3b8; padding: 15px; margin: 20px 0; border-radius: 4px; }
+                table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+                th { background: #f1f5f9; padding: 8px 12px; text-align: left; font-size: 12px; color: #64748b; text-transform: uppercase; }
+                .footer { text-align: center; padding: 20px; color: #64748b; font-size: 12px; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1 style="margin: 0;">Profile Edit Request</h1>
+                    <p style="margin: 5px 0 0 0; opacity: 0.9;">${isApproved ? 'Your changes have been applied' : 'Your request could not be approved'}</p>
+                </div>
+                <div class="content">
+                    <p>Hello <strong>${memberFullName}</strong>,</p>
+                    <p>Your Regional Head has reviewed your profile edit request.</p>
+
+                    <div style="text-align: center; margin: 20px 0;">
+                        <span class="status-badge">${statusText}</span>
+                    </div>
+
+                    <h3 style="color: #0f172a;">Your Requested Changes</h3>
+                    <table>
+                        <thead><tr><th>Field</th><th>Old Value</th><th>Requested Value</th></tr></thead>
+                        <tbody>${changesHtml}</tbody>
+                    </table>
+
+                    ${reviewNote ? `
+                    <div class="note-box">
+                        <strong>Note from Regional Head:</strong><br/>
+                        ${reviewNote}
+                    </div>` : ''}
+
+                    ${isApproved
+            ? '<p style="color: #16a34a;">✅ Your profile has been updated with the approved changes.</p>'
+            : '<p style="color: #64748b;">If you believe this is an error, please speak with your Regional Head directly.</p>'
+        }
+
+                    <p style="margin-top: 30px;">Best regards,<br/><strong>Fellowship Management System</strong></p>
+                </div>
+                <div class="footer">
+                    <p>This is an automated notification. Do not reply to this email.</p>
+                    <p>&copy; ${new Date().getFullYear()} Fellowship Manager. All rights reserved.</p>
+                </div>
+            </div>
+        </body>
+        </html>
+    `;
+
+    const text = `
+Hello ${memberFullName},
+
+Your profile edit request has been ${decision}.
+
+${decision === 'APPROVED' ? 'Your profile has been updated with the approved changes.' : 'Your request could not be approved at this time.'}
+
+Requested Changes:
+${changes.map((c) => `  ${c.field}: "${c.oldValue}" → "${c.newValue}"`).join('\n')}
+
+${reviewNote ? `Note from Regional Head: ${reviewNote}` : ''}
+
+Fellowship Management System
+    `.trim();
+
+    return await sendEmail(memberEmail, subject, html, text);
+};

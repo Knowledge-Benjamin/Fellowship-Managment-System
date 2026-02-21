@@ -23,7 +23,12 @@ import Families from './pages/Leadership/Families';
 import FamilyDetails from './pages/Leadership/FamilyDetails';
 import FamilyHeadDashboard from './pages/Leadership/FamilyHeadDashboard';
 import TeamLeaderDashboard from './pages/Leadership/TeamLeaderDashboard';
+import LeaderReports from './pages/Leadership/LeaderReports';
 import AcademicCalendar from './pages/AcademicCalendar';
+import ProfileEditPage from './pages/Profile/ProfileEditPage';
+
+// Roles that can view dispatched reports
+const LEADER_ROLES = ['FELLOWSHIP_MANAGER', 'REGIONAL_HEAD', 'FAMILY_HEAD', 'TEAM_LEADER'] as const;
 import { ToastProvider } from './components/ToastProvider';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -85,7 +90,7 @@ function AppContent() {
             } />
 
             <Route path="/events/:id/report" element={
-              <ProtectedRoute roles={['FELLOWSHIP_MANAGER']}>
+              <ProtectedRoute roles={[...LEADER_ROLES]}>
                 <EventReport />
               </ProtectedRoute>
             } />
@@ -193,6 +198,20 @@ function AppContent() {
             <Route path="/profile" element={
               <ProtectedRoute>
                 <Profile />
+              </ProtectedRoute>
+            } />
+
+            {/* FM-only direct profile edit (no approval workflow) */}
+            <Route path="/profile/edit" element={
+              <ProtectedRoute roles={['FELLOWSHIP_MANAGER']}>
+                <ProfileEditPage />
+              </ProtectedRoute>
+            } />
+
+            {/* Leader-only: dispatched reports list (not for regular Members) */}
+            <Route path="/leader/reports" element={
+              <ProtectedRoute roles={[...LEADER_ROLES]}>
+                <LeaderReports />
               </ProtectedRoute>
             } />
 

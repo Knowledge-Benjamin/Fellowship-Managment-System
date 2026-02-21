@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useCheckInAccess } from '../hooks/useCheckInAccess';
 import {
     Home, QrCode, Bus, Calendar, UserPlus, PieChart, LogIn, LogOut,
-    User, MapPin, Tag, Users, Menu, X, ChevronDown, BookOpen, Heart
+    User, MapPin, Tag, Users, Menu, X, ChevronDown, BookOpen, Heart, FileText
 } from 'lucide-react';
 import logo from '../assets/logo.jpg';
 import { createPortal } from 'react-dom';
@@ -51,6 +51,10 @@ const Navbar = () => {
     const location = useLocation();
 
     const isRegionalHead = hasTag('REGIONAL_HEAD');
+    const isFamilyHead = hasTag('FAMILY_HEAD');
+    // Only non-FM leaders see the dispatched /leader/reports link.
+    // FMs already have their own full reporting via the Management dropdown (/reports/custom).
+    const isLeader = !isManager && (isRegionalHead || isFamilyHead || hasTeamLeaderTag());
 
     // Close mobile menu on route change
     useEffect(() => {
@@ -184,6 +188,10 @@ const Navbar = () => {
                                     {(hasTeamLeaderTag() || hasTeamMemberTag()) && (
                                         <NavLink to="/leadership/my-team" icon={Users}>My Team</NavLink>
                                     )}
+                                    {/* Reports link — leaders only, never shown to plain members */}
+                                    {isLeader && (
+                                        <NavLink to="/leader/reports" icon={FileText}>Reports</NavLink>
+                                    )}
 
                                     <div className="w-px h-6 bg-slate-200 mx-2"></div>
 
@@ -247,6 +255,8 @@ const Navbar = () => {
                                         {hasTag('REGIONAL_HEAD') && <NavLink to="/leadership/my-region" icon={MapPin} className="w-full">My Region</NavLink>}
                                         {(hasTag('FAMILY_HEAD') || hasFamilyMemberTag()) && <NavLink to="/leadership/my-family" icon={Users} className="w-full">My Family</NavLink>}
                                         {(hasTeamLeaderTag() || hasTeamMemberTag()) && <NavLink to="/leadership/my-team" icon={Users} className="w-full">My Team</NavLink>}
+                                        {/* Reports — leaders only */}
+                                        {isLeader && <NavLink to="/leader/reports" icon={FileText} className="w-full">Reports</NavLink>}
                                     </div>
 
                                     {isManager && (

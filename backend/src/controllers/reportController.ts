@@ -14,6 +14,217 @@ import { getUserReportScope, buildMemberScopeFilter, getScopeDisplayName } from 
 const cache = new NodeCache({ stdTTL: 300 }); // 5 minutes TTL
 
 
+// ── Shared Aggregation Helper ────────────────────────────────────────────────
+
+export const aggregateAttendanceStats = async (attendances: any[], guestAttendances: any[], salvations: any[], eventDate: Date) => {
+    // 1. Total Attendance
+    const memberCount = attendances.length;
+    const guestCount = guestAttendances?.length || 0;
+    const totalAttendance = memberCount + guestCount;
+
+    // 2. Gender Breakdown
+    const genderBreakdown = attendances.reduce(
+        (acc: { MALE: number; FEMALE: number }, curr: any) => {
+            const gender = curr.member?.gender as 'MALE' | 'FEMALE';
+            if (gender === 'MALE' || gender === 'FEMALE') {
+                acc[gender] = (acc[gender] || 0) + 1;
+            }
+            return acc;
+        },
+        { MALE: 0, FEMALE: 0 }
+    );
+
+    // 3. First Timers (Tag-Based with Fallback)
+    const memberIds = attendances.map((a: any) => a.memberId);
+
+    // Priority 1: Check for PENDING_FIRST_ATTENDANCE tag
+    const firstTimerTagCount = await prisma.memberTag.count({
+        where: {
+            memberId: { in: memberIds },
+            tag: { name: 'PENDING_FIRST_ATTENDANCE' },
+            isActive: true,
+        },
+    });
+
+    let firstTimersCount = firstTimerTagCount;
+
+    // Priority 2: Fallback to attendance history if no tags found
+    if (firstTimersCount === 0 && memberIds.length > 0) {
+        const previousAttendances = await prisma.attendance.findMany({
+            where: {
+                memberId: { in: memberIds },
+                event: {
+                    date: { lt: eventDate },
+                },
+            },
+            select: { memberId: true },
+            distinct: ['memberId'],
+        });
+
+        const returningMemberIds = new Set(previousAttendances.map((a: any) => a.memberId));
+        firstTimersCount = memberIds.filter((id: string) => !returningMemberIds.has(id)).length;
+    }
+
+    // 5. Region Breakdown
+    const regionBreakdown = attendances.reduce(
+        (acc: Record<string, number>, curr: any) => {
+            const regionName = curr.member?.region?.name;
+            if (regionName) acc[regionName] = (acc[regionName] || 0) + 1;
+            return acc;
+        },
+        {} as Record<string, number>
+    );
+
+    // 6. Salvation Breakdown
+    const salvationBreakdown = (salvations || []).reduce(
+        (acc: Record<string, number>, curr: any) => {
+            if (curr.decisionType) acc[curr.decisionType] = (acc[curr.decisionType] || 0) + 1;
+            return acc;
+        },
+        {} as Record<string, number>
+    );
+
+    // 7. Tag Distribution
+    const tagDistribution = attendances.reduce(
+        (acc: Record<string, number>, curr: any) => {
+            curr.member?.memberTags?.forEach((mt: any) => {
+                const tagName = mt.tag?.name;
+                if (tagName) acc[tagName] = (acc[tagName] || 0) + 1;
+            });
+            return acc;
+        },
+        {} as Record<string, number>
+    );
+
+    // 8. Year of Study Breakdown
+    const yearOfStudyBreakdown: Record<string, number> = {
+        'Year 1': 0,
+        'Year 2': 0,
+        'Year 3': 0,
+        'Year 4': 0,
+        'Year 5+': 0,
+        'Unknown': 0
+    };
+
+    attendances.forEach((att: any) => {
+        const year = att.member?.initialYearOfStudy;
+        if (!year) {
+            yearOfStudyBreakdown['Unknown']++;
+        } else if (year <= 4) {
+            yearOfStudyBreakdown[`Year ${year}`]++;
+        } else {
+            yearOfStudyBreakdown['Year 5+']++;
+        }
+    });
+
+    // 9. College Distribution
+    const collegeBreakdown = attendances.reduce(
+        (acc: Record<string, number>, curr: any) => {
+            const college = curr.member?.courseRelation?.college?.name || 'Unknown';
+            acc[college] = (acc[college] || 0) + 1;
+            return acc;
+        },
+        {} as Record<string, number>
+    );
+
+    // 10. Course Distribution
+    const courseBreakdown = attendances.reduce(
+        (acc: Record<string, number>, curr: any) => {
+            const course = curr.member?.courseRelation?.name || 'Unknown';
+            acc[course] = (acc[course] || 0) + 1;
+            return acc;
+        },
+        {} as Record<string, number>
+    );
+
+    // 11. Family Participation
+    const familyBreakdown = attendances.reduce(
+        (acc: Record<string, number>, curr: any) => {
+            const families = (curr.member?.familyMemberships || []).filter((fm: any) => fm.isActive);
+            if (families.length === 0) {
+                acc['No Family'] = (acc['No Family'] || 0) + 1;
+            } else {
+                families.forEach((fm: any) => {
+                    const familyName = fm.family?.name;
+                    if (familyName) acc[familyName] = (acc[familyName] || 0) + 1;
+                });
+            }
+            return acc;
+        },
+        {} as Record<string, number>
+    );
+
+    // 12. Ministry Team Participation
+    const teamBreakdown = attendances.reduce(
+        (acc: Record<string, number>, curr: any) => {
+            const teams = (curr.member?.ministryMemberships || []).filter((mm: any) => mm.isActive);
+            if (teams.length === 0) {
+                acc['No Team'] = (acc['No Team'] || 0) + 1;
+            } else {
+                teams.forEach((mm: any) => {
+                    const teamName = mm.team?.name;
+                    if (teamName) acc[teamName] = (acc[teamName] || 0) + 1;
+                });
+            }
+            return acc;
+        },
+        {} as Record<string, number>
+    );
+
+    // 13. Special Tags (Finalist, Alumni, Volunteers)
+    const specialTagStats = attendances.reduce(
+        (acc: { finalists: number, alumni: number, volunteers: number }, curr: any) => {
+            const tagNames = (curr.member?.memberTags || []).map((mt: any) => mt.tag?.name);
+            if (tagNames.includes('FINALIST')) acc.finalists++;
+            if (tagNames.includes('ALUMNI')) acc.alumni++;
+            if (tagNames.includes('CHECK_IN_VOLUNTEER')) acc.volunteers++;
+            return acc;
+        },
+        { finalists: 0, alumni: 0, volunteers: 0 }
+    );
+
+    // 14. Member Type Breakdown (Makerere / Non-Makerere / Alumni)
+    const memberTypeBreakdown = attendances.reduce(
+        (acc: Record<string, number>, curr: any) => {
+            const tagNames = (curr.member?.memberTags || []).map((mt: any) => mt.tag?.name);
+            const isMakerere = !!curr.member?.courseId; // enrolled in a tracked course
+            const isAlumni = tagNames.includes('ALUMNI');
+            if (isAlumni) {
+                acc['Alumni'] = (acc['Alumni'] || 0) + 1;
+            } else if (isMakerere) {
+                acc['Makerere Students'] = (acc['Makerere Students'] || 0) + 1;
+            } else {
+                acc['Non-Makerere / Other'] = (acc['Non-Makerere / Other'] || 0) + 1;
+            }
+            return acc;
+        },
+        {} as Record<string, number>
+    );
+
+    return {
+        totalAttendance,
+        memberCount,
+        guestCount,
+        genderBreakdown,
+        regionBreakdown,
+        firstTimersCount,
+        salvationBreakdown,
+        tagDistribution,
+        // Academic Statistics
+        yearOfStudyBreakdown,
+        collegeBreakdown,
+        courseBreakdown,
+        // Organizational Statistics
+        familyBreakdown,
+        teamBreakdown,
+        // Special Tags
+        specialTagStats,
+        // Member Type
+        memberTypeBreakdown,
+    };
+};
+
+
 // Helper to calculate event status
 
 
@@ -42,6 +253,23 @@ export const getEventReport = async (req: Request<{ eventId: string }>, res: Res
             }
         }
 
+        // ── Cleanup: deactivate all expired CHECK_IN_VOLUNTEER tags ──────────
+        // This ensures the DB stays clean regardless of whether the per-member
+        // cleanup in volunteerController has been triggered.
+        await prisma.memberTag.updateMany({
+            where: {
+                isActive: true,
+                expiresAt: { lt: new Date() },
+                tag: { name: 'CHECK_IN_VOLUNTEER' },
+            },
+            data: {
+                isActive: false,
+                removedAt: new Date(),
+                removedBy: 'SYSTEM',
+                notes: 'Auto-deactivated: tag expired (report load cleanup)',
+            },
+        });
+
         // Get user's scope
         const scope = await getUserReportScope(userId);
         const memberFilter = buildMemberScopeFilter(scope);
@@ -69,7 +297,13 @@ export const getEventReport = async (req: Request<{ eventId: string }>, res: Res
                                     include: { team: true }
                                 },
                                 memberTags: {
-                                    where: { isActive: true },
+                                    where: {
+                                        isActive: true,
+                                        OR: [
+                                            { expiresAt: null },           // No expiry set → always active
+                                            { expiresAt: { gt: new Date() } }, // Expiry set but not yet reached
+                                        ],
+                                    },
                                     include: { tag: true }
                                 }
                             }
@@ -85,175 +319,30 @@ export const getEventReport = async (req: Request<{ eventId: string }>, res: Res
             return res.status(404).json({ error: 'Event not found' });
         }
 
-        // 1. Total Attendance
-        const memberCount = event.attendances.length;
-        const guestCount = event.guestAttendances.length;
-        const totalAttendance = memberCount + guestCount;
+        const stats = await aggregateAttendanceStats(event.attendances, event.guestAttendances, event.salvations, event.date);
 
-        // 2. Gender Breakdown
-        const genderBreakdown = event.attendances.reduce(
-            (acc: Record<string, number>, curr: any) => {
-                const gender = curr.member.gender;
-                acc[gender] = (acc[gender] || 0) + 1;
-                return acc;
-            },
-            { MALE: 0, FEMALE: 0 } as Record<string, number>
-        );
-
-        // 3. First Timers (Tag-Based with Fallback)
-        const memberIds = event.attendances.map((a: any) => a.memberId);
-
-        // Priority 1: Check for PENDING_FIRST_ATTENDANCE tag (new system)
-        const firstTimerTagCount = await prisma.memberTag.count({
-            where: {
-                memberId: { in: memberIds },
-                tag: { name: 'PENDING_FIRST_ATTENDANCE' },
-                isActive: true,
-            },
-        });
-
-        let firstTimersCount = firstTimerTagCount;
-
-        // Priority 2: Fallback to attendance history if no tags found (backward compatibility)
-        if (firstTimersCount === 0 && memberIds.length > 0) {
-            const previousAttendances = await prisma.attendance.findMany({
-                where: {
-                    memberId: { in: memberIds },
-                    event: {
-                        date: { lt: event.date },
-                    },
-                },
-                select: { memberId: true },
-                distinct: ['memberId'],
-            });
-
-            const returningMemberIds = new Set(previousAttendances.map((a: any) => a.memberId));
-            firstTimersCount = memberIds.filter((id: string) => !returningMemberIds.has(id)).length;
-        }
-
-        // 4. Guest Analysis
-        const guestDetails = event.guestAttendances.map((g: any) => ({
-            name: g.guestName,
-            purpose: g.purpose,
+        // Map attendees to a lightweight format for frontend drill-downs (instant zero-latency clicks)
+        const mappedAttendees = event.attendances.map((a: any) => ({
+            id: a.member.id,
+            name: a.member.fullName,
+            gender: a.member.gender,
+            contactPhone: a.member.contactPhone,
+            region: a.member.region?.name,
+            college: a.member.courseRelation?.college?.name,
+            course: a.member.courseRelation?.name,
+            year: a.member.initialYearOfStudy,
+            families: a.member.familyMemberships.map((fm: any) => fm.family.name),
+            teams: a.member.ministryMemberships.map((mm: any) => mm.team.name),
+            tags: a.member.memberTags.map((mt: any) => mt.tag.name),
+            isGuest: false,
         }));
 
-        // 5. Region Breakdown
-        const regionBreakdown = event.attendances.reduce(
-            (acc: Record<string, number>, curr: any) => {
-                const regionName = curr.member.region.name;
-                acc[regionName] = (acc[regionName] || 0) + 1;
-                return acc;
-            },
-            {} as Record<string, number>
-        );
-
-        // 6. Salvation Breakdown
-        const salvationBreakdown = event.salvations.reduce(
-            (acc: Record<string, number>, curr: any) => {
-                acc[curr.decisionType] = (acc[curr.decisionType] || 0) + 1;
-                return acc;
-            },
-            {} as Record<string, number>
-        );
-
-        // 7. Tag Distribution
-        const tagDistribution = event.attendances.reduce(
-            (acc: Record<string, number>, curr: any) => {
-                curr.member.memberTags.forEach((mt: any) => {
-                    const tagName = mt.tag.name;
-                    acc[tagName] = (acc[tagName] || 0) + 1;
-                });
-                return acc;
-            },
-            {} as Record<string, number>
-        );
-
-        // 8. Year of Study Breakdown
-        const yearOfStudyBreakdown: Record<string, number> = {
-            'Year 1': 0,
-            'Year 2': 0,
-            'Year 3': 0,
-            'Year 4': 0,
-            'Year 5+': 0,
-            'Unknown': 0
-        };
-
-        event.attendances.forEach((att: any) => {
-            const year = att.member.initialYearOfStudy;
-            if (!year) {
-                yearOfStudyBreakdown['Unknown']++;
-            } else if (year <= 4) {
-                yearOfStudyBreakdown[`Year ${year}`]++;
-            } else {
-                yearOfStudyBreakdown['Year 5+']++;
-            }
-        });
-
-        // 9. College Distribution
-        const collegeBreakdown = event.attendances.reduce(
-            (acc: Record<string, number>, curr: any) => {
-                const college = curr.member.courseRelation?.college?.name || 'Unknown';
-                acc[college] = (acc[college] || 0) + 1;
-                return acc;
-            },
-            {} as Record<string, number>
-        );
-
-        // 10. Course Distribution
-        const courseBreakdown = event.attendances.reduce(
-            (acc: Record<string, number>, curr: any) => {
-                const course = curr.member.courseRelation?.name || 'Unknown';
-                acc[course] = (acc[course] || 0) + 1;
-                return acc;
-            },
-            {} as Record<string, number>
-        );
-
-        // 11. Family Participation
-        const familyBreakdown = event.attendances.reduce(
-            (acc: Record<string, number>, curr: any) => {
-                const families = curr.member.familyMemberships.filter((fm: any) => fm.isActive);
-                if (families.length === 0) {
-                    acc['No Family'] = (acc['No Family'] || 0) + 1;
-                } else {
-                    families.forEach((fm: any) => {
-                        const familyName = fm.family.name;
-                        acc[familyName] = (acc[familyName] || 0) + 1;
-                    });
-                }
-                return acc;
-            },
-            {} as Record<string, number>
-        );
-
-        // 12. Ministry Team Participation
-        const teamBreakdown = event.attendances.reduce(
-            (acc: Record<string, number>, curr: any) => {
-                const teams = curr.member.ministryMemberships.filter((mm: any) => mm.isActive);
-                if (teams.length === 0) {
-                    acc['No Team'] = (acc['No Team'] || 0) + 1;
-                } else {
-                    teams.forEach((mm: any) => {
-                        const teamName = mm.team.name;
-                        acc[teamName] = (acc[teamName] || 0) + 1;
-                    });
-                }
-                return acc;
-            },
-            {} as Record<string, number>
-        );
-
-        // 13. Special Tags (Finalist, Alumni, Volunteers)
-        const specialTagStats = event.attendances.reduce(
-            (acc: any, curr: any) => {
-                const tagNames = curr.member.memberTags.map((mt: any) => mt.tag.name);
-                if (tagNames.includes('FINALIST')) acc.finalists++;
-                if (tagNames.includes('ALUMNI')) acc.alumni++;
-                if (tagNames.includes('CHECK_IN_VOLUNTEER')) acc.volunteers++;
-                return acc;
-            },
-            { finalists: 0, alumni: 0, volunteers: 0 }
-        );
+        const mappedGuests = event.guestAttendances.map((g: any) => ({
+            id: `guest-${g.id}`,
+            name: g.guestName,
+            purpose: g.purpose,
+            isGuest: true,
+        }));
 
         res.json({
             event: {
@@ -263,29 +352,9 @@ export const getEventReport = async (req: Request<{ eventId: string }>, res: Res
                 type: event.type,
                 status: getEventStatus(event),
             },
-            stats: {
-                totalAttendance,
-                memberCount,
-                guestCount,
-                genderBreakdown,
-                regionBreakdown,
-                firstTimersCount,
-                salvationBreakdown,
-                tagDistribution,
-                // Academic Statistics
-                yearOfStudyBreakdown,
-                collegeBreakdown,
-                courseBreakdown,
-                // Organizational Statistics
-                familyBreakdown,
-                teamBreakdown,
-                // Special Tags
-                specialTagStats,
-            },
-            guests: event.guestAttendances.map((g: any) => ({
-                name: g.guestName,
-                purpose: g.purpose,
-            })),
+            stats,
+            attendees: [...mappedAttendees, ...mappedGuests],
+            guests: mappedGuests.map((g: any) => ({ name: g.name, purpose: g.purpose })), // Keep for backward compatibility if needed, though attendees is better
             scope: {
                 type: scope.regionId ? 'region' : scope.familyIds.length > 0 ? 'family' : scope.teamIds.length > 0 ? 'team' : 'all',
                 name: getScopeDisplayName(scope),
@@ -421,6 +490,21 @@ export const getCustomReport = async (req: Request, res: Response) => {
             return res.status(401).json({ error: 'Unauthorized' });
         }
 
+        // ── Cleanup: deactivate all expired CHECK_IN_VOLUNTEER tags ──────────
+        await prisma.memberTag.updateMany({
+            where: {
+                isActive: true,
+                expiresAt: { lt: new Date() },
+                tag: { name: 'CHECK_IN_VOLUNTEER' },
+            },
+            data: {
+                isActive: false,
+                removedAt: new Date(),
+                removedBy: 'SYSTEM',
+                notes: 'Auto-deactivated: tag expired (report load cleanup)',
+            },
+        });
+
         // Get user's scope
         const scope = await getUserReportScope(userId);
         const memberFilter = buildMemberScopeFilter(scope);
@@ -463,7 +547,13 @@ export const getCustomReport = async (req: Request, res: Response) => {
                                     include: { team: true }
                                 },
                                 memberTags: {
-                                    where: { isActive: true },
+                                    where: {
+                                        isActive: true,
+                                        OR: [
+                                            { expiresAt: null },
+                                            { expiresAt: { gt: new Date() } },
+                                        ],
+                                    },
                                     include: { tag: true }
                                 }
                             }
@@ -475,110 +565,22 @@ export const getCustomReport = async (req: Request, res: Response) => {
             },
         });
 
-        // Aggregated Stats
+        // We can reuse aggregateAttendanceStats by flattening all events' attendances
+        const allAttendances = events.flatMap((e: any) => e.attendances);
+        const allGuestAttendances = events.flatMap((e: any) => e.guestAttendances);
+        const allSalvations = events.flatMap((e: any) => e.salvations);
+
+        // Use the oldest event's date for first-timer historical fallback if needed
+        const oldestDate = events.length > 0 ? events[0].date : new Date();
+        const baseStats = await aggregateAttendanceStats(allAttendances, allGuestAttendances, allSalvations, oldestDate);
+
+        // Add custom report specific stats
         const totalEvents = events.length;
+        const averageAttendance = totalEvents > 0 ? Math.round(baseStats.totalAttendance / totalEvents) : 0;
 
-        const totalAttendance = events.reduce((acc: number, event: any) => {
-            const memberCount = event.attendances.length;
-            const guestCount = event.guestAttendances.length;
-            return acc + memberCount + guestCount;
-        }, 0);
-
-        const averageAttendance = totalEvents > 0 ? Math.round(totalAttendance / totalEvents) : 0;
-
-        // Unique Members
         const allMemberIds = new Set<string>();
-        events.forEach((event: any) => {
-            event.attendances.forEach((a: any) => allMemberIds.add(a.memberId));
-        });
+        allAttendances.forEach((a: any) => allMemberIds.add(a.memberId));
         const uniqueMembers = allMemberIds.size;
-
-        // Gender Distribution (Aggregated)
-        const genderBreakdown = { MALE: 0, FEMALE: 0 };
-
-        // Region & Tag & Salvation Distribution (Aggregated)
-        const regionBreakdown: Record<string, number> = {};
-        const tagDistribution: Record<string, number> = {};
-        const salvationBreakdown: Record<string, number> = {};
-
-        // Academic & Organizational Distributions
-        const yearOfStudyBreakdown: Record<string, number> = { 'Year 1': 0, 'Year 2': 0, 'Year 3': 0, 'Year 4': 0, 'Year 5+': 0, 'Unknown': 0 };
-        const collegeBreakdown: Record<string, number> = {};
-        const courseBreakdown: Record<string, number> = {};
-        const familyBreakdown: Record<string, number> = {};
-        const teamBreakdown: Record<string, number> = {};
-        const specialTagStats = { finalists: 0, alumni: 0, volunteers: 0 };
-
-        events.forEach((event: any) => {
-            event.attendances.forEach((a: any) => {
-                // Gender
-                const gender = a.member.gender as 'MALE' | 'FEMALE';
-                if (genderBreakdown[gender] !== undefined) {
-                    genderBreakdown[gender]++;
-                }
-
-                // Region
-                const regionName = a.member.region.name;
-                regionBreakdown[regionName] = (regionBreakdown[regionName] || 0) + 1;
-
-                // Tags
-                a.member.memberTags.forEach((mt: any) => {
-                    const tagName = mt.tag.name;
-                    tagDistribution[tagName] = (tagDistribution[tagName] || 0) + 1;
-                });
-
-                // Year of Study
-                const year = a.member.initialYearOfStudy;
-                if (!year) {
-                    yearOfStudyBreakdown['Unknown']++;
-                } else if (year <= 4) {
-                    yearOfStudyBreakdown[`Year ${year}`]++;
-                } else {
-                    yearOfStudyBreakdown['Year 5+']++;
-                }
-
-                // College
-                const college = a.member.courseRelation?.college?.name || 'Unknown';
-                collegeBreakdown[college] = (collegeBreakdown[college] || 0) + 1;
-
-                // Course
-                const course = a.member.courseRelation?.name || 'Unknown';
-                courseBreakdown[course] = (courseBreakdown[course] || 0) + 1;
-
-                // Family
-                const families = a.member.familyMemberships.filter((fm: any) => fm.isActive);
-                if (families.length === 0) {
-                    familyBreakdown['No Family'] = (familyBreakdown['No Family'] || 0) + 1;
-                } else {
-                    families.forEach((fm: any) => {
-                        const familyName = fm.family.name;
-                        familyBreakdown[familyName] = (familyBreakdown[familyName] || 0) + 1;
-                    });
-                }
-
-                // Team
-                const teams = a.member.ministryMemberships.filter((mm: any) => mm.isActive);
-                if (teams.length === 0) {
-                    teamBreakdown['No Team'] = (teamBreakdown['No Team'] || 0) + 1;
-                } else {
-                    teams.forEach((mm: any) => {
-                        const teamName = mm.team.name;
-                        teamBreakdown[teamName] = (teamBreakdown[teamName] || 0) + 1;
-                    });
-                }
-
-                // Special Tags
-                const tagNames = a.member.memberTags.map((mt: any) => mt.tag.name);
-                if (tagNames.includes('FINALIST')) specialTagStats.finalists++;
-                if (tagNames.includes('ALUMNI')) specialTagStats.alumni++;
-                if (tagNames.includes('CHECK_IN_VOLUNTEER')) specialTagStats.volunteers++;
-            });
-
-            // Salvations
-            event.salvations.forEach((s: any) => {
-                salvationBreakdown[s.decisionType] = (salvationBreakdown[s.decisionType] || 0) + 1;
-            });
-        });
 
         // Chart Data (Attendance over time)
         const chartData = events.map((event: any) => ({
@@ -590,22 +592,9 @@ export const getCustomReport = async (req: Request, res: Response) => {
         res.json({
             stats: {
                 totalEvents,
-                totalAttendance,
-                averageAttendance,
                 uniqueMembers,
-                genderBreakdown,
-                regionBreakdown,
-                tagDistribution,
-                salvationBreakdown,
-                // Academic Statistics
-                yearOfStudyBreakdown,
-                collegeBreakdown,
-                courseBreakdown,
-                // Organizational Statistics
-                familyBreakdown,
-                teamBreakdown,
-                // Special Tags
-                specialTagStats,
+                averageAttendance,
+                ...baseStats,
             },
             chartData,
             scope: {
@@ -792,83 +781,12 @@ export const exportEventReportExcel = async (req: Request<{ eventId: string }>, 
             return res.status(404).json({ error: 'Event not found' });
         }
 
-        const memberCount = event.attendances.length;
-        const guestCount = event.guestAttendances.length;
-        const totalAttendance = memberCount + guestCount;
-
-        const genderBreakdown: { MALE: number; FEMALE: number } = event.attendances.reduce(
-            (acc: { MALE: number; FEMALE: number }, curr: any) => {
-                const gender = curr.member.gender as 'MALE' | 'FEMALE';
-                if (gender === 'MALE' || gender === 'FEMALE') {
-                    acc[gender] = (acc[gender] || 0) + 1;
-                }
-                return acc;
-            },
-            { MALE: 0, FEMALE: 0 }
-        );
-
-        const memberIds = event.attendances.map((a: any) => a.memberId);
-
-        // Tag-based first-timer detection with fallback
-        const firstTimerTagCount = await prisma.memberTag.count({
-            where: {
-                memberId: { in: memberIds },
-                tag: { name: 'PENDING_FIRST_ATTENDANCE' },
-                isActive: true,
-            },
-        });
-
-        let firstTimersCount = firstTimerTagCount;
-
-        // Fallback to attendance history if no tags found
-        if (firstTimersCount === 0 && memberIds.length > 0) {
-            const previousAttendances = await prisma.attendance.findMany({
-                where: {
-                    memberId: { in: memberIds },
-                    event: {
-                        date: { lt: event.date },
-                    },
-                },
-                select: { memberId: true },
-                distinct: ['memberId'],
-            });
-
-            const returningMemberIds = new Set(previousAttendances.map((a: any) => a.memberId));
-            firstTimersCount = memberIds.filter((id: string) => !returningMemberIds.has(id)).length;
-        }
+        const stats = await aggregateAttendanceStats(event.attendances, event.guestAttendances, event.salvations, event.date);
 
         const guestDetails = event.guestAttendances.map((g: any) => ({
             name: g.guestName,
             purpose: g.purpose,
         }));
-
-        const regionBreakdown = event.attendances.reduce(
-            (acc: Record<string, number>, curr: any) => {
-                const regionName = curr.member.region.name;
-                acc[regionName] = (acc[regionName] || 0) + 1;
-                return acc;
-            },
-            {} as Record<string, number>
-        );
-
-        const salvationBreakdown = event.salvations.reduce(
-            (acc: Record<string, number>, curr: any) => {
-                acc[curr.decisionType] = (acc[curr.decisionType] || 0) + 1;
-                return acc;
-            },
-            {} as Record<string, number>
-        );
-
-        const tagDistribution = event.attendances.reduce(
-            (acc: Record<string, number>, curr: any) => {
-                curr.member.memberTags.forEach((mt: any) => {
-                    const tagName = mt.tag.name;
-                    acc[tagName] = (acc[tagName] || 0) + 1;
-                });
-                return acc;
-            },
-            {} as Record<string, number>
-        );
 
         const reportData = {
             event: {
@@ -878,19 +796,9 @@ export const exportEventReportExcel = async (req: Request<{ eventId: string }>, 
                 type: event.type,
                 status: getEventStatus(event),
             },
-            stats: {
-                totalAttendance,
-                memberCount,
-                guestCount,
-                genderBreakdown,
-                regionBreakdown,
-                firstTimersCount,
-                salvationBreakdown,
-                tagDistribution,
-            },
+            stats,
             guests: guestDetails,
         };
-
         await generateEventReportExcel(reportData, res);
     } catch (error) {
         console.error('Excel export error:', error);
@@ -1248,5 +1156,37 @@ export const getReportStatus = async (req: Request<{ eventId: string }>, res: Re
     } catch (error) {
         console.error('Error fetching report status:', error);
         res.status(500).json({ error: 'Failed to fetch report status' });
+    }
+};
+
+// Get all published event reports (for leaders — read-only list)
+export const getPublishedReports = async (req: Request, res: Response) => {
+    try {
+        const reports = await prisma.eventReport.findMany({
+            where: { isPublished: true },
+            include: {
+                event: {
+                    select: {
+                        id: true,
+                        name: true,
+                        date: true,
+                        type: true,
+                        venue: true,
+                    },
+                },
+                publisher: {
+                    select: {
+                        id: true,
+                        fullName: true,
+                    },
+                },
+            },
+            orderBy: { publishedAt: 'desc' },
+        });
+
+        res.json(reports);
+    } catch (error) {
+        console.error('Error fetching published reports:', error);
+        res.status(500).json({ error: 'Failed to fetch published reports' });
     }
 };

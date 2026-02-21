@@ -515,17 +515,17 @@ export const assignFamilyHead = async (req: Request<{ id: string }>, res: Respon
                 },
             });
 
-            // Ensure member is also in the family
-            const existingMembership = await tx.familyMember.findFirst({
+            // Ensure member is also in the family.
+            // Check across ALL families (not just this one) to prevent duplicate memberships.
+            const existingAnyMembership = await tx.familyMember.findFirst({
                 where: {
-                    familyId: id,
                     memberId: validatedData.memberId,
                     isActive: true,
                 },
             });
 
-            if (!existingMembership) {
-                // Add member to family
+            if (!existingAnyMembership) {
+                // Member has no active family — add them to this one
                 await tx.familyMember.create({
                     data: {
                         familyId: id,
@@ -550,6 +550,8 @@ export const assignFamilyHead = async (req: Request<{ id: string }>, res: Respon
                     });
                 }
             }
+            // If existingAnyMembership.familyId === id, they're already in this family — skip silently.
+            // (The assignFamilyHead flow already validated the member is in-region; no need to error here.)
 
             return updatedFamily;
         });
@@ -654,17 +656,22 @@ export const addFamilyMember = async (req: Request<{ id: string }>, res: Respons
             return res.status(400).json({ message: 'Member must be in the same region as the family' });
         }
 
-        // Check if already in family
-        const existing = await prisma.familyMember.findFirst({
+        // Check if already an active member of ANY family (not just this one)
+        const existingMembership = await prisma.familyMember.findFirst({
             where: {
-                familyId: id,
                 memberId: validatedData.memberId,
                 isActive: true,
             },
+            include: { family: { select: { name: true } } },
         });
 
-        if (existing) {
-            return res.status(400).json({ message: 'Member is already in this family' });
+        if (existingMembership) {
+            if (existingMembership.familyId === id) {
+                return res.status(400).json({ message: 'Member is already in this family' });
+            }
+            return res.status(400).json({
+                message: `Member is already an active member of "${existingMembership.family.name}". Remove them from that family first.`,
+            });
         }
 
         // Get family member tag

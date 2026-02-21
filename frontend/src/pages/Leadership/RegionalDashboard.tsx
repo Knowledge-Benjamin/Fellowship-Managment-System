@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Building2, AlertCircle, MapPin, UserPlus, Phone, Hash } from 'lucide-react';
+import { Users, Building2, AlertCircle, MapPin, Clock, CheckCircle, XCircle, Edit2, ChevronDown, ChevronUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import api from '../../api';
@@ -30,14 +30,40 @@ interface RegionData {
     };
 }
 
+interface EditChange {
+    field: string;
+    oldValue: string;
+    newValue: string;
+}
+
+interface EditRequest {
+    id: string;
+    status: 'PENDING' | 'APPROVED' | 'REJECTED';
+    changes: EditChange[];
+    reason: string;
+    createdAt: string;
+    member: {
+        id: string;
+        fullName: string;
+        fellowshipNumber: string;
+        email: string;
+    };
+}
+
 const RegionalDashboard = () => {
     const [region, setRegion] = useState<RegionData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [editRequests, setEditRequests] = useState<EditRequest[]>([]);
+    const [loadingRequests, setLoadingRequests] = useState(false);
+    const [reviewingId, setReviewingId] = useState<string | null>(null);
+    const [reviewNote, setReviewNote] = useState('');
+    const [expandedRequestId, setExpandedRequestId] = useState<string | null>(null);
     const { user } = useAuth();
 
     useEffect(() => {
         fetchMyRegion();
+        fetchEditRequests();
     }, []);
 
     const fetchMyRegion = async () => {
@@ -56,6 +82,37 @@ const RegionalDashboard = () => {
             }
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchEditRequests = async () => {
+        try {
+            setLoadingRequests(true);
+            const response = await api.get('/members/edit-requests?status=PENDING');
+            setEditRequests(response.data);
+        } catch (error: any) {
+            console.error('Failed to fetch edit requests:', error);
+        } finally {
+            setLoadingRequests(false);
+        }
+    };
+
+    const handleReview = async (requestId: string, status: 'APPROVED' | 'REJECTED') => {
+        setReviewingId(requestId);
+        try {
+            await api.patch(`/members/edit-requests/${requestId}`, {
+                status,
+                reviewNote: reviewNote.trim() || undefined,
+            });
+            toast.success(`Request ${status.toLowerCase()} successfully.`);
+            setReviewNote('');
+            setExpandedRequestId(null);
+            setEditRequests((prev) => prev.filter((r) => r.id !== requestId));
+        } catch (error: any) {
+            const msg = error.response?.data?.message || `Failed to ${status.toLowerCase()} request`;
+            toast.error(msg);
+        } finally {
+            setReviewingId(null);
         }
     };
 
@@ -196,6 +253,134 @@ const RegionalDashboard = () => {
                         <div className="text-center py-12 text-gray-500">
                             <Building2 className="mx-auto mb-4 text-gray-600" size={48} />
                             <p>No families in this region yet</p>
+                        </div>
+                    )}
+                </div>
+
+                {/* Edit Requests Panel */}
+                <div className="glass-card p-6 mt-8">
+                    <div className="flex items-center justify-between mb-6">
+                        <h2 className="text-2xl font-bold text-white flex items-center gap-3">
+                            <Edit2 className="text-amber-400" size={24} />
+                            Profile Edit Requests
+                            {editRequests.length > 0 && (
+                                <span className="text-sm px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                                    {editRequests.length} pending
+                                </span>
+                            )}
+                        </h2>
+                    </div>
+
+                    {loadingRequests ? (
+                        <div className="text-center py-8 text-gray-400">Loading requests…</div>
+                    ) : editRequests.length === 0 ? (
+                        <div className="text-center py-10 text-gray-500">
+                            <CheckCircle className="mx-auto mb-3 text-green-600" size={40} />
+                            <p>No pending edit requests</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            {editRequests.map((req) => (
+                                <div
+                                    key={req.id}
+                                    className="bg-gray-800/40 border border-gray-700 rounded-xl overflow-hidden"
+                                >
+                                    {/* Request header — always visible */}
+                                    <button
+                                        className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-700/30 transition-colors"
+                                        onClick={() =>
+                                            setExpandedRequestId(
+                                                expandedRequestId === req.id ? null : req.id
+                                            )
+                                        }
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-400 font-bold text-sm">
+                                                {req.member.fullName.charAt(0)}
+                                            </div>
+                                            <div>
+                                                <p className="text-white font-semibold">{req.member.fullName}</p>
+                                                <p className="text-xs text-gray-400 font-mono">{req.member.fellowshipNumber}</p>
+                                            </div>
+                                            <div className="flex gap-2 ml-2">
+                                                {req.changes.map((c, i) => (
+                                                    <span key={i} className="text-xs px-2 py-0.5 bg-teal-500/10 text-teal-400 border border-teal-500/20 rounded capitalize">
+                                                        {c.field.replace(/([A-Z])/g, ' $1')}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-3 text-gray-500">
+                                            <span className="text-xs">
+                                                {new Date(req.createdAt).toLocaleDateString()}
+                                            </span>
+                                            {expandedRequestId === req.id
+                                                ? <ChevronUp size={16} />
+                                                : <ChevronDown size={16} />}
+                                        </div>
+                                    </button>
+
+                                    {/* Expanded detail */}
+                                    {expandedRequestId === req.id && (
+                                        <div className="px-4 pb-4 border-t border-gray-700 mt-0 pt-4 space-y-4">
+                                            {/* Changes diff */}
+                                            <div className="space-y-2">
+                                                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Changes Requested</p>
+                                                {req.changes.map((c, i) => (
+                                                    <div key={i} className="flex items-center gap-3 p-3 bg-gray-900/50 rounded-lg text-sm">
+                                                        <span className="font-medium text-gray-300 capitalize w-28">
+                                                            {c.field.replace(/([A-Z])/g, ' $1')}
+                                                        </span>
+                                                        <span className="text-gray-500 line-through">{c.oldValue || '—'}</span>
+                                                        <span className="text-teal-400 font-medium">→ {c.newValue}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                            {/* Reason */}
+                                            <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                                                <p className="text-xs font-semibold text-amber-400 mb-1">Member's Reason</p>
+                                                <p className="text-sm text-gray-300">{req.reason}</p>
+                                            </div>
+
+                                            {/* Review note */}
+                                            <div>
+                                                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1 block">
+                                                    Review Note (optional)
+                                                </label>
+                                                <textarea
+                                                    value={reviewNote}
+                                                    onChange={(e) => setReviewNote(e.target.value)}
+                                                    placeholder="Leave a note for the member…"
+                                                    rows={2}
+                                                    maxLength={500}
+                                                    className="w-full px-3 py-2 rounded-lg bg-gray-900/60 border border-gray-600 text-sm text-white resize-none focus:outline-none focus:ring-1 focus:ring-teal-500"
+                                                />
+                                            </div>
+
+                                            {/* Action buttons */}
+                                            <div className="flex gap-3">
+                                                <button
+                                                    onClick={() => handleReview(req.id, 'APPROVED')}
+                                                    disabled={reviewingId === req.id}
+                                                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-semibold transition-colors disabled:opacity-60"
+                                                >
+                                                    <CheckCircle size={16} />
+                                                    {reviewingId === req.id ? 'Processing…' : 'Approve'}
+                                                </button>
+                                                <button
+                                                    onClick={() => handleReview(req.id, 'REJECTED')}
+                                                    disabled={reviewingId === req.id}
+                                                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-red-600/80 hover:bg-red-700 text-white text-sm font-semibold transition-colors disabled:opacity-60"
+                                                >
+                                                    <XCircle size={16} />
+                                                    Reject
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
                         </div>
                     )}
                 </div>

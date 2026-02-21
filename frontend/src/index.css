@@ -88,6 +88,27 @@
   h3 {
     font-size: 1.5rem;
   }
+
+  /* All interactive elements get pointer cursor by default */
+  button,
+  a,
+  select,
+  label[for],
+  [role="button"],
+  [role="tab"],
+  [role="option"],
+  [role="checkbox"],
+  [role="radio"],
+  summary {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  input:disabled,
+  select:disabled,
+  textarea:disabled {
+    cursor: not-allowed;
+  }
 }
 
 /* Custom Animations */

@@ -10,7 +10,8 @@ import {
     exportCustomReportExcel,
     publishEventReport,
     unpublishEventReport,
-    getReportStatus
+    getReportStatus,
+    getPublishedReports
 } from '../controllers/reportController';
 import { asyncHandler } from '../utils/asyncHandler';
 import { protect, authorize } from '../middleware/authMiddleware';
@@ -21,6 +22,7 @@ const router = Router();
 router.use(protect);
 
 // Dashboard and reports accessible to all authenticated users (scoped by role)
+router.get('/published', asyncHandler(getPublishedReports));
 router.get('/dashboard', asyncHandler(getDashboardStats));
 router.get('/custom', asyncHandler(getCustomReport));
 router.get('/custom/export/pdf', asyncHandler(exportCustomReportPDF));

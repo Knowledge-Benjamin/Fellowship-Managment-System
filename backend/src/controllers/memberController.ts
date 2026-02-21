@@ -210,7 +210,7 @@ export const createMember = async (req: Request, res: Response) => {
 // Get all members with optional search and tag filters
 export const getMembers = async (req: Request, res: Response) => {
     try {
-        const { search, tags } = req.query;
+        const { search, tags, regionId } = req.query;
 
         // Parse tag IDs if provided
         const tagIds = tags ? (tags as string).split(',').filter(Boolean) : [];
@@ -218,6 +218,11 @@ export const getMembers = async (req: Request, res: Response) => {
         const where: any = {
             ...activeMemberFilter
         };
+
+        // Region filter — enforced server-side to prevent client-side bypass
+        if (regionId) {
+            where.regionId = regionId as string;
+        }
 
         // Search filter
         if (search) {

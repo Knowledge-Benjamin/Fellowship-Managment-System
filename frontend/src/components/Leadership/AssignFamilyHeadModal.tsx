@@ -50,14 +50,10 @@ const AssignFamilyHeadModal: React.FC<AssignFamilyHeadModalProps> = ({
     const fetchMembers = async () => {
         setFetchingMembers(true);
         try {
-            const response = await api.get('/members');
-            // BUG FIX: API returns m.region.id (nested), not m.regionId (flat)
-            const filteredMembers = response.data.filter(
-                (m: Member) => m.region?.id === family.region.id
-            );
-            setMembers(filteredMembers);
+            // regionId is enforced server-side — DB returns only members in this region
+            const response = await api.get(`/members?regionId=${family.region.id}`);
+            setMembers(response.data);
         } catch (error) {
-            console.error('Error fetching members:', error);
             toast.error('Failed to load members');
         } finally {
             setFetchingMembers(false);
@@ -182,8 +178,8 @@ const AssignFamilyHeadModal: React.FC<AssignFamilyHeadModalProps> = ({
                                         <label
                                             key={member.id}
                                             className={`flex items-center p-3 cursor-pointer transition-colors ${selectedMemberId === member.id
-                                                    ? 'bg-[#e9f5e1]'
-                                                    : 'hover:bg-slate-50'
+                                                ? 'bg-[#e9f5e1]'
+                                                : 'hover:bg-slate-50'
                                                 }`}
                                         >
                                             <input

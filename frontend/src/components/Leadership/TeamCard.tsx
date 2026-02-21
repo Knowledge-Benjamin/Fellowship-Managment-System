@@ -1,110 +1,88 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Users, Trash2, Edit, UserPlus } from 'lucide-react';
+import { Shield, Users, Trash2, UserCheck, UserX, ChevronRight } from 'lucide-react';
 
 interface TeamCardProps {
     team: {
         id: string;
         name: string;
         description?: string | null;
-        leader?: {
-            id: string;
-            fullName: string;
-            email: string;
-        } | null;
-        _count: {
-            members: number;
-        };
+        leader?: { id: string; fullName: string; email: string } | null;
+        _count: { members: number };
     };
     onEdit?: (teamId: string) => void;
     onDelete?: (teamId: string) => void;
     onManageMembers?: (teamId: string) => void;
 }
 
-const TeamCard: React.FC<TeamCardProps> = ({ team, onEdit, onDelete, onManageMembers }) => {
+const TeamCard: React.FC<TeamCardProps> = ({ team, onDelete }) => {
     return (
-        <div className="glass-card hover:shadow-lg transition-shadow relative">
-            <Link to={`/leadership/teams/${team.id}`} className="block p-6">
-                <div className="flex justify-between items-start mb-4">
-                    <div className="flex-1">
-                        <h3 className="text-xl font-bold text-white mb-1 hover:text-teal-400 transition-colors">{team.name}</h3>
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-md hover:border-slate-300 transition-all group">
+            {/* Accent bar */}
+            <div className="h-0.5 w-full" style={{ backgroundColor: team.leader ? '#48A111' : '#e2e8f0' }} />
+
+            <Link to={`/leadership/teams/${team.id}`} className="block p-5">
+                {/* Team name + description */}
+                <div className="flex items-start justify-between gap-3 mb-4">
+                    <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2.5 mb-1">
+                            <div className="w-9 h-9 rounded-xl bg-purple-50 flex items-center justify-center shrink-0">
+                                <Shield size={17} className="text-purple-500" />
+                            </div>
+                            <h3 className="font-bold text-slate-900 group-hover:text-[#48A111] transition-colors truncate">
+                                {team.name}
+                            </h3>
+                        </div>
                         {team.description && (
-                            <p className="text-gray-400 text-sm">{team.description}</p>
+                            <p className="text-xs text-slate-500 ml-11 line-clamp-2">{team.description}</p>
                         )}
                     </div>
                 </div>
 
-                <div className="space-y-3">
-                    {/* Team Leader */}
-                    <div>
-                        <p className="text-gray-400 text-sm mb-1">Team Leader</p>
-                        {team.leader ? (
-                            <div className="flex items-center gap-2">
-                                <div className="w-8 h-8 rounded-full bg-teal-500/20 flex items-center justify-center">
-                                    <Users size={16} className="text-teal-400" />
-                                </div>
-                                <div>
-                                    <p className="text-white text-sm font-medium">{team.leader.fullName}</p>
-                                    <p className="text-gray-400 text-xs">{team.leader.email}</p>
-                                </div>
+                {/* Leader */}
+                <div className="mb-4">
+                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Team Leader</p>
+                    {team.leader ? (
+                        <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl border"
+                            style={{ backgroundColor: '#e9f5e1', borderColor: '#c5e3b0' }}>
+                            <UserCheck size={14} style={{ color: '#48A111' }} />
+                            <div className="min-w-0">
+                                <p className="text-sm font-semibold text-slate-900 truncate">{team.leader.fullName}</p>
+                                <p className="text-xs text-slate-500 truncate">{team.leader.email}</p>
                             </div>
-                        ) : (
-                            <p className="text-gray-500 text-sm italic">No leader assigned</p>
-                        )}
-                    </div>
+                        </div>
+                    ) : (
+                        <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-amber-50 border border-amber-100">
+                            <UserX size={14} className="text-amber-400" />
+                            <span className="text-xs italic text-amber-600">No leader assigned</span>
+                        </div>
+                    )}
+                </div>
 
-                    {/* Member Count */}
-                    <div className="flex items-center justify-between pt-3 border-t border-gray-700">
-                        <span className="text-gray-400 text-sm">Members</span>
-                        <span className="text-teal-400 font-bold text-lg">
-                            {team._count.members}
+                {/* Footer */}
+                <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                    <div className="flex items-center gap-2">
+                        <Users size={15} style={{ color: '#48A111' }} />
+                        <span className="text-slate-500 text-sm">
+                            <span className="font-bold text-slate-900">{team._count.members}</span> members
                         </span>
                     </div>
+                    <span className="text-xs text-slate-400 group-hover:text-[#48A111] transition-colors font-medium flex items-center gap-1">
+                        View <ChevronRight size={13} />
+                    </span>
                 </div>
             </Link>
 
-            {/* Action Buttons - Outside Link to prevent nested navigation */}
-            {(onEdit || onDelete || onManageMembers) && (
-                <div className="absolute top-4 right-4 flex gap-2 z-10">
-                    {onManageMembers && (
-                        <button
-                            onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                onManageMembers(team.id);
-                            }}
-                            className="p-2 rounded-lg bg-teal-500/20 text-teal-400 hover:bg-teal-500/30 transition-colors"
-                            title="Manage Members"
-                        >
-                            <UserPlus size={18} />
-                        </button>
-                    )}
-                    {onEdit && (
-                        <button
-                            onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                onEdit(team.id);
-                            }}
-                            className="p-2 rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-colors"
-                            title="Edit Team"
-                        >
-                            <Edit size={18} />
-                        </button>
-                    )}
-                    {onDelete && (
-                        <button
-                            onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                onDelete(team.id);
-                            }}
-                            className="p-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
-                            title="Delete Team"
-                        >
-                            <Trash2 size={18} />
-                        </button>
-                    )}
+            {/* Delete button — outside Link */}
+            {onDelete && (
+                <div className="px-5 pb-4 pt-0">
+                    <button
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete(team.id); }}
+                        className="w-full py-2 rounded-xl bg-slate-50 border border-slate-100 text-slate-400 hover:bg-red-50 hover:border-red-100 hover:text-red-500 transition-all text-xs font-semibold flex items-center justify-center gap-1.5"
+                    >
+                        <Trash2 size={13} />
+                        Delete Team
+                    </button>
                 </div>
             )}
         </div>

@@ -206,15 +206,20 @@ interface DrilldownState {
     title: string;
     filterFn: (attendee: any) => boolean;
     dataSource?: 'attendees' | 'salvations';
+    exportCategorizeBy?: (attendee: any) => string | string[];
 }
 
 function DrilldownTable({
     title,
     attendees,
+    fullDataset,
+    exportCategorizeBy,
     onClose,
 }: {
     title: string;
     attendees: any[];
+    fullDataset: any[];
+    exportCategorizeBy?: (attendee: any) => string | string[];
     onClose: () => void;
 }) {
     return (
@@ -236,33 +241,52 @@ function DrilldownTable({
 
                 <button
                     onClick={() => {
-                        const exportData = attendees.map(a => ({
-                            Name: a.name,
-                            Gender: a.gender || '-',
-                            Phone: a.contactPhone || '-',
-                            'Role/Type': a.isGuest ? 'Guest' : 'Member',
-                            College: a.college || '-',
-                            Course: a.course || '-',
-                            Year: a.year || '-',
-                            Region: a.region || '-',
-                            Families: a.families?.join(', ') || '-',
-                            'Ministry Teams': a.teams?.join(', ') || '-',
-                            'Tags/Groups': a.tags?.join(', ') || '-'
-                        }));
-
-                        const ws = XLSX.utils.json_to_sheet(exportData);
-
-                        // Set basic column widths
-                        ws['!cols'] = [
-                            { wch: 30 }, { wch: 10 }, { wch: 15 }, { wch: 15 },
-                            { wch: 30 }, { wch: 35 }, { wch: 10 }, { wch: 20 },
-                            { wch: 30 }, { wch: 30 }, { wch: 30 }
-                        ];
-
                         const wb = XLSX.utils.book_new();
-                        XLSX.utils.book_append_sheet(wb, ws, "Subset Data");
 
-                        // Clean filename
+                        // 1. Prepare Export Map
+                        const exportMap: Record<string, any[]> = {};
+
+                        const datasetToProcess = exportCategorizeBy ? fullDataset : attendees;
+
+                        datasetToProcess.forEach(a => {
+                            const formattedData = {
+                                Name: a.name,
+                                Gender: a.gender || '-',
+                                Phone: a.contactPhone || '-',
+                                'Role/Type': a.isGuest ? 'Guest' : 'Member',
+                                College: a.college || '-',
+                                Course: a.course || '-',
+                                Year: a.year || '-',
+                                Region: a.region || '-',
+                                Families: a.families?.join(', ') || '-',
+                                'Ministry Teams': a.teams?.join(', ') || '-',
+                                'Tags/Groups': a.tags?.join(', ') || '-'
+                            };
+
+                            let categories = exportCategorizeBy ? exportCategorizeBy(a) : 'Subset Data';
+                            if (!categories || categories.length === 0) categories = 'Uncategorized';
+                            const categoryArray = Array.isArray(categories) ? categories : [categories];
+
+                            categoryArray.forEach(cat => {
+                                // Worksheet names cannot exceed 31 characters in Excel
+                                const safeTabName = (cat || 'Unknown').substring(0, 31).replace(/[\\/*?:[\]]/g, ' ');
+                                if (!exportMap[safeTabName]) exportMap[safeTabName] = [];
+                                exportMap[safeTabName].push(formattedData);
+                            });
+                        });
+
+                        // 2. Build Worksheets
+                        Object.entries(exportMap).forEach(([tabName, dataArray]) => {
+                            const ws = XLSX.utils.json_to_sheet(dataArray);
+                            ws['!cols'] = [
+                                { wch: 30 }, { wch: 10 }, { wch: 15 }, { wch: 15 },
+                                { wch: 30 }, { wch: 35 }, { wch: 10 }, { wch: 20 },
+                                { wch: 30 }, { wch: 30 }, { wch: 30 }
+                            ];
+                            XLSX.utils.book_append_sheet(wb, ws, tabName);
+                        });
+
+                        // 3. Download File
                         const safeTitle = title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
                         XLSX.writeFile(wb, `Report_Drilldown_${safeTitle}.xlsx`);
                     }}
@@ -650,7 +674,9 @@ const EventReport = () => {
                 {activeDrilldown ? (
                     <DrilldownTable
                         title={activeDrilldown.title}
-                        attendees={(report.attendees || []).filter(activeDrilldown.filterFn)}
+                        attendees={(activeDrilldown.dataSource === 'salvations' ? (report.salvations || []) : (report.attendees || [])).filter(activeDrilldown.filterFn)}
+                        fullDataset={activeDrilldown.dataSource === 'salvations' ? (report.salvations || []) : (report.attendees || [])}
+                        exportCategorizeBy={activeDrilldown.exportCategorizeBy}
                         onClose={() => setActiveDrilldown(null)}
                     />
                 ) : (
@@ -658,7 +684,7 @@ const EventReport = () => {
                         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                             <StatCard
                                 icon={Users} label="Total Attendance" value={stats.totalAttendance} accent={GREEN}
-                                onClick={() => setActiveDrilldown({ title: 'Total Attendance', filterFn: () => true })}
+                                onClick={() => setActiveDrilldown({ title: 'Total Attendance', filterFn: () => true, exportCategorizeBy: a => a.isGuest ? 'Guests' : 'Members' })}
                                 sub={pctChange != null ? (
                                     <span className={`flex items-center gap-1 font-medium ${diff >= 0 ? 'text-green-600' : 'text-red-500'}`}>
                                         {diff >= 0 ? <TrendingUp size={13} /> : <TrendingDown size={13} />}
@@ -668,17 +694,17 @@ const EventReport = () => {
                             />
                             <StatCard
                                 icon={UserCheck} label="Registered Members" value={stats.memberCount} accent="#3b82f6"
-                                onClick={() => setActiveDrilldown({ title: 'Registered Members', filterFn: a => !a.isGuest })}
+                                onClick={() => setActiveDrilldown({ title: 'Registered Members', filterFn: a => !a.isGuest, exportCategorizeBy: a => a.gender || 'Unknown Gender' })}
                                 sub={<span className="text-slate-400">{pct(stats.memberCount, stats.totalAttendance)} of total</span>}
                             />
                             <StatCard
                                 icon={UserCheck} label="First Timers" value={stats.firstTimersCount} accent="#f59e0b"
-                                onClick={() => setActiveDrilldown({ title: 'First Timers', filterFn: a => a.isFirstTimer === true })}
+                                onClick={() => setActiveDrilldown({ title: 'First Timers', filterFn: a => a.isFirstTimer === true, exportCategorizeBy: a => a.isFirstTimer ? 'First Timers' : 'Returning Attendees' })}
                                 sub={<span className="text-slate-400">{pct(stats.firstTimersCount, stats.memberCount)} of members</span>}
                             />
                             <StatCard
                                 icon={UserPlus} label="Guests" value={stats.guestCount} accent="#8b5cf6"
-                                onClick={() => setActiveDrilldown({ title: 'Guests', filterFn: a => a.isGuest })}
+                                onClick={() => setActiveDrilldown({ title: 'Guests', filterFn: a => a.isGuest, exportCategorizeBy: a => a.isGuest ? 'Guests' : 'Members' })}
                                 sub={<span className="text-slate-400">{pct(stats.guestCount, stats.totalAttendance)} of total</span>}
                             />
                         </div>
@@ -707,6 +733,12 @@ const EventReport = () => {
                                                             if (label === 'Alumni') return a.tags?.includes('ALUMNI');
                                                             if (label === 'Makerere Students') return !a.tags?.includes('ALUMNI') && !!a.course;
                                                             return !a.tags?.includes('ALUMNI') && !a.course && !a.isGuest;
+                                                        },
+                                                        exportCategorizeBy: a => {
+                                                            if (a.tags?.includes('ALUMNI')) return 'Alumni';
+                                                            if (!a.tags?.includes('ALUMNI') && !!a.course) return 'Makerere Students';
+                                                            if (a.isGuest) return 'Guests';
+                                                            return 'Non-Makerere / Other';
                                                         }
                                                     })}
                                                     className="py-4 sm:py-0 px-0 sm:px-6 first:pl-0 last:pr-0 flex flex-col gap-2 cursor-pointer hover:bg-slate-50 transition-colors rounded-lg"
@@ -813,7 +845,7 @@ const EventReport = () => {
                                 {/* Region */}
                                 <Card title="By Region" icon={MapPin}>
                                     {regionData.length > 0 ? (
-                                        <HorizontalBarList data={regionData} onItemClick={(region) => setActiveDrilldown({ title: `Region: ${region}`, filterFn: a => a.region === region })} />
+                                        <HorizontalBarList data={regionData} onItemClick={(region) => setActiveDrilldown({ title: `Region: ${region}`, filterFn: a => a.region === region, exportCategorizeBy: a => a.region || 'Unknown Region' })} />
                                     ) : (
                                         <p className="text-slate-400 text-sm text-center py-6">No region data</p>
                                     )}
@@ -838,7 +870,7 @@ const EventReport = () => {
 
                                         {/* Year of Study */}
                                         {yearData.length > 0 && (
-                                            <Card title="Year of Study" icon={GraduationCap} onClick={() => setActiveDrilldown({ title: 'Year of Study', filterFn: () => true })}>
+                                            <Card title="Year of Study" icon={GraduationCap} onClick={() => setActiveDrilldown({ title: 'Year of Study', filterFn: () => true, exportCategorizeBy: a => a.year || 'Unknown Year' })}>
                                                 <div className="h-44">
                                                     <ResponsiveContainer width="100%" height="100%">
                                                         <BarChart data={yearData.map(([n, v]) => ({ name: n, value: v }))} barSize={28}>
@@ -861,7 +893,7 @@ const EventReport = () => {
                                                 badge={`${collegeEntries.length} college${collegeEntries.length !== 1 ? 's' : ''}`}
                                                 scrollable
                                             >
-                                                <HorizontalBarList data={collegeEntries} accent="#3b82f6" onItemClick={(college) => setActiveDrilldown({ title: `College: ${college}`, filterFn: a => a.college === college })} />
+                                                <HorizontalBarList data={collegeEntries} accent="#3b82f6" onItemClick={(college) => setActiveDrilldown({ title: `College: ${college}`, filterFn: a => a.college === college, exportCategorizeBy: a => a.college || 'Unknown College' })} />
                                             </Card>
                                         )}
 
@@ -873,7 +905,7 @@ const EventReport = () => {
                                                 badge={hasMore ? `top 10 of ${courseEntries.length}` : `${courseEntries.length}`}
                                                 scrollable
                                             >
-                                                <HorizontalBarList data={courseTop} accent="#8b5cf6" onItemClick={(course) => setActiveDrilldown({ title: `Course: ${course}`, filterFn: a => a.course === course })} />
+                                                <HorizontalBarList data={courseTop} accent="#8b5cf6" onItemClick={(course) => setActiveDrilldown({ title: `Course: ${course}`, filterFn: a => a.course === course, exportCategorizeBy: a => a.course || 'Unknown Course' })} />
                                                 {hasMore && (
                                                     <p className="mt-3 pt-3 border-t border-slate-100 text-xs text-slate-400 text-center">
                                                         Showing top 10 of {courseEntries.length} courses. Export report for full list.
@@ -896,7 +928,7 @@ const EventReport = () => {
                                             <HorizontalBarList
                                                 data={Object.entries(stats.familyBreakdown).sort((a, b) => b[1] - a[1])}
                                                 accent={GREEN}
-                                                onItemClick={(family) => setActiveDrilldown({ title: `Family: ${family}`, filterFn: a => family === 'No Family' ? !a.families?.length : a.families?.includes(family) })}
+                                                onItemClick={(family) => setActiveDrilldown({ title: `Family: ${family}`, filterFn: a => family === 'No Family' ? !a.families?.length : a.families?.includes(family), exportCategorizeBy: a => a.families && a.families.length > 0 ? a.families : 'No Family' })}
                                             />
                                         </Card>
                                     )}
@@ -905,7 +937,7 @@ const EventReport = () => {
                                             <HorizontalBarList
                                                 data={Object.entries(stats.teamBreakdown).sort((a, b) => b[1] - a[1])}
                                                 accent="#14b8a6"
-                                                onItemClick={(team) => setActiveDrilldown({ title: `Team: ${team}`, filterFn: a => team === 'No Team' ? !a.teams?.length : a.teams?.includes(team) })}
+                                                onItemClick={(team) => setActiveDrilldown({ title: `Team: ${team}`, filterFn: a => team === 'No Team' ? !a.teams?.length : a.teams?.includes(team), exportCategorizeBy: a => a.teams && a.teams.length > 0 ? a.teams : 'No Team' })}
                                             />
                                         </Card>
                                     )}

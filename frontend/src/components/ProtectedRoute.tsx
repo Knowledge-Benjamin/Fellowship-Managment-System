@@ -9,7 +9,7 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute = ({ children, roles }: ProtectedRouteProps) => {
-    const { isAuthenticated, user, loading } = useAuth();
+    const { isAuthenticated, user, loading, hasTag, hasTeamLeaderTag } = useAuth();
     const location = useLocation();
 
     // Wait for auth to be restored from localStorage
@@ -29,8 +29,16 @@ const ProtectedRoute = ({ children, roles }: ProtectedRouteProps) => {
         return <Navigate to="/login" state={{ from: location }} replace />;
     }
 
-    if (roles && user && !roles.includes(user.role)) {
-        return <Navigate to="/profile" replace />;
+    if (roles && user) {
+        const roleMatches = roles.includes(user.role);
+        const tagMatches = roles.some(role => {
+            if (role === 'TEAM_LEADER' && hasTeamLeaderTag()) return true;
+            return hasTag(role);
+        });
+
+        if (!roleMatches && !tagMatches) {
+            return <Navigate to="/profile" replace />;
+        }
     }
 
     return <>{children}</>;

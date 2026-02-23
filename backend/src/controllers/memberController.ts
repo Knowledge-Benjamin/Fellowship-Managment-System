@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import QRCode from 'qrcode';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import prisma from '../prisma';
@@ -443,5 +444,36 @@ export const bulkSoftDeleteMembers = async (req: Request, res: Response) => {
     } catch (error) {
         console.error('Error bulk soft deleting members:', error);
         res.status(500).json({ error: 'Failed to delete members' });
+    }
+};
+
+/**
+ * GET /api/members/qr/:qrCodeValue
+ * Generate and return QR code image as PNG
+ */
+export const getQRCodeImage = async (req: Request, res: Response) => {
+    try {
+        const qrCodeValue = req.params.qrCodeValue as string;
+
+        if (!qrCodeValue) {
+            return res.status(400).send('QR code value is required');
+        }
+
+        const buffer = await QRCode.toBuffer(qrCodeValue, {
+            width: 300,
+            margin: 2,
+            color: {
+                dark: '#14b8a6', // Teal
+                light: '#FFFFFF'
+            }
+        });
+
+        res.setHeader('Content-Type', 'image/png');
+        res.setHeader('Content-Disposition', 'inline; filename="qrcode.png"');
+        res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year since value doesn't change
+        res.send(buffer);
+    } catch (error) {
+        console.error('Error serving QR code image:', error);
+        res.status(500).send('Failed to generate QR code');
     }
 };

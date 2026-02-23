@@ -142,6 +142,59 @@ export const validateToken = async (req: Request, res: Response) => {
 };
 
 /**
+ * GET /api/register/families/:regionId?token=
+ * Public endpoint to fetch families securely using registration token
+ */
+export const getPublicFamiliesForRegion = async (req: Request, res: Response) => {
+    try {
+        const regionId = req.params.regionId as string;
+        const { token } = req.query as { token?: string };
+
+        if (!token) return res.status(401).json({ error: 'Registration token required' });
+
+        const regToken = await prisma.registrationToken.findUnique({ where: { token } });
+        if (!regToken || !regToken.isActive || regToken.expiresAt < new Date() ||
+            (regToken.maxUses !== null && regToken.usedCount >= regToken.maxUses)) {
+            return res.status(401).json({ error: 'Invalid or expired registration token' });
+        }
+
+        const families = await prisma.familyGroup.findMany({
+            where: {
+                regionId,
+                isActive: true,
+            },
+            select: {
+                id: true,
+                name: true,
+                familyHead: {
+                    select: { fullName: true }
+                },
+                _count: {
+                    select: {
+                        members: {
+                            where: { isActive: true },
+                        },
+                    },
+                },
+            },
+            orderBy: { name: 'asc' }
+        });
+
+        const formattedFamilies = families.map(f => ({
+            id: f.id,
+            name: f.name,
+            familyHead: f.familyHead,
+            memberCount: f._count.members
+        }));
+
+        res.json(formattedFamilies);
+    } catch (error) {
+        console.error('Get public families error:', error);
+        res.status(500).json({ error: 'Failed to fetch families' });
+    }
+};
+
+/**
  * POST /api/register
  * Submit a self-registration (public, no auth)
  */

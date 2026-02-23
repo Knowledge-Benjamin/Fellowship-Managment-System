@@ -1,9 +1,12 @@
 import { Router } from 'express';
-import { getMembers, createMember, getMemberAcademicStatus, softDeleteMember, bulkSoftDeleteMembers } from '../controllers/memberController';
+import { getMembers, createMember, getMemberAcademicStatus, softDeleteMember, bulkSoftDeleteMembers, getQRCodeImage } from '../controllers/memberController';
 import { getMyProfile, submitEditRequest, getEditRequests, reviewEditRequest, updateMyProfile } from '../controllers/profileEditController';
 import { protect, authorize } from '../middleware/authMiddleware';
 
 const router = Router();
+
+// Public: Serve QR codes for emails
+router.get('/qr/:qrCodeValue', getQRCodeImage);
 
 // Create new member (manager only)
 router.post('/', protect, authorize('FELLOWSHIP_MANAGER'), createMember);

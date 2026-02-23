@@ -11,6 +11,7 @@ import {
     approvePendingMember,
     rejectPendingMember,
     getPendingStats,
+    getPublicFamiliesForRegion,
 } from '../controllers/selfRegController';
 import { protect, authorize } from '../middleware/authMiddleware';
 
@@ -26,6 +27,7 @@ const selfRegLimiter = rateLimit({
 // ── Public endpoints (no auth) ───────────────────────────────────────────────
 router.get('/register/validate', validateToken);
 router.post('/register', selfRegLimiter, submitSelfReg);
+router.get('/register/families/:regionId', getPublicFamiliesForRegion);
 
 // ── FM-only: Token management ─────────────────────────────────────────────────
 router.post('/reg-tokens', protect, authorize('FELLOWSHIP_MANAGER'), createToken);

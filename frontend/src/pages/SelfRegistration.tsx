@@ -88,7 +88,7 @@ const SelfRegistration = () => {
     // Reference data
     const [regions, setRegions] = useState<Region[]>([]);
     const [colleges, setColleges] = useState<College[]>([]);
-    const [courses, setCourses] = useState<Course[]>([]);
+    const [allCourses, setAllCourses] = useState<Course[]>([]);
     const [residences, setResidences] = useState<Residence[]>([]);
     const [families, setFamilies] = useState<Family[]>([]);
     const [loadingFamilies, setLoadingFamilies] = useState(false);
@@ -143,18 +143,15 @@ const SelfRegistration = () => {
         Promise.all([
             api.get('/regions').then(r => setRegions(r.data)),
             api.get('/colleges').then(r => setColleges(r.data)),
-            api.get('/courses').then(r => setCourses(r.data)),
+            api.get('/courses').then(r => setAllCourses(r.data)),
             api.get('/residences').then(r => setResidences(r.data)),
         ]).catch(() => { });
     }, []);
 
-    useEffect(() => {
-        if (formData.isMakerereStudent && formData.collegeId) {
-            api.get(`/courses?collegeId=${formData.collegeId}`).then(r => setCourses(r.data)).catch(() => { });
-        } else if (!formData.isMakerereStudent) {
-            api.get('/courses').then(r => setCourses(r.data)).catch(() => { });
-        }
-    }, [formData.collegeId, formData.isMakerereStudent]);
+    // Derived filtered courses dynamically
+    const displayedCourses = allCourses.filter(c =>
+        formData.collegeId ? c.collegeId === formData.collegeId : true
+    );
 
     // ── Non-makerere auto-region ──────────────────────────────────────────────
     useEffect(() => {
@@ -170,7 +167,7 @@ const SelfRegistration = () => {
     useEffect(() => {
         if (formData.regionId && formData.isMakerereStudent && registrationMode === 'READMISSION') {
             setLoadingFamilies(true);
-            api.get(`/families/region/${formData.regionId}`)
+            api.get(`/register/families/${formData.regionId}?token=${tokenParam}`)
                 .then(r => setFamilies(r.data))
                 .catch(() => setFamilies([]))
                 .finally(() => setLoadingFamilies(false));
@@ -186,7 +183,7 @@ const SelfRegistration = () => {
         setFormData(p => {
             let maxYears = 5;
             if (courseId) {
-                const course = courses.find(c => c.id === courseId);
+                const course = allCourses.find(c => c.id === courseId);
                 if (course?.durationYears) maxYears = course.durationYears;
             }
 
@@ -523,7 +520,7 @@ const SelfRegistration = () => {
                                 value={formData.courseId} onChange={v => handleCourseChange(v, '')}
                                 suggestionValue={formData.courseSuggestion} onSuggestionChange={v => handleCourseChange('', v)}
                                 placeholder="Select your course"
-                                options={courses.map(c => ({ value: c.id, label: c.name.length > 50 ? `${c.name.substring(0, 50)}…` : c.name }))}
+                                options={displayedCourses.map(c => ({ value: c.id, label: c.name.length > 50 ? `${c.name.substring(0, 50)}…` : c.name }))}
                             />
                         )}
 
@@ -534,7 +531,7 @@ const SelfRegistration = () => {
                                     <CustomSelect value={String(formData.initialYearOfStudy)}
                                         onChange={v => setFormData(p => ({ ...p, initialYearOfStudy: parseInt(v) }))} required
                                         options={Array.from(
-                                            { length: formData.courseId ? (courses.find(c => c.id === formData.courseId)?.durationYears || 5) : 5 },
+                                            { length: formData.courseId ? (allCourses.find(c => c.id === formData.courseId)?.durationYears || 5) : 5 },
                                             (_, i) => ({ value: String(i + 1), label: `Year ${i + 1}` })
                                         )} />
                                 </div>

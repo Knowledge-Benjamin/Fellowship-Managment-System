@@ -75,8 +75,16 @@ function Combobox({
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 const SelfRegistration = () => {
-    const [searchParams] = useSearchParams();
-    const tokenParam = searchParams.get('token') ?? '';
+    const [searchParams, setSearchParams] = useSearchParams();
+    const [tokenParam] = useState(() => searchParams.get('token') ?? '');
+
+    // Security: Remove token from address bar to prevent accidental sharing
+    useEffect(() => {
+        if (searchParams.has('token')) {
+            searchParams.delete('token');
+            setSearchParams(searchParams, { replace: true });
+        }
+    }, [searchParams, setSearchParams]);
     const { showToast } = useToast();
 
     const [step, setStep] = useState<Step>('gate');

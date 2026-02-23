@@ -4,8 +4,10 @@ import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import prisma from '../prisma';
 import { generateFellowshipNumber } from '../utils/fellowshipNumberGenerator';
+import { formatRegionName } from '../utils/displayFormatters';
 import { updateMemberTags } from '../utils/finalistHelper';
 import { queueWelcomeEmail } from '../services/emailService';
+import cache from '../utils/cache';
 
 // ─── Schemas ──────────────────────────────────────────────────────────────────
 
@@ -158,6 +160,10 @@ export const getPublicFamiliesForRegion = async (req: Request, res: Response) =>
             return res.status(401).json({ error: 'Invalid or expired registration token' });
         }
 
+        const cacheKey = `public_families_${regionId}`;
+        const cached = cache.get(cacheKey);
+        if (cached) return res.json(cached);
+
         const families = await prisma.familyGroup.findMany({
             where: {
                 regionId,
@@ -187,6 +193,7 @@ export const getPublicFamiliesForRegion = async (req: Request, res: Response) =>
             memberCount: f._count.members
         }));
 
+        cache.set(cacheKey, formattedFamilies);
         res.json(formattedFamilies);
     } catch (error) {
         console.error('Get public families error:', error);

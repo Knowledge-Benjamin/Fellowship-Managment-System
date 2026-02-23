@@ -3,6 +3,7 @@ import { activeMemberFilter } from '../utils/queryHelpers';
 
 import { z } from 'zod';
 import prisma from '../prisma';
+import cache from '../utils/cache';
 import { formatRegionsForDisplay, formatRegionForDisplay } from '../utils/displayFormatters';
 
 // Validation schemas
@@ -13,6 +14,10 @@ const createRegionSchema = z.object({
 // Get all regions
 export const getRegions = async (req: Request, res: Response) => {
     try {
+        const cacheKey = 'regions_all';
+        const cached = cache.get(cacheKey);
+        if (cached) return res.json(cached);
+
         const regions = await prisma.region.findMany({
             orderBy: {
                 name: 'asc',
@@ -36,6 +41,7 @@ export const getRegions = async (req: Request, res: Response) => {
 
         const finalRegions = formatRegionsForDisplay(formattedRegions);
 
+        cache.set(cacheKey, finalRegions); // Cache the final formatted regions
         res.json(finalRegions);
     } catch (error) {
         console.error('Get regions error:', error);
@@ -73,6 +79,8 @@ export const createRegion = async (req: Request, res: Response) => {
 
         // Transform region name for display
         const formattedRegion = formatRegionForDisplay(region);
+
+        cache.del('regions_all');
 
         res.status(201).json({
             message: 'Region created successfully',
@@ -116,15 +124,14 @@ export const deleteRegion = async (req: Request, res: Response) => {
 
         // Cannot delete region with assigned active members
         if (region.members.length > 0) {
-            return res.status(400).json({
-                error: `Cannot delete region. ${region.members.length} member(s) are assigned to this region. Please reassign them first.`
-            });
+            return res.status(400).json({ error: 'Cannot delete region with assigned active members' });
         }
 
         await prisma.region.delete({
             where: { id },
         });
 
+        cache.del('regions_all');
         res.json({ message: 'Region deleted successfully' });
     } catch (error) {
         console.error('Delete region error:', error);

@@ -256,7 +256,12 @@ export const getEventAttendance = async (req: Request, res: Response) => {
 export const getMembersForCheckIn = async (req: Request, res: Response) => {
     try {
         const { eventId } = req.params;
-        const { search, regionId, gender, status } = req.query;
+        const { search, regionId, gender, status, page = '1', limit = '50' } = req.query;
+
+        // Pagination setup
+        const parsedPage = Math.max(1, parseInt(page as string, 10) || 1);
+        const parsedLimit = Math.max(1, Math.min(500, parseInt(limit as string, 10) || 50));
+        const skip = (parsedPage - 1) * parsedLimit;
 
         if (!eventId || typeof eventId !== 'string') {
             return res.status(400).json({ error: 'Invalid event ID' });
@@ -290,27 +295,41 @@ export const getMembersForCheckIn = async (req: Request, res: Response) => {
             memberWhere.gender = gender;
         }
 
+        // Push Check-In status filter down to the exact database level!
+        if (status === 'checked-in') {
+            memberWhere.attendances = { some: { eventId } };
+        } else if (status === 'not-checked-in') {
+            memberWhere.attendances = { none: { eventId } };
+        }
+
         // Fetch all active members with attendance status
-        const members = await prisma.member.findMany({
-            where: {
-                ...memberWhere,
-                ...activeMemberFilter
-            },
-            include: {
-                region: true,
-                attendances: {
-                    where: { eventId },
-                    select: {
-                        id: true,
-                        checkedInAt: true,
-                        method: true,
+        const finalWhere = {
+            ...memberWhere,
+            ...activeMemberFilter
+        };
+
+        const [total, members] = await prisma.$transaction([
+            prisma.member.count({ where: finalWhere }),
+            prisma.member.findMany({
+                where: finalWhere,
+                skip,
+                take: parsedLimit,
+                include: {
+                    region: true,
+                    attendances: {
+                        where: { eventId },
+                        select: {
+                            id: true,
+                            checkedInAt: true,
+                            method: true,
+                        },
                     },
                 },
-            },
-            orderBy: {
-                fullName: 'asc',
-            },
-        });
+                orderBy: {
+                    fullName: 'asc',
+                },
+            }),
+        ]);
 
         // Transform data to include check-in status
         const membersWithStatus = members.map((member) => ({
@@ -326,19 +345,16 @@ export const getMembersForCheckIn = async (req: Request, res: Response) => {
             checkInMethod: member.attendances[0]?.method || null,
         }));
 
-        // Filter by status if requested
-        let filteredMembers = membersWithStatus;
-        if (status === 'checked-in') {
-            filteredMembers = membersWithStatus.filter((m) => m.isCheckedIn);
-        } else if (status === 'not-checked-in') {
-            filteredMembers = membersWithStatus.filter((m) => !m.isCheckedIn);
-        }
-
         res.json({
             eventId,
             eventName: event.name,
-            totalMembers: filteredMembers.length,
-            members: filteredMembers,
+            data: membersWithStatus,
+            meta: {
+                total,
+                page: parsedPage,
+                limit: parsedLimit,
+                totalPages: Math.ceil(total / parsedLimit)
+            }
         });
     } catch (error) {
         console.error('Get members for check-in error:', error);

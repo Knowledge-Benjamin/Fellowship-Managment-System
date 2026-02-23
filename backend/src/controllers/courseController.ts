@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import prisma from '../prisma';
 import { z } from 'zod';
+import cache from '../utils/cache';
 
 const createCourseSchema = z.object({
     name: z.string().min(1, 'Course name is required'),
@@ -19,6 +20,10 @@ const updateCourseSchema = z.object({
 export const getAllCourses = async (req: Request, res: Response) => {
     try {
         const { collegeId } = req.query;
+
+        const cacheKey = `courses_${collegeId || 'all'}`;
+        const cached = cache.get(cacheKey);
+        if (cached) return res.json(cached);
 
         const where: any = {};
         if (collegeId && typeof collegeId === 'string') {
@@ -41,6 +46,7 @@ export const getAllCourses = async (req: Request, res: Response) => {
             memberCount: course._count.members
         }));
 
+        cache.set(cacheKey, formattedCourses);
         res.json(formattedCourses);
     } catch (error) {
         console.error('Get courses error:', error);
@@ -76,6 +82,9 @@ export const createCourse = async (req: Request, res: Response) => {
                 college: true
             }
         });
+
+        const keys = cache.keys();
+        cache.del(keys.filter(k => k.startsWith('courses_')));
 
         res.status(201).json(course);
     } catch (error) {
@@ -117,6 +126,9 @@ export const updateCourse = async (req: Request<{ id: string }>, res: Response) 
             }
         });
 
+        const keys = cache.keys();
+        cache.del(keys.filter(k => k.startsWith('courses_')));
+
         res.json(course);
     } catch (error) {
         if (error instanceof z.ZodError) {
@@ -146,6 +158,9 @@ export const deleteCourse = async (req: Request<{ id: string }>, res: Response) 
         }
 
         await prisma.course.delete({ where: { id } });
+
+        const keys = cache.keys();
+        cache.del(keys.filter(k => k.startsWith('courses_')));
 
         res.json({ message: 'Course deleted successfully' });
     } catch (error) {

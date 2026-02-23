@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import prisma from '../prisma';
+import cache from '../utils/cache';
 import { formatRegionName } from '../utils/displayFormatters';
 
 // Validation schemas
@@ -97,6 +98,9 @@ export const createFamily = async (req: Request, res: Response) => {
                 name: formatRegionName(result.region.name)
             } : null
         };
+
+        const keys = cache.keys();
+        cache.del(keys.filter(k => k.startsWith('public_families_')));
 
         res.status(201).json({
             message: 'Family created successfully',
@@ -366,6 +370,9 @@ export const updateFamily = async (req: Request<{ id: string }>, res: Response) 
             return family;
         });
 
+        const keys = cache.keys();
+        cache.del(keys.filter(k => k.startsWith('public_families_')));
+
         res.json({ message: 'Family updated successfully', family: updatedFamily });
     } catch (error) {
         if (error instanceof z.ZodError) {
@@ -415,6 +422,9 @@ export const deleteFamily = async (req: Request<{ id: string }>, res: Response) 
                 data: { isActive: false },
             });
         });
+
+        const keys = cache.keys();
+        cache.del(keys.filter(k => k.startsWith('public_families_')));
 
         res.json({ message: 'Family deleted successfully' });
     } catch (error) {

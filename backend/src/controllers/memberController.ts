@@ -211,7 +211,12 @@ export const createMember = async (req: Request, res: Response) => {
 // Get all members with optional search and tag filters
 export const getMembers = async (req: Request, res: Response) => {
     try {
-        const { search, tags, regionId } = req.query;
+        const { search, tags, regionId, page = '1', limit = '50' } = req.query;
+
+        // Pagination setup
+        const parsedPage = Math.max(1, parseInt(page as string, 10) || 1);
+        const parsedLimit = Math.max(1, Math.min(500, parseInt(limit as string, 10) || 50));
+        const skip = (parsedPage - 1) * parsedLimit;
 
         // Parse tag IDs if provided
         const tagIds = tags ? (tags as string).split(',').filter(Boolean) : [];
@@ -245,43 +250,48 @@ export const getMembers = async (req: Request, res: Response) => {
             };
         }
 
-        const members = await prisma.member.findMany({
-            where,
-            select: {
-                id: true,
-                fullName: true,
-                email: true,
-                phoneNumber: true,
-                fellowshipNumber: true,
-                gender: true,
-                registrationDate: true,
-                initialYearOfStudy: true,
-                initialSemester: true,
-                createdAt: true,
-                region: {
-                    select: {
-                        id: true,
-                        name: true,
+        const [total, members] = await prisma.$transaction([
+            prisma.member.count({ where }),
+            prisma.member.findMany({
+                where,
+                skip,
+                take: parsedLimit,
+                select: {
+                    id: true,
+                    fullName: true,
+                    email: true,
+                    phoneNumber: true,
+                    fellowshipNumber: true,
+                    gender: true,
+                    registrationDate: true,
+                    initialYearOfStudy: true,
+                    initialSemester: true,
+                    createdAt: true,
+                    region: {
+                        select: {
+                            id: true,
+                            name: true,
+                        },
+                    },
+                    courseRelation: {
+                        select: {
+                            id: true,
+                            name: true,
+                            durationYears: true,
+                        },
+                    },
+                    memberTags: {
+                        where: { isActive: true },
+                        include: {
+                            tag: true,
+                        },
                     },
                 },
-                courseRelation: {
-                    select: {
-                        id: true,
-                        name: true,
-                        durationYears: true,
-                    },
+                orderBy: {
+                    createdAt: 'desc',
                 },
-                memberTags: {
-                    where: { isActive: true },
-                    include: {
-                        tag: true,
-                    },
-                },
-            },
-            orderBy: {
-                createdAt: 'desc',
-            },
-        });
+            })
+        ]);
 
         // Transform to include tag info with isActive status and formatted region names
         const membersWithTags = members.map((member: any) => ({
@@ -297,7 +307,15 @@ export const getMembers = async (req: Request, res: Response) => {
             memberTags: undefined, // Remove the join table data
         }));
 
-        res.json(membersWithTags);
+        res.json({
+            data: membersWithTags,
+            meta: {
+                total,
+                page: parsedPage,
+                limit: parsedLimit,
+                totalPages: Math.ceil(total / parsedLimit)
+            }
+        });
     } catch (error) {
         console.error('Error fetching members:', error);
         res.status(500).json({ error: 'Failed to fetch members' });

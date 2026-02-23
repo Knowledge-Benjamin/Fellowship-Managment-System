@@ -46,17 +46,30 @@ const ManualCheckIn = () => {
     // Check-in state
     const [checkingInMemberId, setCheckingInMemberId] = useState<string | null>(null);
 
+    // Pagination state
+    const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalMembers, setTotalMembers] = useState(0);
+
     useEffect(() => {
         // Check if user is a manager
         if (user?.role !== 'FELLOWSHIP_MANAGER') {
-            toast.error('Access denied. Only Fellowship Managers can access  this page.');
+            toast.error('Access denied. Only Fellowship Managers can access this page.');
             navigate('/');
             return;
         }
-
         fetchRegions();
-        fetchMembers();
-    }, [user, eventId, selectedRegion, selectedGender, selectedStatus, searchTerm]);
+    }, [user, eventId, navigate, toast]);
+
+    useEffect(() => {
+        if (user?.role !== 'FELLOWSHIP_MANAGER') return;
+
+        const to = setTimeout(() => {
+            setPage(1);
+            fetchMembers(1, searchTerm);
+        }, 300);
+        return () => clearTimeout(to);
+    }, [searchTerm, selectedRegion, selectedGender, selectedStatus, eventId, user]);
 
     const fetchRegions = async () => {
         try {
@@ -67,18 +80,22 @@ const ManualCheckIn = () => {
         }
     };
 
-    const fetchMembers = async () => {
+    const fetchMembers = async (currentPage = page, search = searchTerm) => {
         setLoading(true);
         try {
             const params = new URLSearchParams();
-            if (searchTerm) params.append('search', searchTerm);
+            if (search) params.append('search', search);
             if (selectedRegion) params.append('regionId', selectedRegion);
             if (selectedGender) params.append('gender', selectedGender);
             if (selectedStatus) params.append('status', selectedStatus);
+            params.append('page', currentPage.toString());
+            params.append('limit', '50');
 
             const response = await api.get(`/attendance/${eventId}/members?${params.toString()}`);
-            setMembers(response.data.members);
-            setEventName(response.data.eventName);
+            setMembers(response.data.data || []);
+            setTotalPages(response.data.meta?.totalPages || 1);
+            setTotalMembers(response.data.meta?.total || 0);
+            setEventName(response.data.eventName || 'Event');
         } catch (error: any) {
             console.error('Failed to fetch members:', error);
             toast.error(error?.response?.data?.error || 'Failed to load members');
@@ -114,7 +131,7 @@ const ManualCheckIn = () => {
     };
 
     const stats = {
-        total: members.length,
+        total: totalMembers,
         checkedIn: members.filter(m => m.isCheckedIn).length,
         notCheckedIn: members.filter(m => !m.isCheckedIn).length,
     };
@@ -364,6 +381,33 @@ const ManualCheckIn = () => {
                                 </tbody>
                             </table>
                         )}
+                    </div>
+                </div>
+
+                {/* Pagination Footer */}
+                <div className="mt-4 px-6 py-4 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4 transition-all">
+                    <div className="text-sm text-slate-500">
+                        Showing <span className="font-semibold text-slate-700">{totalMembers > 0 ? (page - 1) * 50 + 1 : 0}</span> to <span className="font-semibold text-slate-700">{Math.min(page * 50, totalMembers)}</span> of <span className="font-semibold text-slate-700">{totalMembers}</span> members
+                    </div>
+
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => setPage(p => Math.max(1, p - 1))}
+                            disabled={page === 1}
+                            className="px-4 py-2 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 bg-slate-50 hover:bg-slate-100 disabled:opacity-50 transition-all shadow-sm"
+                        >
+                            Previous
+                        </button>
+                        <div className="px-4 py-2 flex items-center justify-center text-sm font-semibold text-slate-700">
+                            {page} / {totalPages}
+                        </div>
+                        <button
+                            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                            disabled={page >= totalPages}
+                            className="px-4 py-2 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 bg-slate-50 hover:bg-slate-100 disabled:opacity-50 transition-all shadow-sm"
+                        >
+                            Next
+                        </button>
                     </div>
                 </div>
             </div>

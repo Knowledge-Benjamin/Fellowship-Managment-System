@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import prisma from '../prisma';
+import cache from '../utils/cache';
 
 // Validation schemas
 const createCollegeSchema = z.object({
@@ -13,6 +14,10 @@ const updateCollegeSchema = createCollegeSchema.partial();
 // Get all colleges
 export const getColleges = async (req: Request, res: Response) => {
     try {
+        const cacheKey = 'colleges_all';
+        const cached = cache.get(cacheKey);
+        if (cached) return res.json(cached);
+
         const colleges = await prisma.college.findMany({
             include: {
                 _count: {
@@ -22,6 +27,7 @@ export const getColleges = async (req: Request, res: Response) => {
             orderBy: { name: 'asc' }
         });
 
+        cache.set(cacheKey, colleges);
         res.json(colleges);
     } catch (error) {
         console.error('Get colleges error:', error);
@@ -50,6 +56,7 @@ export const createCollege = async (req: Request, res: Response) => {
             }
         });
 
+        cache.del('colleges_all');
         res.status(201).json(college);
     } catch (error) {
         if (error instanceof z.ZodError) {
@@ -71,6 +78,7 @@ export const updateCollege = async (req: Request<{ id: string }>, res: Response)
             data: validatedData
         });
 
+        cache.del('colleges_all');
         res.json(college);
     } catch (error) {
         if (error instanceof z.ZodError) {
@@ -106,6 +114,7 @@ export const deleteCollege = async (req: Request<{ id: string }>, res: Response)
             where: { id }
         });
 
+        cache.del('colleges_all');
         res.json({ message: 'College deleted successfully' });
     } catch (error) {
         console.error('Delete college error:', error);

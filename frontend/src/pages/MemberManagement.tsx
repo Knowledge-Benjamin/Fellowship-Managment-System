@@ -47,6 +47,10 @@ const MemberManagement = () => {
     const [allTags, setAllTags] = useState<Tag[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
+    const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalMembers, setTotalMembers] = useState(0);
+
     const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set());
     const [showBulkTagModal, setShowBulkTagModal] = useState(false);
     const [bulkAction, setBulkAction] = useState<'assign' | 'remove'>('assign');
@@ -54,16 +58,24 @@ const MemberManagement = () => {
     const [bulkNotes, setBulkNotes] = useState('');
     const [submitting, setSubmitting] = useState(false);
 
-    useEffect(() => { fetchData(); }, []);
+    useEffect(() => {
+        const to = setTimeout(() => {
+            setPage(1);
+            fetchData(1, searchQuery);
+        }, 300);
+        return () => clearTimeout(to);
+    }, [searchQuery]);
 
-    const fetchData = async () => {
+    const fetchData = async (currentPage = page, search = searchQuery) => {
         try {
             setLoading(true);
             const [membersRes, tagsRes] = await Promise.all([
-                api.get('/members'),
+                api.get('/members', { params: { page: currentPage, limit: 50, search } }),
                 api.get('/tags'),
             ]);
-            setMembers(membersRes.data);
+            setMembers(membersRes.data.data || []);
+            setTotalPages(membersRes.data.meta?.totalPages || 1);
+            setTotalMembers(membersRes.data.meta?.total || 0);
             setAllTags(tagsRes.data);
         } catch {
             showToast('error', 'Failed to load data');
@@ -73,10 +85,10 @@ const MemberManagement = () => {
     };
 
     const handleSelectAll = () => {
-        if (selectedMembers.size === filteredMembers.length) {
+        if (selectedMembers.size === members.length && members.length > 0) {
             setSelectedMembers(new Set());
         } else {
-            setSelectedMembers(new Set(filteredMembers.map(m => m.id)));
+            setSelectedMembers(new Set(members.map(m => m.id)));
         }
     };
 
@@ -146,20 +158,19 @@ const MemberManagement = () => {
         }
     };
 
-    const filteredMembers = members.filter(m =>
-        m.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        m.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        m.fellowshipNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        m.region.name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-
     const customTags = allTags.filter(t => !t.isSystem);
-    const allSelected = selectedMembers.size === filteredMembers.length && filteredMembers.length > 0;
+    const allSelected = selectedMembers.size === members.length && members.length > 0;
 
-    if (loading) return <LoadingSpinner message="Loading members..." />;
+    // Use a skeleton/spinner just for the table when paginating instead of full page block
+    // if (loading && members.length === 0) return <LoadingSpinner message="Loading members..." />;
 
     return (
-        <div className="max-w-7xl mx-auto animate-fade-in">
+        <div className="max-w-7xl mx-auto animate-fade-in relative">
+            {loading && members.length > 0 && (
+                <div className="absolute inset-0 bg-white/50 backdrop-blur-[1px] z-10 flex items-center justify-center rounded-2xl">
+                    <Loader2 className="animate-spin text-[#48A111] w-8 h-8" />
+                </div>
+            )}
 
             {/* Page header */}
             <div className="flex items-center justify-between mb-8">
@@ -170,8 +181,8 @@ const MemberManagement = () => {
                 {/* Summary pill */}
                 <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-2xl px-5 py-3 shadow-sm">
                     <Users size={18} className="text-[#48A111]" />
-                    <span className="font-bold text-slate-900 text-lg">{members.length}</span>
-                    <span className="text-slate-500 text-sm">total members</span>
+                    <span className="font-bold text-slate-900 text-lg">{totalMembers}</span>
+                    <span className="text-slate-500 text-sm">total match{totalMembers === 1 ? '' : 'es'}</span>
                 </div>
             </div>
 
@@ -227,12 +238,14 @@ const MemberManagement = () => {
             </div>
 
             {/* Table */}
-            {filteredMembers.length === 0 ? (
+            {members.length === 0 && !loading ? (
                 <EmptyState
                     icon={Users}
                     title={searchQuery ? 'No members match' : 'No members yet'}
                     description={searchQuery ? 'Try a different search term' : 'Register members to get started'}
                 />
+            ) : members.length === 0 && loading ? (
+                <LoadingSpinner message="Loading members..." />
             ) : (
                 <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                     <div className="overflow-x-auto">
@@ -244,8 +257,8 @@ const MemberManagement = () => {
                                         <button
                                             onClick={handleSelectAll}
                                             className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${allSelected
-                                                    ? 'border-[#48A111] bg-[#48A111]'
-                                                    : 'border-slate-300 bg-white hover:border-[#48A111]'
+                                                ? 'border-[#48A111] bg-[#48A111]'
+                                                : 'border-slate-300 bg-white hover:border-[#48A111]'
                                                 }`}
                                         >
                                             {allSelected && <Check size={12} className="text-white" strokeWidth={3} />}
@@ -272,8 +285,8 @@ const MemberManagement = () => {
                                                 <button
                                                     onClick={() => handleSelectMember(member.id)}
                                                     className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${isSelected
-                                                            ? 'border-[#48A111] bg-[#48A111]'
-                                                            : 'border-slate-300 bg-white hover:border-[#48A111]'
+                                                        ? 'border-[#48A111] bg-[#48A111]'
+                                                        : 'border-slate-300 bg-white hover:border-[#48A111]'
                                                         }`}
                                                 >
                                                     {isSelected && <Check size={12} className="text-white" strokeWidth={3} />}
@@ -364,23 +377,34 @@ const MemberManagement = () => {
                         </table>
                     </div>
 
-                    {/* Footer */}
-                    <div className="px-6 py-3.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
-                        <p className="text-xs text-slate-400">
-                            Showing <span className="font-semibold text-slate-600">{filteredMembers.length}</span> of{' '}
-                            <span className="font-semibold text-slate-600">{members.length}</span> members
+                    {/* Pagination Footer */}
+                    <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div className="text-sm text-slate-500">
+                            Showing <span className="font-semibold text-slate-700">{totalMembers > 0 ? (page - 1) * 50 + 1 : 0}</span> to <span className="font-semibold text-slate-700">{Math.min(page * 50, totalMembers)}</span> of <span className="font-semibold text-slate-700">{totalMembers}</span> members
                             {selectedMembers.size > 0 && (
                                 <span className="ml-2 text-[#48A111] font-semibold">· {selectedMembers.size} selected</span>
                             )}
-                        </p>
-                        {searchQuery && (
+                        </div>
+
+                        <div className="flex gap-2">
                             <button
-                                onClick={() => setSearchQuery('')}
-                                className="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1"
+                                onClick={() => { setPage(p => Math.max(1, p - 1)); }}
+                                disabled={page === 1}
+                                className="px-4 py-2 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 bg-white hover:bg-slate-50 disabled:opacity-50 transition-all shadow-sm"
                             >
-                                <X size={12} /> Clear search
+                                Previous
                             </button>
-                        )}
+                            <div className="px-4 py-2 flex items-center justify-center text-sm font-semibold text-slate-700">
+                                {page} / {totalPages}
+                            </div>
+                            <button
+                                onClick={() => { setPage(p => Math.min(totalPages, p + 1)); }}
+                                disabled={page >= totalPages}
+                                className="px-4 py-2 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 bg-white hover:bg-slate-50 disabled:opacity-50 transition-all shadow-sm"
+                            >
+                                Next
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

@@ -84,20 +84,21 @@ const RegionManagement = () => {
 
     return (
         <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-teal-500/10 text-teal-400 ring-1 ring-teal-500/20">
-                            <MapPin className="w-6 h-6" />
-                        </div>
-                        Region Management
-                    </h1>
-                    <p className="text-slate-400 mt-1">Manage fellowship regions and locations</p>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                <div className="flex items-center gap-3">
+                    <div className="p-3 rounded-xl bg-[#e9f5e1]">
+                        <MapPin className="w-6 h-6" style={{ color: '#48A111' }} />
+                    </div>
+                    <div>
+                        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Region Management</h1>
+                        <p className="text-sm text-slate-500 mt-1">Manage fellowship regions and locations</p>
+                    </div>
                 </div>
 
                 <button
                     onClick={() => setIsAdding(true)}
-                    className="btn-primary flex items-center gap-2"
+                    className="px-4 py-2.5 rounded-xl text-white font-semibold text-sm shadow-md hover:scale-[1.02] transition-all flex items-center gap-2"
+                    style={{ backgroundColor: '#48A111' }}
                 >
                     <Plus className="w-4 h-4" />
                     Add Region
@@ -106,103 +107,115 @@ const RegionManagement = () => {
 
             {/* Add Region Modal */}
             {isAdding && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="glass-card w-full max-w-md p-6 space-y-6 relative animate-in zoom-in-95 duration-200">
-                        <h3 className="text-xl font-bold text-white">Add New Region</h3>
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white rounded-2xl border border-slate-100 shadow-2xl w-full max-w-sm max-h-[90dvh] flex flex-col relative animate-in zoom-in-95 duration-200">
+                        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 shrink-0">
+                            <h2 className="font-bold text-slate-900">Add New Region</h2>
+                            <button onClick={() => setIsAdding(false)}
+                                className="p-2 rounded-xl hover:bg-slate-100 text-slate-400 transition-colors">
+                                ✕
+                            </button>
+                        </div>
 
-                        <form onSubmit={handleAddRegion} className="space-y-4">
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-slate-300">Region Name</label>
-                                <input
-                                    type="text"
-                                    placeholder="e.g. Central"
-                                    className="input"
-                                    value={newRegionName}
-                                    onChange={(e) => setNewRegionName(e.target.value)}
-                                    autoFocus
-                                />
-                            </div>
+                        <div className="p-6">
+                            <form onSubmit={handleAddRegion} className="space-y-5">
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Region Name <span className="text-red-400">*</span></label>
+                                    <input
+                                        type="text"
+                                        placeholder="e.g. Central"
+                                        className="input"
+                                        value={newRegionName}
+                                        onChange={(e) => setNewRegionName(e.target.value)}
+                                        autoFocus
+                                    />
+                                </div>
 
-                            <div className="flex justify-end gap-3 pt-2">
-                                <button
-                                    type="button"
-                                    onClick={() => setIsAdding(false)}
-                                    className="px-4 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-white/5 transition-colors"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={submitting || !newRegionName.trim()}
-                                    className="btn-primary flex items-center gap-2"
-                                >
-                                    {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                                    Create Region
-                                </button>
-                            </div>
-                        </form>
+                                <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsAdding(false)}
+                                        className="flex-1 px-5 py-2.5 rounded-xl border-2 border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition-all"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={submitting || !newRegionName.trim()}
+                                        className="flex-[2] px-5 py-2.5 rounded-xl text-white font-semibold text-sm shadow-lg hover:opacity-90 transition-all flex items-center justify-center gap-2"
+                                        style={{ backgroundColor: '#48A111' }}
+                                    >
+                                        {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                                        Create Region
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
                 </div>
             )}
 
             {/* Search and List */}
-            <div className="space-y-4">
-                <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+            <div className="space-y-6">
+                <div className="relative max-w-md">
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <input
-                        type="text"
+                        type="search"
                         placeholder="Search regions..."
-                        className="input pl-10"
+                        className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm outline-none transition-all placeholder:text-slate-400 focus:border-[#48A111] focus:ring-2 focus:ring-[#48A111]/10"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
+                        style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}
                     />
                 </div>
 
                 {loading ? (
                     <div className="flex justify-center py-12">
-                        <Loader2 className="w-8 h-8 text-teal-500 animate-spin" />
+                        <Loader2 className="w-8 h-8 animate-spin" style={{ color: '#48A111' }} />
                     </div>
                 ) : filteredRegions.length === 0 ? (
-                    <div className="glass-card p-12 text-center space-y-4">
-                        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-800/50 text-slate-400">
-                            <MapPin className="w-8 h-8" />
+                    <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center shadow-sm">
+                        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#e9f5e1] mb-4">
+                            <MapPin className="w-8 h-8" style={{ color: '#48A111' }} />
                         </div>
-                        <h3 className="text-lg font-medium text-white">No regions found</h3>
-                        <p className="text-slate-400">
+                        <h3 className="text-lg font-bold text-slate-900">No regions found</h3>
+                        <p className="text-slate-500 mt-1">
                             {searchQuery ? 'Try adjusting your search query' : 'Get started by adding a new region'}
                         </p>
                     </div>
                 ) : (
-                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                         {filteredRegions.map((region) => (
                             <div
                                 key={region.id}
-                                className="glass-card p-5 group hover:border-teal-500/30 transition-colors relative"
+                                className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-slate-300 transition-all relative group"
                             >
                                 <div className="flex justify-between items-start mb-4">
-                                    <div className="p-2 rounded-lg bg-slate-800/50 text-teal-400">
-                                        <MapPin className="w-5 h-5" />
+                                    <div className="p-2.5 rounded-xl bg-[#e9f5e1]">
+                                        <MapPin className="w-5 h-5" style={{ color: '#48A111' }} />
                                     </div>
                                     <button
                                         onClick={() => handleDeleteRegion(region.id, region.name, region._count?.members || 0)}
-                                        className="p-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                                        className="p-2 rounded-xl bg-slate-100 text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
                                         title="Delete Region"
                                     >
                                         <Trash2 className="w-4 h-4" />
                                     </button>
                                 </div>
 
-                                <h3 className="text-lg font-semibold text-white mb-2">{region.name}</h3>
+                                <h3 className="text-lg font-bold text-slate-900 mb-2 truncate">{region.name}</h3>
 
-                                <div className="flex items-center gap-2 text-sm text-slate-400">
+                                <div className="flex items-center gap-1.5 text-sm text-slate-500 font-medium">
                                     <Users className="w-4 h-4" />
                                     <span>{region._count?.members || 0} Members</span>
                                 </div>
 
                                 {region._count?.members && region._count.members > 0 && (
-                                    <div className="absolute top-4 right-12 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <div className="bg-slate-900 text-xs text-slate-300 px-2 py-1 rounded border border-slate-700 whitespace-nowrap">
+                                    <div className="absolute top-5 right-14 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                        <div className="bg-slate-800 text-xs text-white px-2.5 py-1.5 rounded-lg border border-slate-700 whitespace-nowrap shadow-lg">
                                             Cannot delete (has members)
+                                            {/* Little triangle arrow */}
+                                            <div className="absolute w-2 h-2 bg-slate-800 border-r border-b border-slate-700 transform rotate-45 -right-1 top-1/2 -translate-y-1/2"></div>
                                         </div>
                                     </div>
                                 )}

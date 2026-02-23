@@ -268,8 +268,8 @@ function DrilldownTable({
                             const categoryArray = Array.isArray(categories) ? categories : [categories];
 
                             categoryArray.forEach(cat => {
-                                // Worksheet names cannot exceed 31 characters in Excel
-                                const safeTabName = (cat || 'Unknown').substring(0, 31).replace(/[\\/*?:[\]]/g, ' ');
+                                // Worksheet names cannot exceed 31 characters in Excel. Coerce cat to string first.
+                                const safeTabName = String(cat || 'Unknown').substring(0, 31).replace(/[\\/*?:[\]]/g, ' ');
                                 if (!exportMap[safeTabName]) exportMap[safeTabName] = [];
                                 exportMap[safeTabName].push(formattedData);
                             });

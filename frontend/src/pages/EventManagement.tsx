@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../api';
 import {
     Calendar, Plus, Trash2, ToggleLeft, ToggleRight, Users,
-    Play, Square, BarChart2, List, Heart, X, Clock, MapPin, Repeat, Tag, Pencil
+    Play, Square, BarChart2, List, Heart, X, Clock, MapPin, Repeat, Tag, Pencil, UserCheck
 } from 'lucide-react';
 import VolunteerManager from '../components/VolunteerManager';
 import SalvationTrackingModal from '../components/SalvationTrackingModal';
@@ -213,6 +213,13 @@ const EventManagement = () => {
                             title="View Report"
                         >
                             <BarChart2 size={13} />
+                        </button>
+                        <button
+                            onClick={(e) => { e.stopPropagation(); navigate(`/events/${event.id}/manual-checkin`); }}
+                            className="p-1.5 rounded-lg bg-slate-100 text-slate-400 hover:bg-slate-200 transition-all cursor-pointer"
+                            title="Manual Check-in"
+                        >
+                            <UserCheck size={13} />
                         </button>
                         <button
                             onClick={(e) => { e.stopPropagation(); deleteEvent(event.id); }}

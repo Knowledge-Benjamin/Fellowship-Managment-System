@@ -35,6 +35,8 @@ const selfRegSubmitSchema = z.object({
     residenceId: z.string().uuid().optional(),
     residenceSuggestion: z.string().optional(),
     hostelName: z.string().optional(),
+
+    familyId: z.string().uuid().optional(),
 });
 
 // ─── Token Management (FM only) ───────────────────────────────────────────────
@@ -191,6 +193,7 @@ export const submitSelfReg = async (req: Request, res: Response) => {
                     residenceId: data.residenceId ?? null,
                     residenceSuggestion: data.residenceSuggestion ?? null,
                     hostelName: data.hostelName ?? null,
+                    familyId: data.familyId ?? null,
                     ipAddress,
                 },
             });
@@ -254,7 +257,7 @@ export const updatePendingMember = async (req: Request, res: Response) => {
             fullName, email, phoneNumber, gender, regionId,
             collegeId, collegeSuggestion, courseId, courseSuggestion,
             initialYearOfStudy, initialSemester,
-            residenceId, residenceSuggestion, hostelName,
+            residenceId, residenceSuggestion, hostelName, familyId
         } = req.body;
 
         const updated = await prisma.pendingMember.update({
@@ -274,6 +277,7 @@ export const updatePendingMember = async (req: Request, res: Response) => {
                 ...(residenceId !== undefined && { residenceId }),
                 ...(residenceSuggestion !== undefined && { residenceSuggestion }),
                 ...(hostelName !== undefined && { hostelName }),
+                ...(familyId !== undefined && { familyId }),
             },
             include: { region: true },
         });
@@ -383,6 +387,20 @@ export const approvePendingMember = async (req: Request, res: Response) => {
             // Update finalist/alumni tags if academic info present
             if (resolvedCourseId && pending.initialYearOfStudy && pending.initialSemester) {
                 await updateMemberTags(created.id, created.id, tx);
+            }
+
+            // Family assignment if familyId was provided
+            if (pending.familyId) {
+                const familyExists = await tx.familyGroup.findUnique({ where: { id: pending.familyId } });
+                if (familyExists) {
+                    await tx.familyMember.create({
+                        data: {
+                            familyId: pending.familyId,
+                            memberId: created.id,
+                            assignedBy: reviewerId || created.id,
+                        }
+                    });
+                }
             }
 
             // Queue welcome email

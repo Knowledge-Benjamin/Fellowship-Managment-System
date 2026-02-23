@@ -33,6 +33,7 @@ interface PendingMember {
     residenceId?: string;
     residenceSuggestion?: string;
     hostelName?: string;
+    familyId?: string;
     status: 'PENDING' | 'APPROVED' | 'REJECTED';
     submittedAt: string;
     token: { label?: string; token: string };
@@ -60,6 +61,7 @@ function ApproveModal({
         collegeId: pending.collegeId ?? '',
         courseId: pending.courseId ?? '',
         residenceId: pending.residenceId ?? '',
+        familyId: pending.familyId ?? '',
     });
     const [saving, setSaving] = useState(false);
 
@@ -73,6 +75,7 @@ function ApproveModal({
                 collegeId: edits.collegeId || null,
                 courseId: edits.courseId || null,
                 residenceId: edits.residenceId || null,
+                familyId: edits.familyId || null,
             });
             await api.post(`/pending-members/${pending.id}/approve`);
             showToast('success', `${pending.fullName} approved and activated!`);

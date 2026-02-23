@@ -629,11 +629,22 @@ export const getCustomReport = async (req: Request, res: Response) => {
 export const exportEventReportPDF = async (req: Request<{ eventId: string }>, res: Response) => {
     try {
         const { eventId } = req.params;
+        const userId = req.user?.id;
+
+        if (!userId) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+
+        const scope = await getUserReportScope(userId);
+        const memberFilter = buildMemberScopeFilter(scope);
 
         const event = await prisma.event.findUnique({
             where: { id: eventId },
             include: {
                 attendances: {
+                    where: {
+                        member: memberFilter
+                    },
                     include: {
                         member: {
                             include: {
@@ -705,11 +716,22 @@ export const exportEventReportPDF = async (req: Request<{ eventId: string }>, re
 export const exportEventReportExcel = async (req: Request<{ eventId: string }>, res: Response) => {
     try {
         const { eventId } = req.params;
+        const userId = req.user?.id;
+
+        if (!userId) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+
+        const scope = await getUserReportScope(userId);
+        const memberFilter = buildMemberScopeFilter(scope);
 
         const event = await prisma.event.findUnique({
             where: { id: eventId },
             include: {
                 attendances: {
+                    where: {
+                        member: memberFilter
+                    },
                     include: {
                         member: {
                             include: {
@@ -801,10 +823,18 @@ export const exportEventReportExcel = async (req: Request<{ eventId: string }>, 
 export const exportCustomReportPDF = async (req: Request, res: Response) => {
     try {
         const { startDate, endDate, type, regionId } = req.query;
+        const userId = req.user?.id;
+
+        if (!userId) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
 
         if (!startDate || !endDate) {
             return res.status(400).json({ error: 'Start date and end date are required' });
         }
+
+        const scope = await getUserReportScope(userId);
+        const memberFilter = buildMemberScopeFilter(scope);
 
         const where: any = {};
 
@@ -824,11 +854,12 @@ export const exportCustomReportPDF = async (req: Request, res: Response) => {
             orderBy: { date: 'asc' },
             include: {
                 attendances: {
-                    where: regionId ? {
+                    where: {
                         member: {
-                            regionId: regionId as string
+                            ...memberFilter,
+                            ...(regionId ? { regionId: regionId as string } : {})
                         }
-                    } : undefined,
+                    },
                     include: {
                         member: {
                             include: {
@@ -923,10 +954,18 @@ export const exportCustomReportPDF = async (req: Request, res: Response) => {
 export const exportCustomReportExcel = async (req: Request, res: Response) => {
     try {
         const { startDate, endDate, type, regionId } = req.query;
+        const userId = req.user?.id;
+
+        if (!userId) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
 
         if (!startDate || !endDate) {
             return res.status(400).json({ error: 'Start date and end date are required' });
         }
+
+        const scope = await getUserReportScope(userId);
+        const memberFilter = buildMemberScopeFilter(scope);
 
         const where: any = {};
 
@@ -946,11 +985,12 @@ export const exportCustomReportExcel = async (req: Request, res: Response) => {
             orderBy: { date: 'asc' },
             include: {
                 attendances: {
-                    where: regionId ? {
+                    where: {
                         member: {
-                            regionId: regionId as string
+                            ...memberFilter,
+                            ...(regionId ? { regionId: regionId as string } : {})
                         }
-                    } : undefined,
+                    },
                     include: {
                         member: {
                             include: {

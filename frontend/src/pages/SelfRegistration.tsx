@@ -16,6 +16,7 @@ interface Region { id: string; name: string; }
 interface College { id: string; name: string; code?: string; }
 interface Course { id: string; name: string; code: string; durationYears?: number; collegeId?: string; }
 interface Residence { id: string; name: string; type: string; }
+interface Family { id: string; name: string; familyHead: { fullName: string } | null; memberCount: number; }
 
 type RegistrationMode = 'NEW_MEMBER' | 'READMISSION';
 type Step = 'gate' | 'form' | 'success' | 'invalid';
@@ -89,6 +90,8 @@ const SelfRegistration = () => {
     const [colleges, setColleges] = useState<College[]>([]);
     const [courses, setCourses] = useState<Course[]>([]);
     const [residences, setResidences] = useState<Residence[]>([]);
+    const [families, setFamilies] = useState<Family[]>([]);
+    const [loadingFamilies, setLoadingFamilies] = useState(false);
 
     // Form state
     const [formData, setFormData] = useState({
@@ -107,6 +110,7 @@ const SelfRegistration = () => {
         residenceId: '',
         residenceSuggestion: '',
         hostelName: '',
+        familyId: '',
     });
 
     // ── Validate token on mount ───────────────────────────────────────────────
@@ -156,11 +160,44 @@ const SelfRegistration = () => {
     useEffect(() => {
         if (!formData.isMakerereStudent) {
             const nonResident = regions.find(r => r.name === 'Non-Resident');
-            if (nonResident) setFormData(p => ({ ...p, regionId: nonResident.id, collegeId: '', courseId: '' }));
+            if (nonResident) setFormData(p => ({ ...p, regionId: nonResident.id, collegeId: '', courseId: '', familyId: '' }));
         } else {
-            setFormData(p => ({ ...p, regionId: '', collegeId: '', courseId: '' }));
+            setFormData(p => ({ ...p, regionId: '', collegeId: '', courseId: '', familyId: '' }));
         }
     }, [formData.isMakerereStudent, regions]);
+
+    // ── Load families for returning members ───────────────────────────────────
+    useEffect(() => {
+        if (formData.regionId && formData.isMakerereStudent && registrationMode === 'READMISSION') {
+            setLoadingFamilies(true);
+            api.get(`/families/region/${formData.regionId}`)
+                .then(r => setFamilies(r.data))
+                .catch(() => setFamilies([]))
+                .finally(() => setLoadingFamilies(false));
+            setFormData(p => ({ ...p, familyId: '' }));
+        } else {
+            setFamilies([]);
+            setFormData(p => ({ ...p, familyId: '' }));
+        }
+    }, [formData.regionId, formData.isMakerereStudent, registrationMode]);
+
+    // ── Handle Course Change (clamp year of study to duration) ────────────────
+    const handleCourseChange = (courseId: string, courseSuggestion: string = '') => {
+        setFormData(p => {
+            let maxYears = 5;
+            if (courseId) {
+                const course = courses.find(c => c.id === courseId);
+                if (course?.durationYears) maxYears = course.durationYears;
+            }
+
+            return {
+                ...p,
+                courseId,
+                courseSuggestion,
+                initialYearOfStudy: p.initialYearOfStudy > maxYears ? 1 : p.initialYearOfStudy
+            };
+        });
+    };
 
     // ── Submit ────────────────────────────────────────────────────────────────
     const handleSubmit = async (e: React.FormEvent) => {
@@ -189,6 +226,7 @@ const SelfRegistration = () => {
                 ...(formData.residenceId && { residenceId: formData.residenceId }),
                 ...(formData.residenceSuggestion && { residenceSuggestion: formData.residenceSuggestion }),
                 ...(formData.hostelName && { hostelName: formData.hostelName }),
+                ...(formData.familyId && { familyId: formData.familyId }),
             });
 
             localStorage.setItem(`reg_submitted_${tokenParam}`, '1');
@@ -433,6 +471,37 @@ const SelfRegistration = () => {
                                 value={formData.hostelName} required onChange={e => setFormData(p => ({ ...p, hostelName: e.target.value }))} />
                         </div>
                     )}
+
+                    {/* Returning Member Family Group */}
+                    {registrationMode === 'READMISSION' && formData.isMakerereStudent && formData.regionId && (
+                        <div className="space-y-1.5 pt-2">
+                            <label className="text-sm font-semibold text-slate-700">Family Group (Optional)</label>
+                            {loadingFamilies ? (
+                                <div className="input flex items-center gap-2 text-slate-500">
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    Loading families...
+                                </div>
+                            ) : families.length === 0 ? (
+                                <div className="input text-slate-500 italic text-sm">
+                                    No families available in this region yet.
+                                </div>
+                            ) : (
+                                <CustomSelect
+                                    value={formData.familyId}
+                                    onChange={v => setFormData(p => ({ ...p, familyId: v }))}
+                                    placeholder="Select your family"
+                                    options={[
+                                        { value: '', label: 'Select your family', disabled: true },
+                                        ...families.map(f => ({
+                                            value: f.id,
+                                            label: `${f.name}${f.familyHead ? ` - ${f.familyHead.fullName}` : ''}`
+                                        }))
+                                    ]}
+                                />
+                            )}
+                            <p className="text-xs text-slate-400">If you remember your family, select it here.</p>
+                        </div>
+                    )}
                 </div>
 
                 {/* Academic */}
@@ -451,8 +520,8 @@ const SelfRegistration = () => {
 
                         {(formData.collegeId || formData.collegeSuggestion) && (
                             <Combobox label="Course" required
-                                value={formData.courseId} onChange={v => setFormData(p => ({ ...p, courseId: v }))}
-                                suggestionValue={formData.courseSuggestion} onSuggestionChange={v => setFormData(p => ({ ...p, courseSuggestion: v }))}
+                                value={formData.courseId} onChange={v => handleCourseChange(v, '')}
+                                suggestionValue={formData.courseSuggestion} onSuggestionChange={v => handleCourseChange('', v)}
                                 placeholder="Select your course"
                                 options={courses.map(c => ({ value: c.id, label: c.name.length > 50 ? `${c.name.substring(0, 50)}…` : c.name }))}
                             />
@@ -464,7 +533,10 @@ const SelfRegistration = () => {
                                     <label className="text-sm font-semibold text-slate-700">Year of Study <span className="text-red-500">*</span></label>
                                     <CustomSelect value={String(formData.initialYearOfStudy)}
                                         onChange={v => setFormData(p => ({ ...p, initialYearOfStudy: parseInt(v) }))} required
-                                        options={Array.from({ length: 7 }, (_, i) => ({ value: String(i + 1), label: `Year ${i + 1}` }))} />
+                                        options={Array.from(
+                                            { length: formData.courseId ? (courses.find(c => c.id === formData.courseId)?.durationYears || 5) : 5 },
+                                            (_, i) => ({ value: String(i + 1), label: `Year ${i + 1}` })
+                                        )} />
                                 </div>
                                 <div className="space-y-1.5">
                                     <label className="text-sm font-semibold text-slate-700">Semester <span className="text-red-500">*</span></label>

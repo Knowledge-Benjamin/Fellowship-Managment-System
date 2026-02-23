@@ -426,6 +426,7 @@ model FamilyGroup {
   
   members            FamilyMember[]
   meetings           FamilyMeeting[]
+  pendingMembers     PendingMember[]
   
   @@index([regionId])
   @@index([familyHeadId])
@@ -716,6 +717,9 @@ model PendingMember {
   residenceId         String?
   residenceSuggestion String?
   hostelName          String?
+
+  familyId            String?
+  family              FamilyGroup?        @relation(fields: [familyId], references: [id])
 
   status      PendingMemberStatus @default(PENDING)
   reviewedBy  String?

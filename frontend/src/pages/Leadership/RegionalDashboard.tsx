@@ -122,127 +122,140 @@ const RegionalDashboard = () => {
 
     if (error || !region) {
         return (
-            <div className="min-h-screen p-6">
-                <div className="max-w-4xl mx-auto">
-                    <div className="glass-card p-12 text-center">
-                        <AlertCircle className="text-yellow-500 mx-auto mb-4" size={64} />
-                        <h2 className="text-2xl font-bold text-white mb-2">No Region Assigned</h2>
-                        <p className="text-gray-400 mb-6">
-                            {error || 'You are not currently assigned as a regional head'}
-                        </p>
-                        <Link
-                            to="/profile"
-                            className="inline-block px-6 py-3 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition-all font-medium"
-                        >
-                            Go to Profile
-                        </Link>
+            <div className="max-w-4xl mx-auto animate-fade-in p-6">
+                <div className="bg-white border border-slate-200 shadow-sm rounded-2xl p-12 text-center">
+                    <div className="w-20 h-20 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <AlertCircle className="text-amber-500" size={40} />
                     </div>
+                    <h2 className="text-2xl font-bold text-slate-900 mb-2">No Region Assigned</h2>
+                    <p className="text-slate-500 mb-8 max-w-md mx-auto">
+                        {error || 'You are not currently assigned as a regional head'}
+                    </p>
+                    <Link
+                        to="/profile"
+                        className="inline-flex items-center justify-center px-6 py-3 rounded-xl text-white font-semibold shadow-md hover:scale-[1.02] transition-all"
+                        style={{ backgroundColor: '#48A111' }}
+                    >
+                        Go to Profile
+                    </Link>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen p-6">
+        <div className="max-w-7xl mx-auto p-6 animate-fade-in">
             <div className="max-w-7xl mx-auto">
                 {/* Header */}
-                <div className="mb-8">
-                    <h1 className="text-4xl font-bold text-white mb-2">
-                        {region.name} Region
-                    </h1>
-                    <p className="text-gray-400">
-                        Your Regional Dashboard
-                    </p>
-                    <p className="text-gray-600 text-xs mt-1">
-                        Last updated: {new Date().toLocaleTimeString()}
-                    </p>
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                    <div>
+                        <h1 className="text-3xl font-bold text-slate-900 tracking-tight mb-1">
+                            {region.name} Region
+                        </h1>
+                        <p className="text-slate-500">
+                            Your Regional Dashboard
+                        </p>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-slate-400 text-xs mt-1">
+                            Last updated: {new Date().toLocaleTimeString()}
+                        </p>
+                    </div>
                 </div>
 
                 {/* Stats Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                    <div className="glass-card p-6">
+                    <div className="bg-[#e9f5e1] rounded-2xl p-6 border border-[#c5e3b0] shadow-sm">
                         <div className="flex items-center justify-between mb-4">
-                            <div className="w-12 h-12 rounded-full bg-teal-500/20 flex items-center justify-center">
-                                <Users className="text-teal-400" size={24} />
+                            <div className="p-3 rounded-xl bg-white shadow-sm">
+                                <Users size={24} style={{ color: '#48A111' }} />
                             </div>
                         </div>
-                        <p className="text-3xl font-bold text-white">{region.stats.totalMembers}</p>
-                        <p className="text-gray-400 text-sm">Total Members</p>
+                        <p className="text-3xl font-bold text-slate-900">{region.stats.totalMembers}</p>
+                        <p className="text-slate-600 font-medium text-sm mt-1">Total Members</p>
                     </div>
 
-                    <div className="glass-card p-6">
+                    <div className="bg-blue-50 rounded-2xl p-6 border border-blue-100 shadow-sm">
                         <div className="flex items-center justify-between mb-4">
-                            <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center">
-                                <Users className="text-blue-400" size={24} />
+                            <div className="p-3 rounded-xl bg-white shadow-sm">
+                                <Users size={24} className="text-blue-500" />
                             </div>
                         </div>
-                        <p className="text-3xl font-bold text-white">{region.stats.maleCount}</p>
-                        <p className="text-gray-400 text-sm">Male Members</p>
+                        <p className="text-3xl font-bold text-slate-900">{region.stats.maleCount}</p>
+                        <p className="text-slate-600 font-medium text-sm mt-1">Male Members</p>
                     </div>
 
-                    <div className="glass-card p-6">
+                    <div className="bg-pink-50 rounded-2xl p-6 border border-pink-100 shadow-sm">
                         <div className="flex items-center justify-between mb-4">
-                            <div className="w-12 h-12 rounded-full bg-pink-500/20 flex items-center justify-center">
-                                <Users className="text-pink-400" size={24} />
+                            <div className="p-3 rounded-xl bg-white shadow-sm">
+                                <Users size={24} className="text-pink-500" />
                             </div>
                         </div>
-                        <p className="text-3xl font-bold text-white">{region.stats.femaleCount}</p>
-                        <p className="text-gray-400 text-sm">Female Members</p>
+                        <p className="text-3xl font-bold text-slate-900">{region.stats.femaleCount}</p>
+                        <p className="text-slate-600 font-medium text-sm mt-1">Female Members</p>
                     </div>
 
-                    <div className="glass-card p-6">
+                    <div className="bg-amber-50 rounded-2xl p-6 border border-amber-100 shadow-sm">
                         <div className="flex items-center justify-between mb-4">
-                            <div className="w-12 h-12 rounded-full bg-purple-500/20 flex items-center justify-center">
-                                <Building2 className="text-purple-400" size={24} />
+                            <div className="p-3 rounded-xl bg-white shadow-sm">
+                                <Building2 size={24} className="text-amber-500" />
                             </div>
                         </div>
-                        <p className="text-3xl font-bold text-white">{region.stats.totalFamilies}</p>
-                        <p className="text-gray-400 text-sm">Total Families</p>
+                        <p className="text-3xl font-bold text-slate-900">{region.stats.totalFamilies}</p>
+                        <p className="text-slate-600 font-medium text-sm mt-1">Total Families</p>
                     </div>
                 </div>
 
                 {/* Families List */}
-                <div className="glass-card p-6">
-                    <h2 className="text-2xl font-bold text-white mb-6">
-                        Families in Your Region ({region.families.length})
-                    </h2>
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-8">
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="p-2 rounded-xl bg-[#e9f5e1]">
+                            <Building2 size={20} style={{ color: '#48A111' }} />
+                        </div>
+                        <h2 className="text-xl font-bold text-slate-900">
+                            Families in Your Region <span className="text-slate-400 font-normal">({region.families.length})</span>
+                        </h2>
+                    </div>
+
                     {region.families.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                             {region.families.map((family) => (
                                 <Link
                                     key={family.id}
-                                    to={`/ leadership / families / ${family.id} `}
-                                    className="bg-gray-800/30 border border-gray-700 rounded-lg p-4 hover:border-teal-500/50 transition-all group"
+                                    to={`/leadership/families/${family.id}`}
+                                    className="bg-white border border-slate-200 rounded-xl p-5 hover:shadow-md hover:border-slate-300 transition-all group block"
                                 >
-                                    <h3 className="text-white font-bold group-hover:text-teal-400 transition-colors mb-3">
+                                    <h3 className="text-lg font-bold text-slate-900 group-hover:text-[#48A111] transition-colors mb-3">
                                         {family.name}
                                     </h3>
 
                                     {/* Status Indicator */}
-                                    <div className="flex items-center gap-2 mb-3">
+                                    <div className="flex items-center gap-2 mb-4">
                                         {family.familyHead ? (
-                                            <span className="text-xs px-2 py-1 bg-green-500/20 text-green-400 rounded border border-green-500/30">
-                                                ✓ Has Head
+                                            <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 bg-[#e9f5e1] text-[#48A111] border border-[#48A111]/20 rounded-full">
+                                                <CheckCircle size={12} />
+                                                Has Head
                                             </span>
                                         ) : (
-                                            <span className="text-xs px-2 py-1 bg-yellow-500/20 text-yellow-400 rounded border border-yellow-500/30">
-                                                ! No Head
+                                            <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 bg-amber-50 text-amber-600 border border-amber-200 rounded-full">
+                                                <AlertCircle size={12} />
+                                                No Head
                                             </span>
                                         )}
                                     </div>
 
                                     {family.familyHead && (
-                                        <div className="bg-teal-500/10 border border-teal-500/30 rounded px-3 py-2 mb-3">
-                                            <p className="text-xs text-gray-400 mb-1">Family Head</p>
-                                            <p className="text-sm text-teal-400 font-medium">
+                                        <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 mb-4">
+                                            <p className="text-xs font-medium text-slate-500 mb-0.5">Family Head</p>
+                                            <p className="text-sm text-slate-900 font-semibold">
                                                 {family.familyHead.fullName}
                                             </p>
                                         </div>
                                     )}
 
-                                    <div className="flex items-center justify-between text-sm pt-2 border-t border-gray-700">
-                                        <span className="text-gray-400">Members</span>
-                                        <span className="text-teal-400 font-bold text-lg">
+                                    <div className="flex items-center justify-between text-sm pt-4 border-t border-slate-100">
+                                        <span className="text-slate-500 font-medium">Members</span>
+                                        <span className="font-bold text-lg" style={{ color: '#48A111' }}>
                                             {family._count.members}
                                         </span>
                                     </div>
@@ -250,21 +263,23 @@ const RegionalDashboard = () => {
                             ))}
                         </div>
                     ) : (
-                        <div className="text-center py-12 text-gray-500">
-                            <Building2 className="mx-auto mb-4 text-gray-600" size={48} />
-                            <p>No families in this region yet</p>
+                        <div className="text-center py-16 bg-slate-50 border border-slate-200 rounded-2xl">
+                            <Building2 className="text-slate-400 mx-auto mb-4" size={48} />
+                            <p className="text-slate-500">No families in this region yet</p>
                         </div>
                     )}
                 </div>
 
                 {/* Edit Requests Panel */}
-                <div className="glass-card p-6 mt-8">
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-8">
                     <div className="flex items-center justify-between mb-6">
-                        <h2 className="text-2xl font-bold text-white flex items-center gap-3">
-                            <Edit2 className="text-amber-400" size={24} />
+                        <h2 className="text-xl font-bold text-slate-900 flex items-center gap-3">
+                            <div className="p-2 rounded-xl bg-amber-50">
+                                <Edit2 className="text-amber-500" size={20} />
+                            </div>
                             Profile Edit Requests
                             {editRequests.length > 0 && (
-                                <span className="text-sm px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                                <span className="text-sm px-2.5 py-1 rounded-full bg-amber-50 text-amber-600 border border-amber-200 font-semibold">
                                     {editRequests.length} pending
                                 </span>
                             )}
@@ -272,22 +287,22 @@ const RegionalDashboard = () => {
                     </div>
 
                     {loadingRequests ? (
-                        <div className="text-center py-8 text-gray-400">Loading requests…</div>
+                        <div className="text-center py-8 text-slate-500">Loading requests…</div>
                     ) : editRequests.length === 0 ? (
-                        <div className="text-center py-10 text-gray-500">
-                            <CheckCircle className="mx-auto mb-3 text-green-600" size={40} />
-                            <p>No pending edit requests</p>
+                        <div className="text-center py-12 bg-slate-50 border border-slate-200 rounded-2xl">
+                            <CheckCircle className="mx-auto mb-3" style={{ color: '#48A111' }} size={40} />
+                            <p className="text-slate-500 font-medium">No pending edit requests</p>
                         </div>
                     ) : (
                         <div className="space-y-4">
                             {editRequests.map((req) => (
                                 <div
                                     key={req.id}
-                                    className="bg-gray-800/40 border border-gray-700 rounded-xl overflow-hidden"
+                                    className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all"
                                 >
                                     {/* Request header — always visible */}
                                     <button
-                                        className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-700/30 transition-colors"
+                                        className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50 transition-colors"
                                         onClick={() =>
                                             setExpandedRequestId(
                                                 expandedRequestId === req.id ? null : req.id
@@ -295,57 +310,57 @@ const RegionalDashboard = () => {
                                         }
                                     >
                                         <div className="flex items-center gap-4">
-                                            <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-400 font-bold text-sm">
+                                            <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center text-amber-600 font-bold text-sm border border-amber-100">
                                                 {req.member.fullName.charAt(0)}
                                             </div>
                                             <div>
-                                                <p className="text-white font-semibold">{req.member.fullName}</p>
-                                                <p className="text-xs text-gray-400 font-mono">{req.member.fellowshipNumber}</p>
+                                                <p className="text-slate-900 font-bold">{req.member.fullName}</p>
+                                                <p className="text-xs text-slate-500 font-mono mt-0.5">{req.member.fellowshipNumber}</p>
                                             </div>
                                             <div className="flex gap-2 ml-2">
                                                 {req.changes.map((c, i) => (
-                                                    <span key={i} className="text-xs px-2 py-0.5 bg-teal-500/10 text-teal-400 border border-teal-500/20 rounded capitalize">
+                                                    <span key={i} className="text-xs px-2.5 py-1 bg-slate-100 text-slate-600 border border-slate-200 rounded-full font-medium capitalize">
                                                         {c.field.replace(/([A-Z])/g, ' $1')}
                                                     </span>
                                                 ))}
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-3 text-gray-500">
-                                            <span className="text-xs">
+                                        <div className="flex items-center gap-3 text-slate-400">
+                                            <span className="text-xs font-medium">
                                                 {new Date(req.createdAt).toLocaleDateString()}
                                             </span>
                                             {expandedRequestId === req.id
-                                                ? <ChevronUp size={16} />
-                                                : <ChevronDown size={16} />}
+                                                ? <ChevronUp size={20} className="text-slate-600" />
+                                                : <ChevronDown size={20} className="text-slate-600" />}
                                         </div>
                                     </button>
 
                                     {/* Expanded detail */}
                                     {expandedRequestId === req.id && (
-                                        <div className="px-4 pb-4 border-t border-gray-700 mt-0 pt-4 space-y-4">
+                                        <div className="px-5 pb-5 border-t border-slate-100 mt-0 pt-5 space-y-5 bg-slate-50">
                                             {/* Changes diff */}
-                                            <div className="space-y-2">
-                                                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Changes Requested</p>
+                                            <div className="space-y-3">
+                                                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Changes Requested</p>
                                                 {req.changes.map((c, i) => (
-                                                    <div key={i} className="flex items-center gap-3 p-3 bg-gray-900/50 rounded-lg text-sm">
-                                                        <span className="font-medium text-gray-300 capitalize w-28">
+                                                    <div key={i} className="flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-xl text-sm shadow-sm">
+                                                        <span className="font-semibold text-slate-700 capitalize w-32">
                                                             {c.field.replace(/([A-Z])/g, ' $1')}
                                                         </span>
-                                                        <span className="text-gray-500 line-through">{c.oldValue || '—'}</span>
-                                                        <span className="text-teal-400 font-medium">→ {c.newValue}</span>
+                                                        <span className="text-slate-400 line-through truncate max-w-[150px]">{c.oldValue || '—'}</span>
+                                                        <span className="font-bold shrink-0" style={{ color: '#48A111' }}>→ {c.newValue}</span>
                                                     </div>
                                                 ))}
                                             </div>
 
                                             {/* Reason */}
-                                            <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-                                                <p className="text-xs font-semibold text-amber-400 mb-1">Member's Reason</p>
-                                                <p className="text-sm text-gray-300">{req.reason}</p>
+                                            <div className="p-4 bg-amber-50 border border-amber-100 rounded-xl">
+                                                <p className="text-xs font-bold text-amber-600 mb-1.5 uppercase tracking-wider">Member's Reason</p>
+                                                <p className="text-sm text-amber-900 leading-relaxed font-medium">{req.reason}</p>
                                             </div>
 
                                             {/* Review note */}
                                             <div>
-                                                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1 block">
+                                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">
                                                     Review Note (optional)
                                                 </label>
                                                 <textarea
@@ -354,26 +369,27 @@ const RegionalDashboard = () => {
                                                     placeholder="Leave a note for the member…"
                                                     rows={2}
                                                     maxLength={500}
-                                                    className="w-full px-3 py-2 rounded-lg bg-gray-900/60 border border-gray-600 text-sm text-white resize-none focus:outline-none focus:ring-1 focus:ring-teal-500"
+                                                    className="w-full px-4 py-3 rounded-xl bg-white border border-slate-300 text-sm text-slate-900 resize-none focus:outline-none focus:ring-2 focus:border-transparent transition-all shadow-sm placeholder:text-slate-400"
                                                 />
                                             </div>
 
                                             {/* Action buttons */}
-                                            <div className="flex gap-3">
+                                            <div className="flex gap-3 pt-2">
                                                 <button
                                                     onClick={() => handleReview(req.id, 'APPROVED')}
                                                     disabled={reviewingId === req.id}
-                                                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-semibold transition-colors disabled:opacity-60"
+                                                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-bold shadow-md transition-all disabled:opacity-60 hover:scale-[1.02]"
+                                                    style={{ backgroundColor: '#48A111' }}
                                                 >
-                                                    <CheckCircle size={16} />
+                                                    <CheckCircle size={18} />
                                                     {reviewingId === req.id ? 'Processing…' : 'Approve'}
                                                 </button>
                                                 <button
                                                     onClick={() => handleReview(req.id, 'REJECTED')}
                                                     disabled={reviewingId === req.id}
-                                                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-red-600/80 hover:bg-red-700 text-white text-sm font-semibold transition-colors disabled:opacity-60"
+                                                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white border-2 border-slate-200 hover:border-red-200 hover:bg-red-50 text-slate-700 hover:text-red-600 text-sm font-bold transition-all disabled:opacity-60"
                                                 >
-                                                    <XCircle size={16} />
+                                                    <XCircle size={18} />
                                                     Reject
                                                 </button>
                                             </div>
@@ -386,34 +402,34 @@ const RegionalDashboard = () => {
                 </div>
 
                 {/* Gender Distribution */}
-                <div className="glass-card p-6 mt-8">
-                    <h2 className="text-2xl font-bold text-white mb-6">Region Member Distribution</h2>
-                    <div className="space-y-4">
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-8">
+                    <h2 className="text-xl font-bold text-slate-900 mb-6">Region Member Distribution</h2>
+                    <div className="space-y-5">
                         <div>
                             <div className="flex justify-between mb-2">
-                                <span className="text-sm text-gray-400">Male</span>
-                                <span className="text-sm text-white font-medium">
-                                    {region.stats.maleCount} ({Math.round((region.stats.maleCount / region.stats.totalMembers) * 100)}%)
+                                <span className="text-sm font-medium text-slate-500">Male</span>
+                                <span className="text-sm text-slate-900 font-bold">
+                                    {region.stats.maleCount} ({Math.round((region.stats.maleCount / region.stats.totalMembers) * 100 || 0)}%)
                                 </span>
                             </div>
-                            <div className="w-full h-3 bg-gray-800 rounded-full overflow-hidden">
+                            <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
                                 <div
                                     className="h-full bg-blue-500 transition-all duration-500"
-                                    style={{ width: `${(region.stats.maleCount / region.stats.totalMembers) * 100}% ` }}
+                                    style={{ width: `${(region.stats.maleCount / region.stats.totalMembers) * 100 || 0}% ` }}
                                 />
                             </div>
                         </div>
                         <div>
                             <div className="flex justify-between mb-2">
-                                <span className="text-sm text-gray-400">Female</span>
-                                <span className="text-sm text-white font-medium">
-                                    {region.stats.femaleCount} ({Math.round((region.stats.femaleCount / region.stats.totalMembers) * 100)}%)
+                                <span className="text-sm font-medium text-slate-500">Female</span>
+                                <span className="text-sm text-slate-900 font-bold">
+                                    {region.stats.femaleCount} ({Math.round((region.stats.femaleCount / region.stats.totalMembers) * 100 || 0)}%)
                                 </span>
                             </div>
-                            <div className="w-full h-3 bg-gray-800 rounded-full overflow-hidden">
+                            <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
                                 <div
                                     className="h-full bg-pink-500 transition-all duration-500"
-                                    style={{ width: `${(region.stats.femaleCount / region.stats.totalMembers) * 100}% ` }}
+                                    style={{ width: `${(region.stats.femaleCount / region.stats.totalMembers) * 100 || 0}% ` }}
                                 />
                             </div>
                         </div>
@@ -421,11 +437,14 @@ const RegionalDashboard = () => {
                 </div>
 
                 {/* Info Note */}
-                <div className="mt-6 bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
-                    <p className="text-blue-400 text-sm">
-                        <strong>Note:</strong> As a Regional Head, you can view families and members in your region.
-                        To create families or assign family heads, please contact the Fellowship Manager.
-                    </p>
+                <div className="mt-8 bg-blue-50 border border-blue-100 rounded-xl p-5 shadow-sm">
+                    <div className="flex items-start gap-3">
+                        <AlertCircle className="text-blue-500 shrink-0 mt-0.5" size={20} />
+                        <p className="text-blue-900 text-sm font-medium leading-relaxed">
+                            <strong className="font-bold text-blue-950">Note:</strong> As a Regional Head, you can view families and members in your region.
+                            To create families or assign family heads, please contact the Fellowship Manager.
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>

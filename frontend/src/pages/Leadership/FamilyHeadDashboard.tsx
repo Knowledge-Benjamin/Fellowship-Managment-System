@@ -101,15 +101,16 @@ const FamilyHeadDashboard = () => {
         return (
             <div className="min-h-screen p-6">
                 <div className="max-w-4xl mx-auto">
-                    <div className="glass-card p-12 text-center">
-                        <AlertCircle className="text-yellow-500 mx-auto mb-4" size={64} />
-                        <h2 className="text-2xl font-bold text-white mb-2">No Family Assigned</h2>
-                        <p className="text-gray-400 mb-6">
+                    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-12 text-center">
+                        <AlertCircle className="text-amber-500 mx-auto mb-4" size={64} />
+                        <h2 className="text-2xl font-bold text-slate-900 mb-2">No Family Assigned</h2>
+                        <p className="text-slate-500 mb-6">
                             {error || 'You are not currently assigned as a family head'}
                         </p>
                         <Link
                             to="/profile"
-                            className="inline-block px-6 py-3 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition-all font-medium"
+                            className="inline-block px-6 py-3 rounded-xl text-white font-semibold shadow-md transition-all hover:scale-[1.02]"
+                            style={{ backgroundColor: '#48A111' }}
                         >
                             Go to Profile
                         </Link>
@@ -129,98 +130,99 @@ const FamilyHeadDashboard = () => {
             <div className="max-w-7xl mx-auto">
                 {/* Header */}
                 <div className="mb-8">
-                    <h1 className="text-4xl font-bold text-white mb-2">My Family Dashboard</h1>
-                    <p className="text-gray-400">
+                    <h1 className="text-3xl font-bold text-slate-900 mb-2 tracking-tight">My Family Dashboard</h1>
+                    <p className="text-slate-600 font-medium text-lg">
                         {family.name} • {family.region.name}
                     </p>
-                    <p className="text-gray-600 text-xs mt-1">
+                    <p className="text-slate-400 text-xs mt-1.5">
                         Last updated: {new Date().toLocaleTimeString()}
                     </p>
                 </div>
 
                 {/* Stats Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                    <div className="glass-card p-6">
+                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
                         <div className="flex items-center justify-between mb-4">
-                            <div className="w-12 h-12 rounded-full bg-teal-500/20 flex items-center justify-center">
-                                <Users className="text-teal-400" size={24} />
+                            <div className="w-12 h-12 rounded-full bg-[#e9f5e1] flex items-center justify-center">
+                                <Users size={24} style={{ color: '#48A111' }} />
                             </div>
                         </div>
-                        <p className="text-3xl font-bold text-white">{family.stats.totalMembers}</p>
-                        <p className="text-gray-400 text-sm">Total Members</p>
+                        <p className="text-3xl font-bold text-slate-900">{family.stats.totalMembers}</p>
+                        <p className="text-slate-500 font-medium text-sm mt-1">Total Members</p>
                     </div>
 
-                    <div className="glass-card p-6">
+                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
                         <div className="flex items-center justify-between mb-4">
-                            <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center">
-                                <User2 className="text-blue-400" size={24} />
+                            <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center">
+                                <User2 className="text-blue-500" size={24} />
                             </div>
                         </div>
-                        <p className="text-3xl font-bold text-white">{family.stats.maleCount}</p>
-                        <p className="text-gray-400 text-sm">Male Members</p>
+                        <p className="text-3xl font-bold text-slate-900">{family.stats.maleCount}</p>
+                        <p className="text-slate-500 font-medium text-sm mt-1">Male Members</p>
                     </div>
 
-                    <div className="glass-card p-6">
+                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
                         <div className="flex items-center justify-between mb-4">
-                            <div className="w-12 h-12 rounded-full bg-pink-500/20 flex items-center justify-center">
-                                <User2 className="text-pink-400" size={24} />
+                            <div className="w-12 h-12 rounded-full bg-pink-50 flex items-center justify-center">
+                                <User2 className="text-pink-500" size={24} />
                             </div>
                         </div>
-                        <p className="text-3xl font-bold text-white">{family.stats.femaleCount}</p>
-                        <p className="text-gray-400 text-sm">Female Members</p>
+                        <p className="text-3xl font-bold text-slate-900">{family.stats.femaleCount}</p>
+                        <p className="text-slate-500 font-medium text-sm mt-1">Female Members</p>
                     </div>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     {/* Meeting Schedule */}
-                    <div className="glass-card p-6">
-                        <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
-                            <Calendar className="text-teal-400" size={24} />
+                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+                        <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
+                            <Calendar size={24} style={{ color: '#48A111' }} />
                             Meeting Schedule
                         </h2>
                         <div className="space-y-4">
-                            <div className="flex items-start gap-3 p-4 bg-gray-800/30 rounded-lg">
-                                <Calendar className="text-cyan-400 mt-1" size={20} />
+                            <div className="flex items-start gap-4 p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                                <Calendar className="text-slate-400 mt-1" size={20} />
                                 <div>
-                                    <p className="text-gray-400 text-sm">Day</p>
-                                    <p className="text-white font-medium">{formatDay(family.meetingDay)}</p>
+                                    <p className="text-slate-500 text-xs font-bold uppercase tracking-wide">Day</p>
+                                    <p className="text-slate-900 font-bold">{formatDay(family.meetingDay)}</p>
                                 </div>
                             </div>
-                            <div className="flex items-start gap-3 p-4 bg-gray-800/30 rounded-lg">
-                                <Calendar className="text-cyan-400 mt-1" size={20} />
+                            <div className="flex items-start gap-4 p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                                <Calendar className="text-slate-400 mt-1" size={20} />
                                 <div>
-                                    <p className="text-gray-400 text-sm">Time</p>
-                                    <p className="text-white font-medium">{family.meetingTime || 'Not set'}</p>
+                                    <p className="text-slate-500 text-xs font-bold uppercase tracking-wide">Time</p>
+                                    <p className="text-slate-900 font-bold">{family.meetingTime || 'Not set'}</p>
                                 </div>
                             </div>
-                            <div className="flex items-start gap-3 p-4 bg-gray-800/30 rounded-lg">
-                                <MapPin className="text-cyan-400 mt-1" size={20} />
+                            <div className="flex items-start gap-4 p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                                <MapPin className="text-slate-400 mt-1" size={20} />
                                 <div>
-                                    <p className="text-gray-400 text-sm">Venue</p>
-                                    <p className="text-white font-medium">{family.meetingVenue || 'Not set'}</p>
+                                    <p className="text-slate-500 text-xs font-bold uppercase tracking-wide">Venue</p>
+                                    <p className="text-slate-900 font-bold">{family.meetingVenue || 'Not set'}</p>
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     {/* Family Head Info */}
-                    <div className="glass-card p-6">
-                        <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
-                            <Users className="text-teal-400" size={24} />
+                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+                        <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
+                            <Users size={24} style={{ color: '#48A111' }} />
                             Family Head
                         </h2>
                         <div className="space-y-4">
-                            <div className="p-4 bg-teal-500/10 border border-teal-500/30 rounded-lg">
-                                <p className="text-teal-400 text-sm font-medium mb-2">You are the head of this family</p>
-                                <p className="text-white font-bold text-lg mb-4">{family.familyHead.fullName}</p>
-                                <div className="space-y-2">
-                                    <div className="flex items-center gap-2 text-gray-400">
+                            <div className="p-5 bg-slate-50 border border-slate-200 rounded-xl relative overflow-hidden">
+                                <div className="absolute top-0 left-0 w-1 h-full" style={{ backgroundColor: '#48A111' }}></div>
+                                <p className="text-sm font-bold uppercase tracking-wide mb-2" style={{ color: '#48A111' }}>You are the head of this family</p>
+                                <p className="text-slate-900 font-bold text-lg mb-4">{family.familyHead.fullName}</p>
+                                <div className="space-y-2.5">
+                                    <div className="flex items-center gap-2.5 text-slate-500">
                                         <Mail size={16} />
-                                        <span className="text-sm">{family.familyHead.email}</span>
+                                        <span className="text-sm font-medium">{family.familyHead.email}</span>
                                     </div>
-                                    <div className="flex items-center gap-2 text-gray-400">
+                                    <div className="flex items-center gap-2.5 text-slate-500">
                                         <Phone size={16} />
-                                        <span className="text-sm">{family.familyHead.phoneNumber}</span>
+                                        <span className="text-sm font-medium">{family.familyHead.phoneNumber}</span>
                                     </div>
                                 </div>
                             </div>
@@ -229,56 +231,56 @@ const FamilyHeadDashboard = () => {
                 </div>
 
                 {/* Members List */}
-                <div className="glass-card p-6 mt-8">
-                    <h2 className="text-2xl font-bold text-white mb-6">
-                        Family Members ({family.members.length})
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mt-8">
+                    <h2 className="text-xl font-bold text-slate-900 mb-6">
+                        Family Members <span className="text-slate-400 font-normal">({family.members.length})</span>
                     </h2>
                     {family.members.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                             {family.members.map((member) => (
                                 <div
                                     key={member.id}
-                                    className="p-4 bg-gray-800/40 rounded-lg border border-gray-700 hover:border-teal-500/50 transition-all"
+                                    className="p-5 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-slate-300 transition-all group"
                                 >
-                                    <div className="flex items-start justify-between mb-3">
+                                    <div className="flex items-start justify-between mb-4">
                                         <div className="flex-1">
                                             <Link
                                                 to={`/members/${member.id}`}
-                                                className="text-white font-bold hover:text-teal-400 transition-colors"
+                                                className="text-slate-900 font-bold group-hover:text-[#48A111] transition-colors"
                                             >
                                                 {member.fullName}
                                             </Link>
-                                            <p className="text-gray-500 text-xs">#{member.fellowshipNumber}</p>
-                                            <p className="text-gray-600 text-xs mt-1">
+                                            <p className="text-slate-400 text-xs mt-0.5">#{member.fellowshipNumber}</p>
+                                            <p className="text-slate-400 text-xs mt-1.5">
                                                 Joined {formatDistanceToNow(new Date(member.joinedAt), { addSuffix: true })}
                                             </p>
                                         </div>
-                                        <span className={`text-xs px-2 py-1 rounded ${member.gender === 'MALE' ? 'bg-blue-500/20 text-blue-400' : 'bg-pink-500/20 text-pink-400'
+                                        <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${member.gender === 'MALE' ? 'bg-blue-50 text-blue-600 border border-blue-100' : 'bg-pink-50 text-pink-600 border border-pink-100'
                                             }`}>
                                             {member.gender}
                                         </span>
                                     </div>
-                                    <div className="space-y-1.5 mb-3">
-                                        <div className="flex items-center gap-2 text-gray-400 text-sm">
-                                            <Mail size={14} />
+                                    <div className="space-y-2 mb-4">
+                                        <div className="flex items-center gap-2.5 text-slate-500 text-sm">
+                                            <Mail size={14} className="text-slate-400" />
                                             <span className="truncate">{member.email}</span>
                                         </div>
-                                        <div className="flex items-center gap-2 text-gray-400 text-sm">
-                                            <Phone size={14} />
+                                        <div className="flex items-center gap-2.5 text-slate-500 text-sm">
+                                            <Phone size={14} className="text-slate-400" />
                                             <span>{member.phoneNumber}</span>
                                         </div>
                                     </div>
                                     {/* Quick Actions */}
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-2 pt-4 border-t border-slate-100">
                                         <a
                                             href={`tel:${member.phoneNumber}`}
-                                            className="flex-1 text-center text-xs px-3 py-2 bg-teal-500/20 text-teal-400 rounded hover:bg-teal-500/30 transition-colors"
+                                            className="flex-1 text-center text-xs font-semibold px-3 py-2 bg-slate-50 border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-100 transition-colors"
                                         >
                                             📞 Call
                                         </a>
                                         <a
                                             href={`mailto:${member.email}`}
-                                            className="flex-1 text-center text-xs px-3 py-2 bg-blue-500/20 text-blue-400 rounded hover:bg-blue-500/30 transition-colors"
+                                            className="flex-1 text-center text-xs font-semibold px-3 py-2 bg-slate-50 border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-100 transition-colors"
                                         >
                                             ✉️ Email
                                         </a>
@@ -287,42 +289,42 @@ const FamilyHeadDashboard = () => {
                             ))}
                         </div>
                     ) : (
-                        <div className="text-center py-12 text-gray-500">
-                            <Users className="mx-auto mb-4 text-gray-600" size={48} />
-                            <p>No members in this family yet</p>
+                        <div className="text-center py-16 bg-slate-50 rounded-2xl border border-slate-200">
+                            <Users className="mx-auto mb-4 text-slate-400" size={48} />
+                            <p className="text-slate-500">No members in this family yet</p>
                         </div>
                     )}
                 </div>
 
                 {/* Gender Distribution */}
-                <div className="glass-card p-6 mt-8">
-                    <h2 className="text-2xl font-bold text-white mb-6">Member Distribution</h2>
-                    <div className="space-y-4">
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mt-8">
+                    <h2 className="text-xl font-bold text-slate-900 mb-6">Member Distribution</h2>
+                    <div className="space-y-5">
                         <div>
                             <div className="flex justify-between mb-2">
-                                <span className="text-sm text-gray-400">Male</span>
-                                <span className="text-sm text-white font-medium">
-                                    {family.stats.maleCount} ({Math.round((family.stats.maleCount / family.stats.totalMembers) * 100)}%)
+                                <span className="text-sm font-medium text-slate-500">Male</span>
+                                <span className="text-sm text-slate-900 font-bold">
+                                    {family.stats.maleCount} ({Math.round((family.stats.maleCount / family.stats.totalMembers) * 100) || 0}%)
                                 </span>
                             </div>
-                            <div className="w-full h-3 bg-gray-800 rounded-full overflow-hidden">
+                            <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
                                 <div
                                     className="h-full bg-blue-500 transition-all duration-500"
-                                    style={{ width: `${(family.stats.maleCount / family.stats.totalMembers) * 100}%` }}
+                                    style={{ width: `${(family.stats.maleCount / family.stats.totalMembers) * 100 || 0}%` }}
                                 />
                             </div>
                         </div>
                         <div>
                             <div className="flex justify-between mb-2">
-                                <span className="text-sm text-gray-400">Female</span>
-                                <span className="text-sm text-white font-medium">
-                                    {family.stats.femaleCount} ({Math.round((family.stats.femaleCount / family.stats.totalMembers) * 100)}%)
+                                <span className="text-sm font-medium text-slate-500">Female</span>
+                                <span className="text-sm text-slate-900 font-bold">
+                                    {family.stats.femaleCount} ({Math.round((family.stats.femaleCount / family.stats.totalMembers) * 100) || 0}%)
                                 </span>
                             </div>
-                            <div className="w-full h-3 bg-gray-800 rounded-full overflow-hidden">
+                            <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
                                 <div
                                     className="h-full bg-pink-500 transition-all duration-500"
-                                    style={{ width: `${(family.stats.femaleCount / family.stats.totalMembers) * 100}%` }}
+                                    style={{ width: `${(family.stats.femaleCount / family.stats.totalMembers) * 100 || 0}%` }}
                                 />
                             </div>
                         </div>

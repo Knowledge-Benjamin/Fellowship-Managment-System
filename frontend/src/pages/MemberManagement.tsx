@@ -273,7 +273,7 @@ const MemberManagement = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50">
-                                {filteredMembers.map(member => {
+                                {members.map((member: any) => {
                                     const isSelected = selectedMembers.has(member.id);
                                     return (
                                         <tr

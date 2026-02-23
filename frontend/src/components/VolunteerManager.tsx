@@ -55,7 +55,7 @@ const VolunteerManager: React.FC<VolunteerManagerProps> = ({ eventId, onClose })
         setLoading(true);
         try {
             const response = await api.get(`/members?search=${searchQuery}`);
-            setSearchResults(response.data);
+            setSearchResults(response.data.data || []);
         } catch (error) {
             console.error('Search failed:', error);
             showToast('error', 'Failed to search members');

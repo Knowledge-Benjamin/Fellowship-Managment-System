@@ -43,7 +43,7 @@ const AddTeamMemberModal: React.FC<AddTeamMemberModalProps> = ({
         setFetchingMembers(true);
         try {
             const response = await api.get('/members');
-            setMembers(response.data);
+            setMembers(response.data.data || []);
         } catch (error) {
             console.error('Error fetching members:', error);
             toast.error('Failed to load members');

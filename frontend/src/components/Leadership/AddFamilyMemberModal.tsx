@@ -48,7 +48,7 @@ const AddFamilyMemberModal: React.FC<AddFamilyMemberModalProps> = ({
         try {
             const response = await api.get('/members');
             // BUG FIX: API returns m.region.id (nested), not m.regionId (flat)
-            const filteredMembers = response.data.filter(
+            const filteredMembers = (response.data.data || []).filter(
                 (m: Member) => m.region?.id === family.region.id
             );
             setMembers(filteredMembers);
@@ -166,8 +166,8 @@ const AddFamilyMemberModal: React.FC<AddFamilyMemberModalProps> = ({
                                         <label
                                             key={member.id}
                                             className={`flex items-center p-3 cursor-pointer transition-colors ${selectedMemberId === member.id
-                                                    ? 'bg-[#e9f5e1]'
-                                                    : 'hover:bg-slate-50'
+                                                ? 'bg-[#e9f5e1]'
+                                                : 'hover:bg-slate-50'
                                                 }`}
                                         >
                                             <input

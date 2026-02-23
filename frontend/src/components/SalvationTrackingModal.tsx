@@ -47,7 +47,7 @@ const SalvationTrackingModal: React.FC<SalvationTrackingModalProps> = ({
     const fetchMembers = async () => {
         try {
             const response = await api.get('/members');
-            setMembers(response.data);
+            setMembers(response.data.data || []);
         } catch (error) {
             console.error('Failed to fetch members:', error);
             showToast('error', 'Failed to fetch members');

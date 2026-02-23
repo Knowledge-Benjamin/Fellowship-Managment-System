@@ -40,7 +40,7 @@ const AssignRegionalHeadModal: React.FC<AssignRegionalHeadModalProps> = ({
         try {
             // regionId is enforced server-side — DB returns only members in this region
             const response = await api.get(`/members?regionId=${region.id}`);
-            setMembers(response.data);
+            setMembers(response.data.data || []);
         } catch {
             toast.error('Failed to load members');
         } finally {

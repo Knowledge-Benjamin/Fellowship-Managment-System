@@ -52,7 +52,7 @@ const AssignFamilyHeadModal: React.FC<AssignFamilyHeadModalProps> = ({
         try {
             // regionId is enforced server-side — DB returns only members in this region
             const response = await api.get(`/members?regionId=${family.region.id}`);
-            setMembers(response.data);
+            setMembers(response.data.data || []);
         } catch (error) {
             toast.error('Failed to load members');
         } finally {

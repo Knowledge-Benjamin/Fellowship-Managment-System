@@ -169,6 +169,7 @@ model Member {
   @@index([email])
   @@index([fellowshipNumber])
   @@index([regionId])
+  @@index([fullName])
 }
 
 model Event {

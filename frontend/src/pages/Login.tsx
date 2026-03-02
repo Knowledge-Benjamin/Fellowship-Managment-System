@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { LogIn, User, Lock, Shield, Clock } from 'lucide-react';
 import api from '../api';
@@ -11,6 +12,18 @@ const Login = () => {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const { login } = useAuth();
+    const location = useLocation();
+    const navigate = useNavigate();
+
+    // Check for elevation redirect
+    useEffect(() => {
+        const queryParams = new URLSearchParams(location.search);
+        if (queryParams.get('reason') === 'elevated') {
+            setError('Your account permissions have changed (e.g., leadership assignment). Please sign in again with two-factor authentication to verify your identity.');
+            // Clean up the URL
+            navigate('/login', { replace: true });
+        }
+    }, [location, navigate]);
 
     // MFA state
     const [showOTPScreen, setShowOTPScreen] = useState(false);

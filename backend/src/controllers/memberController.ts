@@ -1,15 +1,12 @@
 import { Request, Response } from 'express';
 import QRCode from 'qrcode';
-import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import prisma from '../prisma';
-import { generateFellowshipNumber } from '../utils/fellowshipNumberGenerator';
 import { formatRegionName } from '../utils/displayFormatters';
-import { updateMemberTags } from '../utils/finalistHelper';
 import { getCurrentAcademicStatus, isMemberFinalist, isMemberAlumni } from '../utils/academicProgressionHelper';
-import { sendWelcomeEmail, queueWelcomeEmail } from '../services/emailService';
 import { activeMemberFilter } from '../utils/queryHelpers';
 import { Prisma } from '@prisma/client';
+import { createMemberRecord } from '../services/memberService';
 
 const createMemberSchema = z.object({
     fullName: z.string().min(1),
@@ -29,158 +26,61 @@ const createMemberSchema = z.object({
 });
 
 // Create new member
-// Create new member
 export const createMember = async (req: Request, res: Response) => {
     try {
         const validatedData = createMemberSchema.parse(req.body);
 
-        // Check if email already exists
-        const existingMember = await prisma.member.findUnique({
-            where: { email: validatedData.email },
-        });
+        // ── Pre-flight validation ────────────────────────────────────────────
+        const [existingMember, region] = await Promise.all([
+            prisma.member.findUnique({ where: { email: validatedData.email } }),
+            prisma.region.findUnique({ where: { id: validatedData.regionId } }),
+        ]);
 
         if (existingMember) {
             return res.status(400).json({ error: 'Email already registered' });
         }
-
-        // Verify region exists
-        const region = await prisma.region.findUnique({
-            where: { id: validatedData.regionId },
-        });
-
         if (!region) {
             return res.status(400).json({ error: 'Invalid region' });
         }
 
-        // Validate course if provided
         if (validatedData.courseId) {
-            const course = await prisma.course.findUnique({
-                where: { id: validatedData.courseId },
-            });
-
-            if (!course) {
-                return res.status(400).json({ error: 'Invalid course' });
-            }
+            const course = await prisma.course.findUnique({ where: { id: validatedData.courseId } });
+            if (!course) return res.status(400).json({ error: 'Invalid course' });
         }
 
-        // Generate unique fellowship number
-        const fellowshipNumber = await generateFellowshipNumber();
-
-        // Hash the fellowship number to use as default password
-        const hashedPassword = await bcrypt.hash(fellowshipNumber, 10);
-
-        // --- TRANSACTION START ---
-        // Perform all writes atomically: Member, Tags, and Email Queue
-        const result = await prisma.$transaction(async (tx) => {
-            // 1. Create Member
-            const registrationMode = validatedData.registrationMode || 'NEW_MEMBER';
-
-            const member = await tx.member.create({
-                data: {
+        // ── Atomic transaction: create member + tags + email ─────────────────
+        const { member, fellowshipNumber } = await prisma.$transaction(async (tx) => {
+            return createMemberRecord(
+                {
                     fullName: validatedData.fullName,
                     email: validatedData.email,
                     phoneNumber: validatedData.phoneNumber,
                     gender: validatedData.gender,
-                    password: hashedPassword,
-                    fellowshipNumber,
                     regionId: validatedData.regionId,
                     courseId: validatedData.courseId,
                     initialYearOfStudy: validatedData.initialYearOfStudy,
                     initialSemester: validatedData.initialSemester,
                     residenceId: validatedData.residenceId,
                     hostelName: validatedData.hostelName,
-                    registrationMode,
+                    registrationMode: validatedData.registrationMode,
+                    classificationTagId: validatedData.classificationTagId,
+                    additionalTagIds: validatedData.additionalTagIds,
+                    assignFirstTimerTag: validatedData.assignFirstTimerTag,
                 },
-                include: {
-                    region: true,
-                    courseRelation: true,
-                },
-            });
-
-            // 2. Prepare Tags
-            const tagConnections = [];
-
-            // Classification Tag
-            if (validatedData.classificationTagId) {
-                tagConnections.push({
-                    tagId: validatedData.classificationTagId,
-                    isActive: true,
-                });
-            }
-
-            // Additional Tags
-            if (validatedData.additionalTagIds && validatedData.additionalTagIds.length > 0) {
-                tagConnections.push(
-                    ...validatedData.additionalTagIds.map((tagId) => ({
-                        tagId,
-                        isActive: true,
-                    }))
-                );
-            }
-
-            // First Timer Tag
-            const shouldAssignFirstTimerTag = validatedData.assignFirstTimerTag !== undefined
-                ? validatedData.assignFirstTimerTag
-                : registrationMode === 'NEW_MEMBER';
-
-            if (shouldAssignFirstTimerTag) {
-                const firstTimerTag = await tx.tag.findUnique({
-                    where: { name: 'PENDING_FIRST_ATTENDANCE' },
-                });
-
-                if (firstTimerTag) {
-                    tagConnections.push({
-                        tagId: firstTimerTag.id,
-                        isActive: true,
-                    });
-                }
-            }
-
-            // Assign Tags
-            if (tagConnections.length > 0) {
-                await tx.memberTag.createMany({
-                    data: tagConnections.map(tc => ({
-                        memberId: member.id,
-                        tagId: tc.tagId,
-                        assignedBy: member.id,
-                        isActive: tc.isActive,
-                    })),
-                });
-            }
-
-            // 3. Update Finalist/Alumni Tags (using the transaction client)
-            if (validatedData.courseId && validatedData.initialYearOfStudy && validatedData.initialSemester) {
-                await updateMemberTags(member.id, member.id, tx);
-            }
-
-            // 4. Queue Welcome Email (Atomic with registration)
-            await queueWelcomeEmail(
                 tx,
-                member.email,
-                member.fullName,
-                fellowshipNumber,
-                member.qrCode
             );
+        }, { timeout: 15000 });
 
-            return member;
-        });
-        // --- TRANSACTION END ---
-
-        // Fetch complete member for response (outside transaction is fine)
+        // ── Fetch complete member for response ───────────────────────────────
         const completeMember = await prisma.member.findUnique({
-            where: { id: result.id },
+            where: { id: member.id },
             include: {
                 region: true,
                 courseRelation: true,
-                memberTags: {
-                    include: {
-                        tag: true,
-                    },
-                },
+                memberTags: { include: { tag: true } },
             },
         });
 
-        // Transform response
         const responseData = {
             ...completeMember,
             tags: (completeMember as any).memberTags.map((mt: any) => ({
@@ -197,15 +97,14 @@ export const createMember = async (req: Request, res: Response) => {
         });
     } catch (error) {
         if (error instanceof z.ZodError) {
-            return res.status(400).json({
-                error: 'Validation failed',
-                details: error.issues,
-            });
+            return res.status(400).json({ error: 'Validation failed', details: error.issues });
         }
         console.error('Registration error:', error);
         res.status(500).json({ error: 'Registration failed' });
     }
 };
+
+
 
 
 // Get all members with optional search and tag filters

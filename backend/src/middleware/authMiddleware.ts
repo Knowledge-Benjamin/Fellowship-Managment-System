@@ -36,7 +36,7 @@ export const protect = async (req: Request, res: Response, next: NextFunction) =
 
             const user = await prisma.member.findUnique({
                 where: { id: decoded.id },
-                select: { id: true, role: true, isDeleted: true },
+                select: { id: true, role: true, isDeleted: true, requiresReauth: true },
             });
 
             if (!user || user.isDeleted) {
@@ -44,21 +44,28 @@ export const protect = async (req: Request, res: Response, next: NextFunction) =
                 return;
             }
 
+            // Session invalidated due to privilege elevation — force re-login + MFA
+            if (user.requiresReauth) {
+                res.status(401).json({
+                    code: 'SESSION_ELEVATED_PRIVILEGES',
+                    message: 'Your account permissions have changed. Please sign in again to continue.',
+                });
+                return;
+            }
 
             req.user = { id: user.id, role: user.role };
             next();
-            return; // CRITICAL FIX: Prevent further execution after calling next()
+            return;
         } catch (error) {
             console.error(error);
             res.status(401).json({ message: 'Not authorized, token failed' });
-            return; // CRITICAL FIX: Stop execution after sending error
+            return;
         }
     }
 
-    // CRITICAL FIX: This must be outside the try-catch but still protected
     if (!token) {
         res.status(401).json({ message: 'Not authorized, no token' });
-        return; // CRITICAL FIX: Stop execution after sending error
+        return;
     }
 };
 

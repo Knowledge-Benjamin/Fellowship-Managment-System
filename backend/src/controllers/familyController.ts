@@ -433,7 +433,7 @@ export const deleteFamily = async (req: Request<{ id: string }>, res: Response) 
     }
 };
 
-// Assign family head
+// Assign family head (replaces existing head automatically)
 export const assignFamilyHead = async (req: Request<{ id: string }>, res: Response) => {
     try {
         const { id } = req.params;
@@ -444,21 +444,21 @@ export const assignFamilyHead = async (req: Request<{ id: string }>, res: Respon
             return res.status(401).json({ message: 'Unauthorized' });
         }
 
-        // Get family
-        const family = await prisma.familyGroup.findUnique({
-            where: { id },
-            include: { region: true },
-        });
+        // Get family and incoming member in parallel
+        const [family, member] = await Promise.all([
+            prisma.familyGroup.findUnique({
+                where: { id },
+                include: { region: true },
+            }),
+            prisma.member.findUnique({
+                where: { id: validatedData.memberId },
+                include: { headsFamilies: true },
+            }),
+        ]);
 
         if (!family) {
             return res.status(404).json({ message: 'Family not found' });
         }
-
-        // Get member and check they're in the same region
-        const member = await prisma.member.findUnique({
-            where: { id: validatedData.memberId },
-            include: { headsFamilies: true },
-        });
 
         if (!member) {
             return res.status(404).json({ message: 'Member not found' });
@@ -472,8 +472,8 @@ export const assignFamilyHead = async (req: Request<{ id: string }>, res: Respon
             return res.status(400).json({ message: 'Member must be in the same region as the family' });
         }
 
-        // Check if member is already a family head
-        const existingHeadship = member.headsFamilies.find(f => f.isActive);
+        // Prevent assigning a member who already heads a DIFFERENT family
+        const existingHeadship = member.headsFamilies.find(f => f.isActive && f.id !== id);
         if (existingHeadship) {
             return res.status(400).json({
                 message: `Member is already heading another family: ${existingHeadship.name}`,
@@ -491,7 +491,7 @@ export const assignFamilyHead = async (req: Request<{ id: string }>, res: Respon
                     name: 'FAMILY_HEAD',
                     description: 'Family Head',
                     type: 'SYSTEM',
-                    color: '#22c55e', // Green
+                    color: '#22c55e',
                     isSystem: true,
                     createdBy: assignerId,
                 },
@@ -500,42 +500,56 @@ export const assignFamilyHead = async (req: Request<{ id: string }>, res: Respon
 
         // Assign in transaction
         const result = await prisma.$transaction(async (tx) => {
-            // Set family head
+            // Auto-remove existing head if there is one (and it's not the same member)
+            if (family.familyHeadId && family.familyHeadId !== validatedData.memberId) {
+                await tx.memberTag.updateMany({
+                    where: {
+                        memberId: family.familyHeadId,
+                        tagId: familyHeadTag!.id,
+                        isActive: true,
+                    },
+                    data: {
+                        isActive: false,
+                        removedAt: new Date(),
+                        removedBy: assignerId,
+                        notes: `Replaced as Family Head of ${family.name}`,
+                    },
+                });
+            }
+
+            // Set new family head
             const updatedFamily = await tx.familyGroup.update({
                 where: { id },
                 data: { familyHeadId: validatedData.memberId },
                 include: {
                     familyHead: {
-                        select: {
-                            id: true,
-                            fullName: true,
-                            email: true,
-                        },
+                        select: { id: true, fullName: true, email: true },
                     },
                 },
             });
 
-            // Assign FAMILY_HEAD tag
-            await tx.memberTag.create({
-                data: {
-                    memberId: validatedData.memberId,
-                    tagId: familyHeadTag!.id,
-                    assignedBy: assignerId,
-                    notes: `Family Head of ${family.name}`,
-                },
+            // Assign FAMILY_HEAD tag (skip if already active)
+            const existingTag = await tx.memberTag.findFirst({
+                where: { memberId: validatedData.memberId, tagId: familyHeadTag!.id, isActive: true },
             });
 
-            // Ensure member is also in the family.
-            // Check across ALL families (not just this one) to prevent duplicate memberships.
+            if (!existingTag) {
+                await tx.memberTag.create({
+                    data: {
+                        memberId: validatedData.memberId,
+                        tagId: familyHeadTag!.id,
+                        assignedBy: assignerId,
+                        notes: `Family Head of ${family.name}`,
+                    },
+                });
+            }
+
+            // Ensure new head is also a member of the family
             const existingAnyMembership = await tx.familyMember.findFirst({
-                where: {
-                    memberId: validatedData.memberId,
-                    isActive: true,
-                },
+                where: { memberId: validatedData.memberId, isActive: true },
             });
 
             if (!existingAnyMembership) {
-                // Member has no active family — add them to this one
                 await tx.familyMember.create({
                     data: {
                         familyId: id,
@@ -544,7 +558,6 @@ export const assignFamilyHead = async (req: Request<{ id: string }>, res: Respon
                     },
                 });
 
-                // Assign family member tag
                 const memberTag = await tx.tag.findUnique({
                     where: { name: family.memberTagName },
                 });
@@ -560,8 +573,12 @@ export const assignFamilyHead = async (req: Request<{ id: string }>, res: Respon
                     });
                 }
             }
-            // If existingAnyMembership.familyId === id, they're already in this family — skip silently.
-            // (The assignFamilyHead flow already validated the member is in-region; no need to error here.)
+
+            // Require re-authentication for elevated privileges
+            await tx.member.update({
+                where: { id: validatedData.memberId },
+                data: { requiresReauth: true },
+            });
 
             return updatedFamily;
         });
@@ -575,6 +592,7 @@ export const assignFamilyHead = async (req: Request<{ id: string }>, res: Respon
         res.status(500).json({ message: 'Failed to assign family head' });
     }
 };
+
 
 // Remove family head
 export const removeFamilyHead = async (req: Request<{ id: string }>, res: Response) => {

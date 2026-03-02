@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Crown, AlertCircle, Search, Users, UserCheck } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import api from '../../api';
+import { useAuth } from '../../context/AuthContext';
 
 interface AssignRegionalHeadModalProps {
     isOpen: boolean;
@@ -25,6 +26,7 @@ interface Member {
 const AssignRegionalHeadModal: React.FC<AssignRegionalHeadModalProps> = ({
     isOpen, onClose, onSuccess, region,
 }) => {
+    const { refreshUser } = useAuth();
     const [members, setMembers] = useState<Member[]>([]);
     const [selectedMemberId, setSelectedMemberId] = useState('');
     const [loading, setLoading] = useState(false);
@@ -58,6 +60,8 @@ const AssignRegionalHeadModal: React.FC<AssignRegionalHeadModalProps> = ({
                 memberId: selectedMemberId,
             });
             toast.success('Regional head assigned successfully');
+            // Refresh auth session so Navbar/profile tags update for the current user
+            await refreshUser();
             onSuccess();
             handleClose();
         } catch (error: any) {

@@ -108,6 +108,7 @@ const SelfRegistration = () => {
         phoneNumber: '' as E164Number | '',
         gender: 'MALE',
         isMakerereStudent: true,
+        classificationTagName: '',   // Only for non-Makerere: ALUMNI | OTHER_CAMPUS_STUDENT | OTHER
         regionId: '',
         collegeId: '',
         collegeSuggestion: '',
@@ -161,13 +162,13 @@ const SelfRegistration = () => {
         formData.collegeId ? c.collegeId === formData.collegeId : true
     );
 
-    // ── Non-makerere auto-region ──────────────────────────────────────────────
+    // ── Non-makerere auto-region ────────────────────────────────────────────────
     useEffect(() => {
         if (!formData.isMakerereStudent) {
             const nonResident = regions.find(r => r.name === 'Non-Resident');
-            if (nonResident) setFormData(p => ({ ...p, regionId: nonResident.id, collegeId: '', courseId: '', familyId: '' }));
+            if (nonResident) setFormData(p => ({ ...p, regionId: nonResident.id, collegeId: '', courseId: '', familyId: '', classificationTagName: '' }));
         } else {
-            setFormData(p => ({ ...p, regionId: '', collegeId: '', courseId: '', familyId: '' }));
+            setFormData(p => ({ ...p, regionId: '', collegeId: '', courseId: '', familyId: '', classificationTagName: '' }));
         }
     }, [formData.isMakerereStudent, regions]);
 
@@ -207,6 +208,41 @@ const SelfRegistration = () => {
     // ── Submit ────────────────────────────────────────────────────────────────
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        // Manual validation for fields that don't bubble native required
+        if (!formData.phoneNumber) {
+            showToast('error', 'Phone number is required.');
+            return;
+        }
+        if (formData.isMakerereStudent && !formData.regionId) {
+            showToast('error', 'Please select your region.');
+            return;
+        }
+        if (!formData.isMakerereStudent && !formData.classificationTagName) {
+            showToast('error', 'Please select your classification (Alumni, Other Campus Student, or Other).');
+            return;
+        }
+        if (formData.isMakerereStudent && !formData.collegeId && !formData.collegeSuggestion) {
+            showToast('error', 'Please select or enter your college.');
+            return;
+        }
+        if (formData.isMakerereStudent && !formData.courseId && !formData.courseSuggestion) {
+            showToast('error', 'Please select or enter your course.');
+            return;
+        }
+        if (!formData.isMakerereStudent && formData.classificationTagName === 'OTHER_CAMPUS_STUDENT' && !formData.courseId && !formData.courseSuggestion) {
+            showToast('error', 'Please select or enter your course.');
+            return;
+        }
+        if (formData.isMakerereStudent && isCentral && !formData.residenceId && !formData.residenceSuggestion) {
+            showToast('error', 'Please select your hall / residence.');
+            return;
+        }
+        if (formData.isMakerereStudent && !isCentral && !isNonResident && !formData.hostelName.trim()) {
+            showToast('error', 'Please enter your hostel name.');
+            return;
+        }
+
         setLoading(true);
         try {
             const resolvedRegionId = formData.isMakerereStudent
@@ -222,6 +258,8 @@ const SelfRegistration = () => {
                 gender: formData.gender,
                 isMakerereStudent: formData.isMakerereStudent,
                 ...(resolvedRegionId && { regionId: resolvedRegionId }),
+                // Classification: only sent for non-Makerere members
+                ...(!formData.isMakerereStudent && formData.classificationTagName && { classificationTagName: formData.classificationTagName }),
                 ...(formData.collegeId && { collegeId: formData.collegeId }),
                 ...(formData.collegeSuggestion && { collegeSuggestion: formData.collegeSuggestion }),
                 ...(formData.courseId && { courseId: formData.courseId }),
@@ -243,7 +281,8 @@ const SelfRegistration = () => {
         }
     };
 
-    const showCourseAndYear = formData.isMakerereStudent;
+    const showCourseAndYear = formData.isMakerereStudent ||
+        formData.classificationTagName === 'OTHER_CAMPUS_STUDENT';
     const selectedRegion = regions.find(r => r.id === formData.regionId);
     const isCentral = selectedRegion?.name === 'Central';
     const isNonResident = selectedRegion?.name === 'Non-Resident';
@@ -438,6 +477,27 @@ const SelfRegistration = () => {
                         </div>
                     </div>
 
+                    {/* Classification — only for non-Makerere */}
+                    {!formData.isMakerereStudent && (
+                        <div className="space-y-1.5">
+                            <label className="text-sm font-semibold text-slate-700">
+                                Classification <span className="text-red-500">*</span>
+                            </label>
+                            <CustomSelect
+                                value={formData.classificationTagName}
+                                onChange={v => setFormData(p => ({ ...p, classificationTagName: v, courseId: '', courseSuggestion: '' }))}
+                                placeholder="Select your classification"
+                                options={[
+                                    { value: '', label: 'Select your classification', disabled: true },
+                                    { value: 'ALUMNI', label: 'Alumni' },
+                                    { value: 'OTHER_CAMPUS_STUDENT', label: 'Other Campus Student' },
+                                    { value: 'OTHER', label: 'Other' },
+                                ]}
+                            />
+                            <p className="text-xs text-slate-500">Select the category that best describes you.</p>
+                        </div>
+                    )}
+
                     {/* Region — fixed, no custom entry */}
                     <div className="space-y-1.5">
                         <label className="text-sm font-semibold text-slate-700">Region <span className="text-red-500">*</span></label>
@@ -456,7 +516,7 @@ const SelfRegistration = () => {
                             <p className="text-xs text-slate-500">Non-residents are automatically assigned to the Non-Resident region.</p>
                         )}
                         {formData.isMakerereStudent && !formData.regionId && (
-                            <p className="text-xs text-slate-400">Not sure of your region? The fellowship team will assign you during review.</p>
+                            <p className="text-xs text-red-400">Please select the region you reside in.</p>
                         )}
                     </div>
 
@@ -509,28 +569,35 @@ const SelfRegistration = () => {
                     )}
                 </div>
 
-                {/* Academic */}
-                {formData.isMakerereStudent && (
+                {/* Academic — Makerere students get full section; OTHER_CAMPUS_STUDENT gets Course + Year only */}
+                {(formData.isMakerereStudent || formData.classificationTagName === 'OTHER_CAMPUS_STUDENT') && (
                     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
                         <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wide flex items-center gap-2">
                             <BookOpen size={14} /> Academic Information
                         </h2>
 
-                        <Combobox label="College" required={formData.isMakerereStudent}
-                            value={formData.collegeId} onChange={v => setFormData(p => ({ ...p, collegeId: v, courseId: '' }))}
-                            suggestionValue={formData.collegeSuggestion} onSuggestionChange={v => setFormData(p => ({ ...p, collegeSuggestion: v }))}
-                            placeholder="Select your college"
-                            options={colleges.map(c => ({ value: c.id, label: c.code ? `${c.code} – ${c.name}` : c.name }))}
-                        />
-
-                        {(formData.collegeId || formData.collegeSuggestion) && (
-                            <Combobox label="Course" required
-                                value={formData.courseId} onChange={v => handleCourseChange(v, '')}
-                                suggestionValue={formData.courseSuggestion} onSuggestionChange={v => handleCourseChange('', v)}
-                                placeholder="Select your course"
-                                options={displayedCourses.map(c => ({ value: c.id, label: c.name.length > 50 ? `${c.name.substring(0, 50)}…` : c.name }))}
+                        {/* College — Makerere students only */}
+                        {formData.isMakerereStudent && (
+                            <Combobox label="College" required
+                                value={formData.collegeId} onChange={v => setFormData(p => ({ ...p, collegeId: v, courseId: '', courseSuggestion: '' }))}
+                                suggestionValue={formData.collegeSuggestion} onSuggestionChange={v => setFormData(p => ({ ...p, collegeSuggestion: v }))}
+                                placeholder="Select your college"
+                                options={colleges.map(c => ({ value: c.id, label: c.code ? `${c.code} – ${c.name}` : c.name }))}
                             />
                         )}
+
+                        {/* Course — Makerere (after college is picked) OR Other Campus Student */}
+                        {(formData.isMakerereStudent
+                            ? (formData.collegeId || formData.collegeSuggestion)
+                            : formData.classificationTagName === 'OTHER_CAMPUS_STUDENT'
+                        ) && (
+                                <Combobox label="Course" required
+                                    value={formData.courseId} onChange={v => handleCourseChange(v, '')}
+                                    suggestionValue={formData.courseSuggestion} onSuggestionChange={v => handleCourseChange('', v)}
+                                    placeholder="Select your course"
+                                    options={displayedCourses.map(c => ({ value: c.id, label: c.name.length > 50 ? `${c.name.substring(0, 50)}…` : c.name }))}
+                                />
+                            )}
 
                         {showCourseAndYear && (formData.courseId || formData.courseSuggestion) && (
                             <div className="grid grid-cols-2 gap-4">

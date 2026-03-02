@@ -572,6 +572,12 @@ export const assignTeamLeader = async (req: Request<{ id: string }>, res: Respon
                     notes: `Leader of ${team.name}`,
                 },
             });
+
+            // Require re-authentication for elevated privileges
+            await tx.member.update({
+                where: { id: memberId },
+                data: { requiresReauth: true },
+            });
         });
 
         res.json({ message: 'Team leader assigned successfully' });

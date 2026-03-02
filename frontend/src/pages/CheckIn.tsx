@@ -72,10 +72,12 @@ const CheckIn = () => {
                     checkPermission(response.data[0].id);
                 }
 
-                // Cache events for full offline capability
+                // Always update cache — including empty array — so stale past events are cleared
                 await db.transaction('rw', db.events, async () => {
                     await db.events.clear();
-                    await db.events.bulkPut(response.data);
+                    if (response.data.length > 0) {
+                        await db.events.bulkPut(response.data);
+                    }
                 });
             } else {
                 throw new Error('Offline mode - Loading cached events');

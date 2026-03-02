@@ -19,6 +19,7 @@ interface EventReportData {
         genderBreakdown: { MALE: number; FEMALE: number };
         regionBreakdown: Record<string, number>;
         firstTimersCount: number;
+        totalMembersInScope?: number;
         salvationBreakdown?: Record<string, number>;
         tagDistribution?: Record<string, number>;
         // Academic Statistics
@@ -129,8 +130,11 @@ export const generateEventReportPDF = async (
     const metrics = [
         { label: 'Total Attendance', value: data.stats.totalAttendance, color: '#6366f1' },
         { label: 'First Timers', value: data.stats.firstTimersCount, color: '#10b981' },
-        { label: 'Members', value: data.stats.memberCount, color: '#8b5cf6' },
+        { label: 'Checked In (Members)', value: data.stats.memberCount, color: '#8b5cf6' },
         { label: 'Guests', value: data.stats.guestCount, color: '#f59e0b' },
+        ...(data.stats.totalMembersInScope != null
+            ? [{ label: 'Total Members', value: data.stats.totalMembersInScope, color: '#0ea5e9' }]
+            : []),
     ];
 
     metrics.forEach((metric, index) => {
@@ -389,7 +393,8 @@ export const generateEventReportExcel = async (
 
     const metricsData = [
         ['Total Attendance', data.stats.totalAttendance, '#6366f1'],
-        ['Member Count', data.stats.memberCount, '#8b5cf6'],
+        ['Total Members', data.stats.totalMembersInScope ?? '-', '#0ea5e9'],
+        ['Checked In (Members)', data.stats.memberCount, '#8b5cf6'],
         ['Guest Count', data.stats.guestCount, '#f59e0b'],
         ['First Timers', data.stats.firstTimersCount, '#10b981'],
         ['Male Attendees', data.stats.genderBreakdown.MALE, '#3b82f6'],

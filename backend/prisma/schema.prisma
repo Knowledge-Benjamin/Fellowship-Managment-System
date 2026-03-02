@@ -126,6 +126,9 @@ model Member {
   deletedAt              DateTime?
   deletedBy              String?
 
+  // Session security: forces re-login + MFA after privilege elevation
+  requiresReauth         Boolean   @default(false)
+
   attendances         Attendance[]
   transportBookings   TransportBooking[]
   volunteers          EventVolunteer[]
@@ -719,6 +722,7 @@ model PendingMember {
   residenceId         String?
   residenceSuggestion String?
   hostelName          String?
+  classificationTagName String? // e.g. ALUMNI, OTHER_CAMPUS_STUDENT, OTHER — for non-Makerere members
 
   familyId            String?
   family              FamilyGroup?        @relation(fields: [familyId], references: [id])

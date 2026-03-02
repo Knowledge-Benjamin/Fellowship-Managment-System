@@ -229,9 +229,12 @@ export const sendWelcomeEmail = async (
     qrCodeValue: string
 ): Promise<boolean> => {
     try {
-        // Construct the URL to our backend QR generator endpoint
-        const baseUrl = process.env.BACKEND_URL || process.env.API_URL || 'http://localhost:3000';
-        const qrCodeUrl = `${baseUrl}/api/members/qr/${encodeURIComponent(qrCodeValue)}`;
+        // Generate QR code as inline base64 data URI so email clients display it without fetching external URLs
+        const qrCodeDataUrl = await QRCode.toDataURL(qrCodeValue, {
+            width: 300,
+            margin: 2,
+            color: { dark: '#000000', light: '#FFFFFF' },
+        });
 
         const subject = '🎉 Welcome to Fellowship Manager!';
         const html = `
@@ -294,7 +297,7 @@ export const sendWelcomeEmail = async (
                         <p style="color: #64748b; margin-bottom: 15px;">Use this QR code for quick check-in at fellowship events:</p>
                         
                         <div class="qr-container">
-                            <img src="${qrCodeUrl}" alt="Your QR Code" style="max-width: 300px; width: 100%;" />
+                            <img src="${qrCodeDataUrl}" alt="Your QR Code" style="max-width: 300px; width: 100%;" />
                             <p style="margin: 15px 0 0 0; color: #64748b; font-size: 14px;">
                                 Save this QR code to your device for easy access
                             </p>
@@ -476,9 +479,12 @@ export const queueWelcomeEmail = async (
     fellowshipNumber: string,
     qrCodeValue: string
 ) => {
-    // Construct the URL to our backend QR generator endpoint
-    const baseUrl = process.env.BACKEND_URL || process.env.API_URL || 'http://localhost:3000';
-    const qrCodeUrl = `${baseUrl}/api/members/qr/${encodeURIComponent(qrCodeValue)}`;
+    // Generate QR code as inline base64 data URI so email clients display it without fetching external URLs
+    const qrCodeDataUrl = await QRCode.toDataURL(qrCodeValue, {
+        width: 300,
+        margin: 2,
+        color: { dark: '#000000', light: '#FFFFFF' },
+    });
 
 
     const subject = '🎉 Welcome to Fellowship Manager!';
@@ -542,7 +548,7 @@ export const queueWelcomeEmail = async (
                         <p style="color: #64748b; margin-bottom: 15px;">Use this QR code for quick check-in at fellowship events:</p>
                         
                         <div class="qr-container">
-                            <img src="${qrCodeUrl}" alt="Your QR Code" style="max-width: 300px; width: 100%;" />
+                            <img src="${qrCodeDataUrl}" alt="Your QR Code" style="max-width: 300px; width: 100%;" />
                             <p style="margin: 15px 0 0 0; color: #64748b; font-size: 14px;">
                                 Save this QR code to your device for easy access
                             </p>

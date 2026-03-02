@@ -246,11 +246,12 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
             expiresAt: mt.expiresAt,
         }));
 
-    // Record successful login
+    // Record successful login and clear any reauth requirements
     await prisma.member.update({
         where: { id: user.id },
         data: {
             lastSuccessfulLogin: new Date(),
+            requiresReauth: false,
         },
     });
 
@@ -354,11 +355,12 @@ export const verifyOTP = asyncHandler(async (req: Request, res: Response) => {
             expiresAt: mt.expiresAt,
         }));
 
-    // Record successful login
+    // Record successful login and clear any reauth requirements
     await prisma.member.update({
         where: { id: user.id },
         data: {
             lastSuccessfulLogin: new Date(),
+            requiresReauth: false,
         },
     });
 
@@ -446,3 +448,55 @@ export const resendOTP = asyncHandler(async (req: Request, res: Response) => {
         message: 'Verification code resent to your email.',
     });
 });
+
+/**
+ * GET /auth/me
+ * Returns the same user payload as login, using the existing JWT session.
+ * Used by the frontend refreshUser() to sync tags/profile without re-login.
+ */
+export const getMe = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.id;
+    if (!userId) {
+        res.status(401);
+        throw new Error('Unauthorized');
+    }
+
+    const user = await prisma.member.findFirst({
+        where: { id: userId, ...activeMemberFilter },
+        include: {
+            memberTags: {
+                where: { isActive: true },
+                include: {
+                    tag: {
+                        select: { name: true, color: true },
+                    },
+                },
+            },
+        },
+    });
+
+    if (!user) {
+        res.status(404);
+        throw new Error('User not found');
+    }
+
+    const tags = user.memberTags
+        .filter((mt) => mt.tag && mt.isActive)
+        .map((mt) => ({
+            name: mt.tag!.name,
+            isActive: mt.isActive,
+            color: mt.tag!.color,
+            expiresAt: mt.expiresAt,
+        }));
+
+    res.json({
+        id: user.id,
+        fullName: user.fullName,
+        email: user.email,
+        role: user.role,
+        fellowshipNumber: user.fellowshipNumber,
+        qrCode: user.qrCode,
+        tags,
+    });
+});
+

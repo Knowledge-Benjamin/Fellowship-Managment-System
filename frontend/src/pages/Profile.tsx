@@ -127,9 +127,14 @@ const Profile = () => {
         const ctx = canvas.getContext('2d');
         const img = new Image();
         img.onload = () => {
-            canvas.width = img.width;
-            canvas.height = img.height;
-            ctx?.drawImage(img, 0, 0);
+            const padding = 30;
+            canvas.width = img.width + padding * 2;
+            canvas.height = img.height + padding * 2;
+            if (ctx) {
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, padding, padding);
+            }
             const pngFile = canvas.toDataURL('image/png');
             const link = document.createElement('a');
             link.download = `${user.fullName.replace(/\s+/g, '-')}-QR.png`;

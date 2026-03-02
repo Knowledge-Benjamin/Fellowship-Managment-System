@@ -30,6 +30,7 @@ interface EventReportData {
         memberCount: number;
         guestCount: number;
         firstTimersCount: number;
+        totalMembersInScope?: number;
         genderBreakdown: { MALE: number; FEMALE: number };
         regionBreakdown: Record<string, number>;
         salvationBreakdown?: Record<string, number>;
@@ -373,7 +374,20 @@ const EventReport = () => {
     const [error, setError] = useState<string | null>(null);
     const [showExportMenu, setShowExportMenu] = useState(false);
     const [activeDrilldown, setActiveDrilldown] = useState<DrilldownState | null>(null);
+    const [allMembersDrilldown, setAllMembersDrilldown] = useState<any[] | null>(null);
     const exportRef = useRef<HTMLDivElement>(null);
+
+    const fetchAllMembers = async () => {
+        // Open the drilldown immediately (empty) so it feels instant like other cards
+        setAllMembersDrilldown([]);
+        try {
+            const res = await api.get(`/reports/${id}/members`);
+            setAllMembersDrilldown(res.data.members);
+        } catch {
+            toast.error('Failed to load member list');
+            setAllMembersDrilldown(null); // Close drilldown on error
+        }
+    };
 
     const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
     const isFellowshipManager = currentUser.role === 'FELLOWSHIP_MANAGER';
@@ -671,7 +685,19 @@ const EventReport = () => {
                 </div>
 
                 {/* ── Key Metrics ───────────────────────────────────────────── */}
-                {activeDrilldown ? (
+                {allMembersDrilldown ? (
+                    <DrilldownTable
+                        title="All Members"
+                        attendees={allMembersDrilldown}
+                        fullDataset={allMembersDrilldown}
+                        exportCategorizeBy={a => {
+                            if (a.tags?.includes('ALUMNI')) return 'Alumni';
+                            if (a.course) return 'Makerere Students';
+                            return 'Non-Makerere / Other';
+                        }}
+                        onClose={() => setAllMembersDrilldown(null)}
+                    />
+                ) : activeDrilldown ? (
                     <DrilldownTable
                         title={activeDrilldown.title}
                         attendees={(activeDrilldown.dataSource === 'salvations' ? (report.salvations || []) : (report.attendees || [])).filter(activeDrilldown.filterFn)}
@@ -681,7 +707,7 @@ const EventReport = () => {
                     />
                 ) : (
                     <>
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
                             <StatCard
                                 icon={Users} label="Total Attendance" value={stats.totalAttendance} accent={GREEN}
                                 onClick={() => setActiveDrilldown({ title: 'Total Attendance', filterFn: () => true, exportCategorizeBy: a => a.isGuest ? 'Guests' : 'Members' })}
@@ -693,14 +719,23 @@ const EventReport = () => {
                                 ) : <span className="text-slate-400">All attendees</span>}
                             />
                             <StatCard
-                                icon={UserCheck} label="Registered Members" value={stats.memberCount} accent="#3b82f6"
-                                onClick={() => setActiveDrilldown({ title: 'Registered Members', filterFn: a => !a.isGuest, exportCategorizeBy: a => a.gender || 'Unknown Gender' })}
-                                sub={<span className="text-slate-400">{pct(stats.memberCount, stats.totalAttendance)} of total</span>}
+                                icon={Users} label="Total Members" value={stats.totalMembersInScope ?? '—'} accent="#0ea5e9"
+                                onClick={fetchAllMembers}
+                                sub={
+                                    stats.totalMembersInScope != null
+                                        ? <span className="text-slate-400">{pct(stats.memberCount, stats.totalMembersInScope)} attendance rate</span>
+                                        : <span className="text-slate-400">Fellowship size</span>
+                                }
+                            />
+                            <StatCard
+                                icon={UserCheck} label="Checked In" value={stats.memberCount} accent="#3b82f6"
+                                onClick={() => setActiveDrilldown({ title: 'Checked In', filterFn: a => !a.isGuest, exportCategorizeBy: a => a.gender || 'Unknown Gender' })}
+                                sub={<span className="text-slate-400">{pct(stats.memberCount, stats.totalAttendance)} of attendance</span>}
                             />
                             <StatCard
                                 icon={UserCheck} label="First Timers" value={stats.firstTimersCount} accent="#f59e0b"
                                 onClick={() => setActiveDrilldown({ title: 'First Timers', filterFn: a => a.isFirstTimer === true, exportCategorizeBy: a => a.isFirstTimer ? 'First Timers' : 'Returning Attendees' })}
-                                sub={<span className="text-slate-400">{pct(stats.firstTimersCount, stats.memberCount)} of members</span>}
+                                sub={<span className="text-slate-400">{pct(stats.firstTimersCount, stats.memberCount)} of checked in</span>}
                             />
                             <StatCard
                                 icon={UserPlus} label="Guests" value={stats.guestCount} accent="#8b5cf6"

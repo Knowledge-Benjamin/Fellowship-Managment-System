@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, AlertCircle, Search, Loader2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import api from '../../api';
+import { useAuth } from '../../context/AuthContext';
 
 interface AssignTeamLeaderModalProps {
     isOpen: boolean;
@@ -30,6 +31,7 @@ const AssignTeamLeaderModal: React.FC<AssignTeamLeaderModalProps> = ({
     onSuccess,
     team,
 }) => {
+    const { refreshUser } = useAuth();
     const [members, setMembers] = useState<Member[]>([]);
     const [selectedMemberId, setSelectedMemberId] = useState('');
     const [loading, setLoading] = useState(false);
@@ -71,6 +73,8 @@ const AssignTeamLeaderModal: React.FC<AssignTeamLeaderModalProps> = ({
 
             const selectedMember = members.find(m => m.id === selectedMemberId);
             toast.success(`${selectedMember?.fullName} assigned as team leader`);
+            // Refresh auth session so Navbar/profile tags update for the current user
+            await refreshUser();
             onSuccess();
             handleClose();
         } catch (error: any) {

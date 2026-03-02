@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, UserCheck, AlertCircle } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import api from '../../api';
+import { useAuth } from '../../context/AuthContext';
 
 interface AssignFamilyHeadModalProps {
     isOpen: boolean;
@@ -35,6 +36,7 @@ const AssignFamilyHeadModal: React.FC<AssignFamilyHeadModalProps> = ({
     onSuccess,
     family,
 }) => {
+    const { refreshUser } = useAuth();
     const [members, setMembers] = useState<Member[]>([]);
     const [selectedMemberId, setSelectedMemberId] = useState('');
     const [loading, setLoading] = useState(false);
@@ -76,6 +78,8 @@ const AssignFamilyHeadModal: React.FC<AssignFamilyHeadModalProps> = ({
 
             const selectedMember = members.find(m => m.id === selectedMemberId);
             toast.success(`${selectedMember?.fullName} assigned as head of ${family.name}`);
+            // Refresh auth session so Navbar/profile tags update for the current user
+            await refreshUser();
             onSuccess();
             handleClose();
         } catch (error: any) {

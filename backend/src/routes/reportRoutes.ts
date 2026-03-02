@@ -11,7 +11,8 @@ import {
     publishEventReport,
     unpublishEventReport,
     getReportStatus,
-    getPublishedReports
+    getPublishedReports,
+    getEventReportMembers
 } from '../controllers/reportController';
 import { asyncHandler } from '../utils/asyncHandler';
 import { protect, authorize } from '../middleware/authMiddleware';
@@ -32,6 +33,7 @@ router.get('/:eventId/compare', asyncHandler(getComparativeReport));
 router.get('/:eventId/export/pdf', asyncHandler(exportEventReportPDF));
 router.get('/:eventId/export/excel', asyncHandler(exportEventReportExcel));
 router.get('/:eventId/status', asyncHandler(getReportStatus));
+router.get('/:eventId/members', asyncHandler(getEventReportMembers));
 
 // Publishing controls - Fellowship Managers only
 router.post('/:eventId/publish', authorize('FELLOWSHIP_MANAGER'), asyncHandler(publishEventReport));

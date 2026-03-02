@@ -116,7 +116,7 @@ export const getOrgStructure = async (req: Request, res: Response) => {
     }
 };
 
-// Assign regional head
+// Assign regional head (replaces existing head automatically)
 export const assignRegionalHead = async (req: Request, res: Response) => {
     try {
         const { regionId, memberId } = req.body;
@@ -126,13 +126,21 @@ export const assignRegionalHead = async (req: Request, res: Response) => {
             return res.status(401).json({ message: 'Unauthorized' });
         }
 
-        // Verify member exists and is not already a regional head
-        const member = await prisma.member.findUnique({
-            where: { id: memberId },
-            include: {
-                headsRegion: true,
-            },
-        });
+        // Fetch both the target region and the incoming member in parallel
+        const [region, member] = await Promise.all([
+            prisma.region.findUnique({
+                where: { id: regionId },
+                select: { id: true, name: true, regionalHeadId: true },
+            }),
+            prisma.member.findUnique({
+                where: { id: memberId },
+                include: { headsRegion: true },
+            }),
+        ]);
+
+        if (!region) {
+            return res.status(404).json({ message: 'Region not found' });
+        }
 
         if (!member) {
             return res.status(404).json({ message: 'Member not found' });
@@ -142,59 +150,83 @@ export const assignRegionalHead = async (req: Request, res: Response) => {
             return res.status(400).json({ message: 'Cannot assign deleted member as regional head' });
         }
 
-        if (member.headsRegion) {
+        // Prevent assigning a member who already heads a DIFFERENT region
+        if (member.headsRegion && member.headsRegion.id !== regionId) {
             return res.status(400).json({
                 message: `Member is already heading ${member.headsRegion.name} region`,
             });
         }
 
-        // Get REGIONAL_HEAD tag
+        // Get or create REGIONAL_HEAD tag
         let regionalHeadTag = await prisma.tag.findFirst({
             where: { name: 'REGIONAL_HEAD' },
         });
 
-        // Create tag if it doesn't exist
         if (!regionalHeadTag) {
             regionalHeadTag = await prisma.tag.create({
                 data: {
                     name: 'REGIONAL_HEAD',
                     description: 'Regional Head',
                     type: 'SYSTEM',
-                    color: '#8b5cf6', // Purple
+                    color: '#8b5cf6',
                     isSystem: true,
                     createdBy: assignerId,
                 },
             });
         }
 
-        // Assign in transaction
         const result = await prisma.$transaction(async (tx) => {
-            // Update region
-            const region = await tx.region.update({
+            // Auto-remove existing head if there is one (and it's not the same member)
+            if (region.regionalHeadId && region.regionalHeadId !== memberId) {
+                await tx.memberTag.updateMany({
+                    where: {
+                        memberId: region.regionalHeadId,
+                        tagId: regionalHeadTag!.id,
+                        isActive: true,
+                    },
+                    data: {
+                        isActive: false,
+                        removedAt: new Date(),
+                        removedBy: assignerId,
+                        notes: `Replaced as Regional Head of ${region.name}`,
+                    },
+                });
+            }
+
+            // Assign new head to region
+            const updatedRegion = await tx.region.update({
                 where: { id: regionId },
                 data: { regionalHeadId: memberId },
                 include: {
                     regionalHead: {
-                        select: {
-                            id: true,
-                            fullName: true,
-                            email: true,
-                        },
+                        select: { id: true, fullName: true, email: true },
                     },
                 },
             });
 
-            // Assign tag
-            await tx.memberTag.create({
-                data: {
-                    memberId,
-                    tagId: regionalHeadTag!.id,
-                    assignedBy: assignerId,
-                    notes: `Regional Head of ${region.name}`,
-                },
+            // Assign REGIONAL_HEAD tag to new head (skip if already active)
+            const existingTag = await tx.memberTag.findFirst({
+                where: { memberId, tagId: regionalHeadTag!.id, isActive: true },
             });
 
-            return region;
+            if (!existingTag) {
+                await tx.memberTag.create({
+                    data: {
+                        memberId,
+                        tagId: regionalHeadTag!.id,
+                        assignedBy: assignerId,
+                        notes: `Regional Head of ${updatedRegion.name}`,
+                    },
+                });
+            }
+
+            // Require re-authentication for elevated privileges
+            await tx.member.update({
+                where: { id: memberId },
+                data: { requiresReauth: true },
+            });
+
+            return updatedRegion;
         });
 
         res.json({ message: 'Regional head assigned successfully', region: result });
@@ -203,6 +235,7 @@ export const assignRegionalHead = async (req: Request, res: Response) => {
         res.status(500).json({ message: 'Failed to assign regional head' });
     }
 };
+
 
 // Remove regional head
 export const removeRegionalHead = async (req: Request<{ regionId: string }>, res: Response) => {

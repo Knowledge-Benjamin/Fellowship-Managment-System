@@ -172,6 +172,24 @@ export const getEvents = async (req: Request, res: Response) => {
 // Get active events (currently running) - supports multiple concurrent events
 export const getActiveEvents = async (req: Request, res: Response) => {
     try {
+        // ── Lazy auto-deactivation ──────────────────────────────────────────
+        // Find all isActive events and silently deactivate any that are now PAST.
+        // This fires only when the check-in page is actually opened, so there is
+        // zero idle cost and no in-memory timers to lose on restart.
+        const currentlyActive = await prisma.event.findMany({ where: { isActive: true } });
+        const staleIds = currentlyActive
+            .filter(e => getEventStatus(e) === 'PAST')
+            .map(e => e.id);
+
+        if (staleIds.length > 0) {
+            await prisma.event.updateMany({
+                where: { id: { in: staleIds } },
+                data: { isActive: false },
+            });
+            console.log(`[EVENTS] Auto-deactivated ${staleIds.length} past event(s): ${staleIds.join(', ')}`);
+        }
+        // ───────────────────────────────────────────────────────────────────
+
         const activeEvents = await prisma.event.findMany({
             where: { isActive: true },
             include: {
@@ -186,7 +204,7 @@ export const getActiveEvents = async (req: Request, res: Response) => {
         });
 
         if (activeEvents.length === 0) {
-            return res.status(404).json({ error: 'No active events found' });
+            return res.json([]);
         }
 
         const eventsWithStatus = activeEvents.map(event => ({

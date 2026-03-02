@@ -351,7 +351,7 @@ const MemberManagement = () => {
                                             <td className="py-3 px-4">
                                                 {member.tags && member.tags.length > 0 ? (
                                                     <div className="flex flex-wrap gap-1">
-                                                        {member.tags.map(tag => (
+                                                        {member.tags.map((tag: Tag) => (
                                                             <TagBadge key={tag.id} tag={tag} size="sm" showIcon={false} />
                                                         ))}
                                                     </div>

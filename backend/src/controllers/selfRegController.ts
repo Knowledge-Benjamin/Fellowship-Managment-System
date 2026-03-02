@@ -1,12 +1,8 @@
 import { Request, Response } from 'express';
 import crypto from 'crypto';
-import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import prisma from '../prisma';
-import { generateFellowshipNumber } from '../utils/fellowshipNumberGenerator';
-import { formatRegionName } from '../utils/displayFormatters';
-import { updateMemberTags } from '../utils/finalistHelper';
-import { queueWelcomeEmail } from '../services/emailService';
+import { createMemberRecord } from '../services/memberService';
 import cache from '../utils/cache';
 
 // ─── Schemas ──────────────────────────────────────────────────────────────────
@@ -37,6 +33,8 @@ const selfRegSubmitSchema = z.object({
     residenceId: z.string().uuid().optional(),
     residenceSuggestion: z.string().optional(),
     hostelName: z.string().optional(),
+    // Classification — strict whitelist, only for non-Makerere members
+    classificationTagName: z.enum(['ALUMNI', 'OTHER_CAMPUS_STUDENT', 'OTHER']).optional(),
 
     familyId: z.string().uuid().optional(),
 });
@@ -253,6 +251,7 @@ export const submitSelfReg = async (req: Request, res: Response) => {
                     residenceId: data.residenceId ?? null,
                     residenceSuggestion: data.residenceSuggestion ?? null,
                     hostelName: data.hostelName ?? null,
+                    classificationTagName: data.classificationTagName ?? null,
                     familyId: data.familyId ?? null,
                     ipAddress,
                 },
@@ -357,6 +356,7 @@ export const approvePendingMember = async (req: Request, res: Response) => {
         const id = req.params.id as string;
         const reviewerId = String((req as any).user?.id ?? '');
 
+        // ── Resolve the pending member record ────────────────────────────────
         const pending = await prisma.pendingMember.findUnique({
             where: { id },
             include: { region: true },
@@ -366,113 +366,84 @@ export const approvePendingMember = async (req: Request, res: Response) => {
         if (pending.status !== 'PENDING') return res.status(400).json({ error: 'This registration has already been reviewed' });
         if (!pending.regionId) return res.status(400).json({ error: 'Region must be assigned before approving' });
 
-        // Resolve college suggestion → create if needed
+        // ── Resolve suggestions (college / course / residence) ───────────────
+        // These may create new rows — done BEFORE the transaction to keep the
+        // tx as short as possible and avoid long-running locks.
         let resolvedCollegeId = pending.collegeId;
         if (!resolvedCollegeId && pending.collegeSuggestion) {
             const existing = await prisma.college.findFirst({ where: { name: { equals: pending.collegeSuggestion, mode: 'insensitive' } } });
-            if (existing) {
-                resolvedCollegeId = existing.id;
-            } else {
-                const newCollege = await prisma.college.create({ data: { name: pending.collegeSuggestion } });
-                resolvedCollegeId = newCollege.id;
-            }
+            resolvedCollegeId = existing
+                ? existing.id
+                : (await prisma.college.create({ data: { name: pending.collegeSuggestion } })).id;
         }
 
-        // Resolve course suggestion → create if needed
         let resolvedCourseId = pending.courseId;
         if (!resolvedCourseId && pending.courseSuggestion) {
             const existing = await prisma.course.findFirst({ where: { name: { equals: pending.courseSuggestion, mode: 'insensitive' } } });
             if (existing) {
                 resolvedCourseId = existing.id;
             } else {
-                // Generate unique code: first 3 letters of name + random 3-digit suffix
                 const baseCode = pending.courseSuggestion.replace(/\s/g, '').substring(0, 3).toUpperCase();
                 const code = `${baseCode}${Math.floor(100 + Math.random() * 900)}`;
-                const newCourse = await prisma.course.create({
-                    data: {
-                        name: pending.courseSuggestion,
-                        code,
-                        ...(resolvedCollegeId && { collegeId: resolvedCollegeId }),
-                    },
-                });
-                resolvedCourseId = newCourse.id;
+                resolvedCourseId = (await prisma.course.create({
+                    data: { name: pending.courseSuggestion, code, ...(resolvedCollegeId && { collegeId: resolvedCollegeId }) },
+                })).id;
             }
         }
 
-        // Resolve residence suggestion → create if needed
         let resolvedResidenceId = pending.residenceId;
         if (!resolvedResidenceId && pending.residenceSuggestion) {
             const existing = await prisma.residence.findFirst({ where: { name: { equals: pending.residenceSuggestion, mode: 'insensitive' } } });
-            if (existing) {
-                resolvedResidenceId = existing.id;
-            } else {
-                const newRes = await prisma.residence.create({ data: { name: pending.residenceSuggestion } });
-                resolvedResidenceId = newRes.id;
-            }
+            resolvedResidenceId = existing
+                ? existing.id
+                : (await prisma.residence.create({ data: { name: pending.residenceSuggestion } })).id;
         }
 
-        const fellowshipNumber = await generateFellowshipNumber();
-        const hashedPassword = await bcrypt.hash(fellowshipNumber, 10);
-
-        const member = await prisma.$transaction(async (tx) => {
-            const created = await tx.member.create({
-                data: {
+        // ── Atomic transaction ────────────────────────────────────────────────
+        // createMemberRecord handles: Member row, all tag assignments,
+        // finalist/alumni evaluation, and queuing the welcome email.
+        // Family assignment + marking APPROVED are caller-specific and stay here — all in the same tx.
+        const { member, fellowshipNumber } = await prisma.$transaction(async (tx) => {
+            const { member, fellowshipNumber } = await createMemberRecord(
+                {
                     fullName: pending.fullName,
                     email: pending.email,
                     phoneNumber: pending.phoneNumber,
                     gender: pending.gender,
-                    password: hashedPassword,
-                    fellowshipNumber,
                     regionId: pending.regionId!,
                     registrationMode: pending.registrationMode,
-                    ...(resolvedCourseId && { courseId: resolvedCourseId }),
-                    ...(pending.initialYearOfStudy && { initialYearOfStudy: pending.initialYearOfStudy }),
-                    ...(pending.initialSemester && { initialSemester: pending.initialSemester }),
-                    ...(resolvedResidenceId && { residenceId: resolvedResidenceId }),
-                    ...(pending.hostelName && { hostelName: pending.hostelName }),
+                    courseId: resolvedCourseId ?? undefined,
+                    initialYearOfStudy: pending.initialYearOfStudy ?? undefined,
+                    initialSemester: pending.initialSemester ?? undefined,
+                    residenceId: resolvedResidenceId ?? undefined,
+                    hostelName: pending.hostelName ?? undefined,
+                    // Classification tag — name looked up inside the service
+                    classificationTagName: pending.classificationTagName ?? undefined,
                 },
-                include: { region: true, courseRelation: true },
-            });
+                tx,
+            );
 
-            // Assign PENDING_FIRST_ATTENDANCE tag for new members
-            if (pending.registrationMode === 'NEW_MEMBER') {
-                const tag = await tx.tag.findUnique({ where: { name: 'PENDING_FIRST_ATTENDANCE' } });
-                if (tag) {
-                    await tx.memberTag.create({
-                        data: { memberId: created.id, tagId: tag.id, assignedBy: created.id, isActive: true },
-                    });
-                }
-            }
-
-            // Update finalist/alumni tags if academic info present
-            if (resolvedCourseId && pending.initialYearOfStudy && pending.initialSemester) {
-                await updateMemberTags(created.id, created.id, tx);
-            }
-
-            // Family assignment if familyId was provided
+            // Family assignment (approval-specific, must be in same tx)
             if (pending.familyId) {
                 const familyExists = await tx.familyGroup.findUnique({ where: { id: pending.familyId } });
                 if (familyExists) {
                     await tx.familyMember.create({
                         data: {
                             familyId: pending.familyId,
-                            memberId: created.id,
-                            assignedBy: reviewerId || created.id,
-                        }
+                            memberId: member.id,
+                            assignedBy: reviewerId || member.id,
+                        },
                     });
                 }
             }
 
-            // Queue welcome email
-            await queueWelcomeEmail(tx, created.email, created.fullName, fellowshipNumber, created.qrCode);
-
-            // Mark pending as approved
+            // Mark pending as APPROVED (must be atomic with member creation)
             await tx.pendingMember.update({
                 where: { id: pending.id },
                 data: { status: 'APPROVED', reviewedBy: reviewerId, reviewedAt: new Date() },
             });
 
-            return created;
+            return { member, fellowshipNumber };
         }, { timeout: 15000 });
 
         res.json({ message: 'Member approved and created successfully', member, fellowshipNumber });

@@ -23,6 +23,7 @@ interface AuthContextType {
     token: string | null;
     login: (token: string, user: User) => void;
     logout: () => void;
+    refreshUser: () => Promise<void>;
     isAuthenticated: boolean;
     isManager: boolean;
     loading: boolean;
@@ -86,6 +87,31 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         navigate('/login');
     };
 
+    // Re-fetches the current user's profile from the server and syncs auth state.
+    // Call this after any leadership role change so tags reflect reality immediately
+    // for the currently-logged-in user (e.g., the FM's own session after self-changes).
+    const refreshUser = async (): Promise<void> => {
+        try {
+            const { data } = await api.get('/auth/me');
+            // /auth/me returns the same shape as login: { id, fullName, email, role,
+            // fellowshipNumber, qrCode, tags: [{ name, isActive, color, expiresAt }] }
+            const updated: User = {
+                id: data.id,
+                fullName: data.fullName,
+                email: data.email,
+                role: data.role,
+                fellowshipNumber: data.fellowshipNumber,
+                qrCode: data.qrCode,
+                tags: data.tags ?? [],
+            };
+            setUser(updated);
+            localStorage.setItem('user', JSON.stringify(updated));
+        } catch {
+            // Fail silently — stale data is better than crashing
+        }
+    };
+
+
     // Helper: Check if user has a specific tag (with expiry check)
     const hasTag = (tagName: string): boolean => {
         if (!user?.tags || !Array.isArray(user.tags)) return false;
@@ -136,6 +162,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 token,
                 login,
                 logout,
+                refreshUser,
                 isAuthenticated: !!token,
                 isManager: user?.role === 'FELLOWSHIP_MANAGER',
                 loading,

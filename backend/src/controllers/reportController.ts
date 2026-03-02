@@ -322,6 +322,12 @@ export const getEventReport = async (req: Request<{ eventId: string }>, res: Res
 
         const stats = await aggregateAttendanceStats(event.attendances, event.guestAttendances, event.salvations, event.date);
 
+        // Total active members within the viewer's scope (all, region, family, or team)
+        // This is the fellowship headcount — distinct from memberCount (those who checked in)
+        const totalMembersInScope = await prisma.member.count({
+            where: { isDeleted: false, ...memberFilter },
+        });
+
         // Map attendees to a lightweight format for frontend drill-downs (instant zero-latency clicks)
         const mappedAttendees = event.attendances.map((a: any) => ({
             id: a.member.id,
@@ -370,7 +376,7 @@ export const getEventReport = async (req: Request<{ eventId: string }>, res: Res
                 type: event.type,
                 status: getEventStatus(event),
             },
-            stats,
+            stats: { ...stats, totalMembersInScope },
             attendees: [...mappedAttendees, ...mappedGuests],
             salvations: mappedSalvations,
             guests: mappedGuests.map((g: any) => ({ name: g.name, purpose: g.purpose })), // Keep for backward compatibility if needed, though attendees is better
@@ -1218,3 +1224,84 @@ export const getPublishedReports = async (req: Request, res: Response) => {
         res.status(500).json({ error: 'Failed to fetch published reports' });
     }
 };
+
+// ── GET /reports/:eventId/members ────────────────────────────────────────────
+// Returns all active members within the authenticated user's scope,
+// mapped to the same attendee shape used by the frontend DrilldownTable.
+// Security: scope is derived entirely from the JWT (getUserReportScope).
+// The eventId in the URL exists only for route consistency — it does NOT
+// control which members are returned; the JWT role/assignments do.
+export const getEventReportMembers = async (req: Request<{ eventId: string }>, res: Response) => {
+    try {
+        const userId = req.user?.id;
+        const userRole = req.user?.role;
+
+        if (!userId || !userRole) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+
+        const scope = await getUserReportScope(userId);
+        const memberFilter = buildMemberScopeFilter(scope);
+
+        const members = await prisma.member.findMany({
+            where: { isDeleted: false, ...memberFilter },
+            select: {
+                id: true,
+                fullName: true,
+                gender: true,
+                phoneNumber: true,
+                initialYearOfStudy: true,
+                region: { select: { name: true } },
+                courseRelation: {
+                    select: {
+                        name: true,
+                        college: { select: { name: true } },
+                    },
+                },
+                familyMemberships: {
+                    where: { isActive: true },
+                    select: { family: { select: { name: true } } },
+                },
+                ministryMemberships: {
+                    where: { isActive: true },
+                    select: { team: { select: { name: true } } },
+                },
+                memberTags: {
+                    where: {
+                        isActive: true,
+                        OR: [
+                            { expiresAt: null },
+                            { expiresAt: { gt: new Date() } },
+                        ],
+                    },
+                    select: { tag: { select: { name: true } } },
+                },
+            },
+            orderBy: { fullName: 'asc' },
+        });
+
+        // Map to the same shape as event report attendees so DrilldownTable
+        // renders without any structural frontend changes
+        const mapped = members.map((m: any) => ({
+            id: m.id,
+            name: m.fullName,
+            gender: m.gender,
+            contactPhone: m.phoneNumber,
+            region: m.region?.name ?? null,
+            college: m.courseRelation?.college?.name ?? null,
+            course: m.courseRelation?.name ?? null,
+            year: m.initialYearOfStudy ?? null,
+            families: m.familyMemberships.map((fm: any) => fm.family.name),
+            teams: m.ministryMemberships.map((mm: any) => mm.team.name),
+            tags: m.memberTags.map((mt: any) => mt.tag.name),
+            isGuest: false,
+            isFirstTimer: false,
+        }));
+
+        res.json({ members: mapped, total: mapped.length });
+    } catch (error) {
+        console.error('getEventReportMembers error:', error);
+        res.status(500).json({ error: 'Failed to fetch members' });
+    }
+};
+

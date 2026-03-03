@@ -54,10 +54,11 @@ const sendEmail = async (
     const fromName = settings.fromName || 'Manifest Fellowship';
     const replyTo = settings.replyTo || fromAddress;
 
-    // Headers that improve deliverability
+    // Lightweight identification headers — does NOT include List-Unsubscribe or Reply-To
+    // (List-Unsubscribe is a bulk-email header that triggers compliance processing on SendGrid,
+    //  causing significant latency on transactional emails like OTP. Reply-To is already
+    //  handled by the dedicated replyTo field on the SendGrid payload.)
     const extraHeaders = {
-        'Reply-To': replyTo,
-        'List-Unsubscribe': `<mailto:${replyTo}?subject=Unsubscribe>`,
         'X-Priority': '3',
         'Importance': 'Normal',
         'X-Mailer': 'Manifest Fellowship Manager',
@@ -69,11 +70,10 @@ const sendEmail = async (
             await sgMail.send({
                 to,
                 from: { name: fromName, email: fromAddress },
-                replyTo: { email: replyTo },
+                replyTo,
                 subject,
                 html,
                 text,
-                headers: extraHeaders,
             });
             console.log(`[EMAIL] ✅ Sent via SendGrid to ${to}`);
             return true;

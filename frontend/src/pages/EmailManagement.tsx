@@ -651,7 +651,7 @@ function SettingsTab({ showToast }: { showToast: Function }) {
                         <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Reply-To Email</label>
                         <input type="email" value={settings.replyTo} onChange={e => setSettings(s => ({ ...s, replyTo: e.target.value }))}
                             placeholder="contact@manifestfellowship.org" className="input transition-smooth w-full" />
-                        <p className="text-xs text-slate-400 mt-1">Where replies from members will land. Also used in List-Unsubscribe header</p>
+                        <p className="text-xs text-slate-400 mt-1">Where replies from members will land. Passed as the proper Reply-To field on all outbound emails.</p>
                     </div>
                     <div>
                         <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Frontend URL</label>
@@ -677,6 +677,12 @@ function SettingsTab({ showToast }: { showToast: Function }) {
                 <h3 className="font-bold text-slate-900 text-sm mb-4">📬 Deliverability Checklist</h3>
                 <p className="text-xs text-slate-500 mb-4">Complete these DNS/domain steps to maximise inbox placement. These are configured outside the app.</p>
                 {[
+                    {
+                        done: true,
+                        title: 'Transactional emails optimised (no bulk headers)',
+                        detail: 'List-Unsubscribe and duplicate Reply-To headers are excluded from transactional emails (OTP, welcome, etc.) to avoid SendGrid compliance processing delays. These headers are only added to mass Compose sends.',
+                        link: undefined,
+                    },
                     {
                         done: settings.sendgridConfigured,
                         title: 'SendGrid API key configured',

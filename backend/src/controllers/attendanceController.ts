@@ -295,20 +295,22 @@ export const getMembersForCheckIn = async (req: Request, res: Response) => {
             memberWhere.gender = gender;
         }
 
-        // Push Check-In status filter down to the exact database level!
-        if (status === 'checked-in') {
-            memberWhere.attendances = { some: { eventId } };
-        } else if (status === 'not-checked-in') {
-            memberWhere.attendances = { none: { eventId } };
-        }
-
-        // Fetch all active members with attendance status
-        const finalWhere = {
+        // Base where clause without the attendance status filter
+        const baseWhere = {
             ...memberWhere,
             ...activeMemberFilter
         };
 
-        const [total, members] = await prisma.$transaction([
+        const finalWhere = { ...baseWhere };
+
+        // Push Check-In status filter down to the exact database level!
+        if (status === 'checked-in') {
+            finalWhere.attendances = { some: { eventId } };
+        } else if (status === 'not-checked-in') {
+            finalWhere.attendances = { none: { eventId } };
+        }
+
+        const [total, members, overallTotal, totalCheckedIn] = await prisma.$transaction([
             prisma.member.count({ where: finalWhere }),
             prisma.member.findMany({
                 where: finalWhere,
@@ -329,6 +331,13 @@ export const getMembersForCheckIn = async (req: Request, res: Response) => {
                     fullName: 'asc',
                 },
             }),
+            prisma.member.count({ where: baseWhere }),
+            prisma.member.count({
+                where: {
+                    ...baseWhere,
+                    attendances: { some: { eventId } }
+                }
+            })
         ]);
 
         // Transform data to include check-in status
@@ -349,6 +358,11 @@ export const getMembersForCheckIn = async (req: Request, res: Response) => {
             eventId,
             eventName: event.name,
             data: membersWithStatus,
+            stats: {
+                total: overallTotal,
+                checkedIn: totalCheckedIn,
+                notCheckedIn: overallTotal - totalCheckedIn
+            },
             meta: {
                 total,
                 page: parsedPage,

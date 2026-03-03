@@ -60,11 +60,10 @@ const MemberManagement = () => {
 
     useEffect(() => {
         const to = setTimeout(() => {
-            setPage(1);
-            fetchData(1, searchQuery);
+            fetchData(page, searchQuery);
         }, 300);
         return () => clearTimeout(to);
-    }, [searchQuery]);
+    }, [searchQuery, page]);
 
     const fetchData = async (currentPage = page, search = searchQuery) => {
         try {
@@ -195,7 +194,10 @@ const MemberManagement = () => {
                         type="text"
                         placeholder="Search by name, email, number or region…"
                         value={searchQuery}
-                        onChange={e => setSearchQuery(e.target.value)}
+                        onChange={e => {
+                            setSearchQuery(e.target.value);
+                            setPage(1);
+                        }}
                         className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white border-2 border-slate-200 text-slate-900 text-sm placeholder-slate-400 focus:outline-none transition-all"
                         onFocus={e => { e.currentTarget.style.borderColor = '#48A111'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(72,161,17,0.12)'; }}
                         onBlur={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.boxShadow = 'none'; }}

@@ -51,6 +51,9 @@ const ManualCheckIn = () => {
     const [totalPages, setTotalPages] = useState(1);
     const [totalMembers, setTotalMembers] = useState(0);
 
+    // Stats
+    const [checkInStats, setCheckInStats] = useState({ total: 0, checkedIn: 0, notCheckedIn: 0 });
+
     useEffect(() => {
         // Check if user is a manager
         if (user?.role !== 'FELLOWSHIP_MANAGER') {
@@ -65,11 +68,10 @@ const ManualCheckIn = () => {
         if (user?.role !== 'FELLOWSHIP_MANAGER') return;
 
         const to = setTimeout(() => {
-            setPage(1);
-            fetchMembers(1, searchTerm);
+            fetchMembers(page, searchTerm);
         }, 300);
         return () => clearTimeout(to);
-    }, [searchTerm, selectedRegion, selectedGender, selectedStatus, eventId, user]);
+    }, [searchTerm, selectedRegion, selectedGender, selectedStatus, eventId, user, page]);
 
     const fetchRegions = async () => {
         try {
@@ -96,6 +98,9 @@ const ManualCheckIn = () => {
             setTotalPages(response.data.meta?.totalPages || 1);
             setTotalMembers(response.data.meta?.total || 0);
             setEventName(response.data.eventName || 'Event');
+            if (response.data.stats) {
+                setCheckInStats(response.data.stats);
+            }
         } catch (error: any) {
             console.error('Failed to fetch members:', error);
             toast.error(error?.response?.data?.error || 'Failed to load members');
@@ -122,6 +127,12 @@ const ManualCheckIn = () => {
                     ? { ...m, isCheckedIn: true, checkInTime: new Date().toISOString(), checkInMethod: 'MANUAL' }
                     : m
             ));
+
+            setCheckInStats(prev => ({
+                ...prev,
+                checkedIn: prev.checkedIn + 1,
+                notCheckedIn: Math.max(0, prev.notCheckedIn - 1)
+            }));
         } catch (error: any) {
             console.error('Check-in failed:', error);
             toast.error(error?.response?.data?.error || 'Check-in failed');
@@ -130,11 +141,7 @@ const ManualCheckIn = () => {
         }
     };
 
-    const stats = {
-        total: totalMembers,
-        checkedIn: members.filter(m => m.isCheckedIn).length,
-        notCheckedIn: members.filter(m => !m.isCheckedIn).length,
-    };
+    const stats = checkInStats;
 
     return (
         <div className="min-h-screen bg-slate-50 p-6 animate-in fade-in duration-300">
@@ -202,7 +209,10 @@ const ManualCheckIn = () => {
                                 <input
                                     type="text"
                                     value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    onChange={(e) => {
+                                        setSearchTerm(e.target.value);
+                                        setPage(1);
+                                    }}
                                     placeholder="Name, fellowship number, or email..."
                                     className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#48A111]/20 focus:border-[#48A111] transition-all"
                                 />
@@ -214,7 +224,10 @@ const ManualCheckIn = () => {
                             <label className="block text-slate-600 text-sm font-medium mb-2">Region</label>
                             <select
                                 value={selectedRegion}
-                                onChange={(e) => setSelectedRegion(e.target.value)}
+                                onChange={(e) => {
+                                    setSelectedRegion(e.target.value);
+                                    setPage(1);
+                                }}
                                 className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#48A111]/20 focus:border-[#48A111] transition-all appearance-none cursor-pointer"
                             >
                                 <option value="">All Regions</option>
@@ -231,7 +244,10 @@ const ManualCheckIn = () => {
                             <label className="block text-slate-600 text-sm font-medium mb-2">Gender</label>
                             <select
                                 value={selectedGender}
-                                onChange={(e) => setSelectedGender(e.target.value)}
+                                onChange={(e) => {
+                                    setSelectedGender(e.target.value);
+                                    setPage(1);
+                                }}
                                 className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#48A111]/20 focus:border-[#48A111] transition-all appearance-none cursor-pointer"
                             >
                                 <option value="">All Genders</option>
@@ -245,7 +261,10 @@ const ManualCheckIn = () => {
                             <label className="block text-slate-600 text-sm font-medium mb-2">Check-in Status</label>
                             <div className="flex gap-3">
                                 <button
-                                    onClick={() => setSelectedStatus('')}
+                                    onClick={() => {
+                                        setSelectedStatus('');
+                                        setPage(1);
+                                    }}
                                     className={`flex-1 px-4 py-2.5 rounded-xl font-semibold transition-all shadow-sm ${selectedStatus === ''
                                         ? 'bg-slate-800 text-white'
                                         : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100'
@@ -254,7 +273,10 @@ const ManualCheckIn = () => {
                                     All
                                 </button>
                                 <button
-                                    onClick={() => setSelectedStatus('checked-in')}
+                                    onClick={() => {
+                                        setSelectedStatus('checked-in');
+                                        setPage(1);
+                                    }}
                                     className={`flex-1 px-4 py-2.5 rounded-xl font-semibold transition-all shadow-sm ${selectedStatus === 'checked-in'
                                         ? 'bg-[#48A111] text-white'
                                         : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100'
@@ -263,7 +285,10 @@ const ManualCheckIn = () => {
                                     Checked In
                                 </button>
                                 <button
-                                    onClick={() => setSelectedStatus('not-checked-in')}
+                                    onClick={() => {
+                                        setSelectedStatus('not-checked-in');
+                                        setPage(1);
+                                    }}
                                     className={`flex-1 px-4 py-2.5 rounded-xl font-semibold transition-all shadow-sm ${selectedStatus === 'not-checked-in'
                                         ? 'bg-orange-500 text-white'
                                         : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100'

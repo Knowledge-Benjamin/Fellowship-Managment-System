@@ -223,6 +223,13 @@ function DrilldownTable({
     exportCategorizeBy?: (attendee: any) => string | string[];
     onClose: () => void;
 }) {
+    const [page, setPage] = useState(1);
+    const limit = 50;
+
+    const totalPages = Math.ceil(attendees.length / limit);
+    const startIndex = (page - 1) * limit;
+    const paginatedAttendees = attendees.slice(startIndex, startIndex + limit);
+
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
@@ -310,7 +317,7 @@ function DrilldownTable({
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                            {attendees.map((a: any) => (
+                            {paginatedAttendees.map((a: any) => (
                                 <tr key={a.id} className="hover:bg-slate-50/50 transition-colors">
                                     <td className="px-6 py-4 font-medium text-slate-900">
                                         {a.name}
@@ -346,7 +353,7 @@ function DrilldownTable({
                                     </td>
                                 </tr>
                             ))}
-                            {attendees.length === 0 && (
+                            {paginatedAttendees.length === 0 && (
                                 <tr>
                                     <td colSpan={5} className="px-6 py-8 text-center text-slate-500">
                                         No attendees match this filter.
@@ -356,6 +363,33 @@ function DrilldownTable({
                         </tbody>
                     </table>
                 </div>
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                    <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-slate-50">
+                        <span className="text-sm text-slate-500">
+                            Showing {startIndex + 1} to {Math.min(startIndex + limit, attendees.length)} of {attendees.length} entries
+                        </span>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => setPage(p => Math.max(1, p - 1))}
+                                disabled={page === 1}
+                                className="px-3 py-1.5 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-100 disabled:opacity-50 text-sm font-medium transition-colors"
+                            >
+                                Previous
+                            </button>
+                            <span className="text-sm text-slate-600 font-medium px-2">
+                                Page {page} of {totalPages}
+                            </span>
+                            <button
+                                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                disabled={page === totalPages}
+                                className="px-3 py-1.5 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-100 disabled:opacity-50 text-sm font-medium transition-colors"
+                            >
+                                Next
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -707,7 +741,7 @@ const EventReport = () => {
                     />
                 ) : (
                     <>
-                        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+                        <div className="grid grid-cols-2 lg:grid-cols-6 gap-4 mb-8">
                             <StatCard
                                 icon={Users} label="Total Attendance" value={stats.totalAttendance} accent={GREEN}
                                 onClick={() => setActiveDrilldown({ title: 'Total Attendance', filterFn: () => true, exportCategorizeBy: a => a.isGuest ? 'Guests' : 'Members' })}
@@ -731,6 +765,10 @@ const EventReport = () => {
                                 icon={UserCheck} label="Checked In" value={stats.memberCount} accent="#3b82f6"
                                 onClick={() => setActiveDrilldown({ title: 'Checked In', filterFn: a => !a.isGuest, exportCategorizeBy: a => a.gender || 'Unknown Gender' })}
                                 sub={<span className="text-slate-400">{pct(stats.memberCount, stats.totalAttendance)} of attendance</span>}
+                            />
+                            <StatCard
+                                icon={UserCheck} label="Not Checked In" value={stats.totalMembersInScope != null ? stats.totalMembersInScope - stats.memberCount : '—'} accent="#ef4444"
+                                sub={<span className="text-slate-400">{stats.totalMembersInScope != null ? pct(stats.totalMembersInScope - stats.memberCount, stats.totalMembersInScope) : '—'} absent</span>}
                             />
                             <StatCard
                                 icon={UserCheck} label="First Timers" value={stats.firstTimersCount} accent="#f59e0b"

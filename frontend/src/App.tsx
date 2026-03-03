@@ -31,6 +31,7 @@ const ProfileEditPage = lazy(() => import('./pages/Profile/ProfileEditPage'));
 const SelfRegistration = lazy(() => import('./pages/SelfRegistration'));
 const RegistrationTokens = lazy(() => import('./pages/RegistrationTokens'));
 const PendingMembers = lazy(() => import('./pages/PendingMembers'));
+const EmailManagement = lazy(() => import('./pages/EmailManagement'));
 
 // Roles that can view dispatched reports
 const LEADER_ROLES = ['FELLOWSHIP_MANAGER', 'REGIONAL_HEAD', 'FAMILY_HEAD', 'TEAM_LEADER'] as const;
@@ -239,6 +240,12 @@ function AppContent() {
               <Route path="/pending-members" element={
                 <ProtectedRoute roles={['FELLOWSHIP_MANAGER']}>
                   <PendingMembers />
+                </ProtectedRoute>
+              } />
+
+              <Route path="/emails" element={
+                <ProtectedRoute roles={['FELLOWSHIP_MANAGER']}>
+                  <EmailManagement />
                 </ProtectedRoute>
               } />
 

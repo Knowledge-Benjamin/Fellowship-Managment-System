@@ -2,7 +2,8 @@ import bcrypt from 'bcryptjs';
 import { Prisma } from '@prisma/client';
 import { generateFellowshipNumber } from '../utils/fellowshipNumberGenerator';
 import { updateMemberTags } from '../utils/finalistHelper';
-import { queueWelcomeEmail } from './emailService';
+// NOTE: Welcome email is queued by callers AFTER the transaction commits
+// via scheduleWelcomeEmail() from emailService — not inside this service.
 
 // ─── Input / Output Types ─────────────────────────────────────────────────────
 
@@ -166,8 +167,10 @@ export async function createMemberRecord(
         await updateMemberTags(member.id, member.id, tx);
     }
 
-    // 6. Queue welcome email atomically
-    await queueWelcomeEmail(tx, member.email, member.fullName, fellowshipNumber, member.qrCode);
+    // 6. Welcome email is queued by the caller AFTER the transaction commits
+    //    (see scheduleWelcomeEmail in emailService) — do NOT queue it here
+    //    so that slow QR-code generation cannot cause a transaction timeout
+    //    or roll back a successfully created member row.
 
     return { member, fellowshipNumber };
 }

@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useCheckInAccess } from '../hooks/useCheckInAccess';
 import {
     Home, QrCode, Bus, Calendar, UserPlus, PieChart, LogIn, LogOut,
-    User, MapPin, Tag, Users, Menu, X, ChevronDown, BookOpen, Heart, FileText, Link2, Clock
+    User, MapPin, Tag, Users, Menu, X, ChevronDown, BookOpen, Heart, FileText, Link2, Clock, Mail
 } from 'lucide-react';
 import api from '../api';
 import logo from '../assets/logo.jpg';
@@ -101,6 +101,7 @@ const Navbar = () => {
         { to: '/salvations', label: 'Salvations', icon: Heart },
         { to: '/registration-tokens', label: 'Reg Links', icon: Link2 },
         { to: '/pending-members', label: 'Pending Members', icon: Clock, badge: pendingCount },
+        { to: '/emails', label: 'Emails', icon: Mail },
     ];
 
     const isManagementActive = managementLinks.some(link => location.pathname === link.to);

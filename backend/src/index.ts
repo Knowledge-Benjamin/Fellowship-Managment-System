@@ -33,6 +33,7 @@ import leadershipRoutes from './routes/leadershipRoutes';
 import familyRoutes from './routes/familyRoutes';
 import academicPeriodRoutes from './routes/academicPeriodRoutes';
 import selfRegRoutes from './routes/selfRegRoutes';
+import emailRoutes from './routes/emailRoutes';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -75,6 +76,7 @@ app.use('/api/families', familyRoutes);
 app.use('/api/academic-periods', academicPeriodRoutes);
 // Self-registration (public + FM routes bundled in one router)
 app.use('/api', selfRegRoutes);
+app.use('/api/emails', emailRoutes);
 
 app.get('/', (req, res) => {
     res.send('Fellowship Information Management System API');

@@ -7,6 +7,7 @@ import { getCurrentAcademicStatus, isMemberFinalist, isMemberAlumni } from '../u
 import { activeMemberFilter } from '../utils/queryHelpers';
 import { Prisma } from '@prisma/client';
 import { createMemberRecord } from '../services/memberService';
+import { scheduleWelcomeEmail } from '../services/emailService';
 
 const createMemberSchema = z.object({
     fullName: z.string().min(1),
@@ -70,6 +71,11 @@ export const createMember = async (req: Request, res: Response) => {
                 tx,
             );
         }, { timeout: 15000 });
+
+        // Queue welcome email AFTER the transaction commits so that:
+        //  - QR code generation cannot timeout the DB transaction
+        //  - A failing email queue never rolls back the member creation
+        await scheduleWelcomeEmail(member.email, member.fullName, fellowshipNumber, member.qrCode);
 
         // ── Fetch complete member for response ───────────────────────────────
         const completeMember = await prisma.member.findUnique({

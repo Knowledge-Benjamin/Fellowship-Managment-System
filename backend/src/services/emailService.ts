@@ -4,6 +4,7 @@ import QRCode from 'qrcode';
 import prisma from '../prisma';
 import { EmailStatus, Prisma } from '@prisma/client';
 import { checkConnectivity } from '../utils/networkHelper';
+import { getSettings } from '../controllers/emailController';
 
 // Initialize SendGrid if API key is available
 if (process.env.SENDGRID_API_KEY) {
@@ -48,17 +49,31 @@ const sendEmail = async (
     html: string,
     text: string
 ): Promise<boolean> => {
-    const from = process.env.SENDGRID_FROM_EMAIL || process.env.GMAIL_USER!;
+    const settings = getSettings();
+    const fromAddress = process.env.SENDGRID_FROM_EMAIL || process.env.GMAIL_USER!;
+    const fromName = settings.fromName || 'Manifest Fellowship';
+    const replyTo = settings.replyTo || fromAddress;
+
+    // Headers that improve deliverability
+    const extraHeaders = {
+        'Reply-To': replyTo,
+        'List-Unsubscribe': `<mailto:${replyTo}?subject=Unsubscribe>`,
+        'X-Priority': '3',
+        'Importance': 'Normal',
+        'X-Mailer': 'Manifest Fellowship Manager',
+    };
 
     // Try SendGrid first if API key is available
     if (process.env.SENDGRID_API_KEY) {
         try {
             await sgMail.send({
                 to,
-                from,
+                from: { name: fromName, email: fromAddress },
+                replyTo: { email: replyTo },
                 subject,
                 html,
                 text,
+                headers: extraHeaders,
             });
             console.log(`[EMAIL] ✅ Sent via SendGrid to ${to}`);
             return true;
@@ -71,14 +86,13 @@ const sendEmail = async (
     // Fallback to SMTP
     try {
         await transporter.sendMail({
-            from: {
-                name: 'Fellowship Manager',
-                address: process.env.GMAIL_USER!,
-            },
+            from: { name: fromName, address: process.env.GMAIL_USER! },
             to,
             subject,
             html,
             text,
+            replyTo,
+            headers: extraHeaders,
         });
         console.log(`[EMAIL] ✅ Sent via SMTP fallback to ${to}`);
         return true;
@@ -471,6 +485,184 @@ export const processEmailQueue = async () => {
 };
 
 // ... (existing exports)
+
+/**
+ * Queue a welcome email OUTSIDE any transaction.
+ * Call this AFTER the member-creation transaction has committed.
+ * Uses the regular prisma client so there's no risk of:
+ *   - transaction-timeout from QR generation delay
+ *   - rolling back member creation if email queuing fails
+ */
+export const scheduleWelcomeEmail = async (
+    email: string,
+    fullName: string,
+    fellowshipNumber: string,
+    qrCodeValue: string
+): Promise<void> => {
+    try {
+        const settings = getSettings();
+        const loginUrl = `${settings.frontendUrl}/login`;
+
+        // Generate QR code OUTSIDE the DB transaction
+        const qrCodeDataUrl = await QRCode.toDataURL(qrCodeValue, {
+            width: 300,
+            margin: 2,
+            color: { dark: '#000000', light: '#FFFFFF' },
+        });
+
+        const subject = '🎉 Welcome to Fellowship Manager!';
+        const html = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                    .header { background: linear-gradient(135deg, #14b8a6 0%, #0891b2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+                    .content { background: #f8fafc; padding: 30px; border-radius: 0 0 10px 10px; }
+                    .welcome-box { background: white; border: 2px solid #14b8a6; border-radius: 8px; padding: 20px; margin: 20px 0; }
+                    .credential-item { background: #f1f5f9; padding: 15px; border-radius: 6px; margin: 10px 0; }
+                    .credential-label { font-size: 12px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px; }
+                    .credential-value { font-size: 18px; font-weight: bold; color: #0f172a; font-family: 'Courier New', monospace; }
+                    .qr-container { text-align: center; padding: 20px; background: white; border-radius: 8px; margin: 20px 0; }
+                    .info-box { background: #ecfdf5; border-left: 4px solid #10b981; padding: 15px; margin: 20px 0; border-radius: 4px; }
+                    .warning-box { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0; border-radius: 4px; }
+                    .footer { text-align: center; padding: 20px; color: #64748b; font-size: 12px; }
+                    .steps-list { padding-left: 20px; }
+                    .steps-list li { margin: 10px 0; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h1 style="margin: 0; font-size: 28px;">🎉 Welcome to Fellowship!</h1>
+                        <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Your registration was successful</p>
+                    </div>
+                    <div class="content">
+                        <div class="welcome-box">
+                            <p style="margin: 0 0 15px 0; font-size: 18px; color: #14b8a6; font-weight: bold;">Hello <strong style="color: #0f172a;">${fullName}</strong>! 👋</p>
+                            <p style="margin: 0; color: #64748b;">
+                                We're excited to have you as part of our fellowship community. Here are your account credentials and important information to get started.
+                            </p>
+                        </div>
+
+                        <h3 style="color: #0f172a; margin: 30px 0 15px 0;">📋 Your Account Details</h3>
+                        
+                        <div class="credential-item">
+                            <div class="credential-label">Fellowship Number</div>
+                            <div class="credential-value">${fellowshipNumber}</div>
+                        </div>
+
+                        <div class="credential-item">
+                            <div class="credential-label">Default Password</div>
+                            <div class="credential-value">${fellowshipNumber}</div>
+                        </div>
+
+                        <div class="credential-item">
+                            <div class="credential-label">Email</div>
+                            <div class="credential-value" style="font-size: 16px;">${email}</div>
+                        </div>
+
+                        <div class="info-box">
+                            <strong>ℹ️ First Login:</strong> Your default password is the same as your fellowship number. Please change it after your first login for security purposes.
+                        </div>
+
+                        <h3 style="color: #0f172a; margin: 30px 0 15px 0;">📱 Your Personal QR Code</h3>
+                        <p style="color: #64748b; margin-bottom: 15px;">Use this QR code for quick check-in at fellowship events:</p>
+                        
+                        <div class="qr-container">
+                            <img src="${qrCodeDataUrl}" alt="Your QR Code" style="max-width: 300px; width: 100%;" />
+                            <p style="margin: 15px 0 0 0; color: #64748b; font-size: 14px;">
+                                Save this QR code to your device for easy access
+                            </p>
+                        </div>
+
+                        <div class="warning-box">
+                            <strong>🔒 Keep Your QR Code Safe:</strong> This QR code is unique to you. Do not share it with others as it provides access to your fellowship account.
+                        </div>
+
+                        <h3 style="color: #0f172a; margin: 30px 0 15px 0;">🚀 Getting Started</h3>
+                        <ol class="steps-list" style="color: #64748b;">
+                            <li><strong style="color: #0f172a;">Log in</strong> to your account using your fellowship number and password</li>
+                            <li><strong style="color: #0f172a;">Update your profile</strong> with additional information if needed</li>
+                            <li><strong style="color: #0f172a;">Change your password</strong> for security</li>
+                            <li><strong style="color: #0f172a;">Save your QR code</strong> for quick event check-ins</li>
+                            <li><strong style="color: #0f172a;">Explore</strong> the fellowship management system</li>
+                        </ol>
+
+                        <div class="info-box" style="background: #f0f9ff; border-color: #0891b2;">
+                            <strong>💡 Need Help?</strong> Contact your fellowship administrator if you have any questions or need assistance accessing your account.
+                        </div>
+
+                        <!-- Login CTA Button -->
+                        <div style="text-align:center;margin:28px 0;">
+                            <a href="${loginUrl}" target="_blank"
+                               style="display:inline-block;background:#48A111;color:#ffffff;font-family:Arial,sans-serif;
+                                      font-size:15px;font-weight:700;padding:14px 36px;border-radius:8px;
+                                      text-decoration:none;letter-spacing:.3px;box-shadow:0 4px 14px rgba(72,161,17,0.35);">
+                                🔑 Login to Your Account
+                            </a>
+                            <p style="margin:10px 0 0;color:#94a3b8;font-size:12px;">Or copy this link: <a href="${loginUrl}" style="color:#48A111;">${loginUrl}</a></p>
+                        </div>
+
+                        <p style="margin-top: 30px; color: #64748b;">
+                            We look forward to seeing you at our events!
+                        </p>
+                        <p style="margin: 10px 0 0 0;">
+                            <strong style="color: #0f172a;">The Fellowship Management Team</strong>
+                        </p>
+                    </div>
+                    <div class="footer">
+                        <p>This is an automated welcome message from Manifest Fellowship.</p>
+                        <p>If you did not register, please ignore this email or reply to report it.</p>
+                        <p>&copy; ${new Date().getFullYear()} Fellowship Manager. All rights reserved.</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+        `.trim();
+
+        const text = `
+Welcome to Fellowship, ${fullName}!
+
+Your registration was successful. Here are your account details:
+
+Fellowship Number: ${fellowshipNumber}
+Default Password: ${fellowshipNumber}
+Email: ${email}
+
+Your default password is the same as your fellowship number. Please change it after your first login.
+
+Login to your account here: ${loginUrl}
+
+Getting Started:
+1. Log in using your fellowship number and password
+2. Update your profile with additional information if needed
+3. Change your password for security
+4. Save your QR code for quick event check-ins
+
+Need Help? Contact your fellowship administrator.
+
+The Fellowship Management Team
+        `.trim();
+
+        // Insert into EmailQueue using the regular (non-transaction) prisma client
+        await prisma.emailQueue.create({
+            data: {
+                email,
+                subject,
+                html,
+                text,
+                status: EmailStatus.PENDING,
+            },
+        });
+
+        console.log(`[EMAIL] 📥 Welcome email queued (post-commit) for ${email}`);
+    } catch (error) {
+        // Log but don't throw — member creation already succeeded; email can be retried manually
+        console.error(`[EMAIL] ❌ Failed to queue welcome email for ${email}:`, error);
+    }
+};
 
 export const queueWelcomeEmail = async (
     tx: Prisma.TransactionClient,

@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { z } from 'zod';
 import prisma from '../prisma';
 import { createMemberRecord } from '../services/memberService';
+import { scheduleWelcomeEmail } from '../services/emailService';
 import cache from '../utils/cache';
 
 // ─── Schemas ──────────────────────────────────────────────────────────────────
@@ -445,6 +446,11 @@ export const approvePendingMember = async (req: Request, res: Response) => {
 
             return { member, fellowshipNumber };
         }, { timeout: 15000 });
+
+        // Queue welcome email AFTER the transaction commits so that:
+        //  - QR code generation cannot timeout the DB transaction
+        //  - A failing email queue never rolls back the member creation
+        await scheduleWelcomeEmail(member.email, member.fullName, fellowshipNumber, member.qrCode);
 
         res.json({ message: 'Member approved and created successfully', member, fellowshipNumber });
     } catch (error: any) {

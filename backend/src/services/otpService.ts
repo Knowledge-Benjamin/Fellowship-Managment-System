@@ -15,17 +15,15 @@ export const createOTP = async (memberId: string): Promise<string> => {
     const code = generateOTP();
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
 
-    // Invalidate any existing OTPs for this member
+    // Invalidate ALL existing unverified OTPs for this member (including expired ones)
+    // so that stale records never pollute future lookups.
     await prisma.oTP.updateMany({
         where: {
             memberId,
             verified: false,
-            expiresAt: {
-                gt: new Date(),
-            },
         },
         data: {
-            verified: true, // Mark as used/invalid
+            verified: true,
         },
     });
 
@@ -49,11 +47,15 @@ export const verifyOTP = async (
     memberId: string,
     code: string
 ): Promise<{ success: boolean; reason?: string }> => {
-    // Find the latest unverified OTP for this member
+    // Find the latest unverified, non-expired OTP for this member.
+    // The expiresAt filter is critical: without it, stale expired rows (left with
+    // verified=false from prior sessions) can be picked up, causing valid codes
+    // to be rejected as "expired".
     const otp = await prisma.oTP.findFirst({
         where: {
             memberId,
             verified: false,
+            expiresAt: { gt: new Date() }, // Bug 1 fix: only find non-expired OTPs
         },
         orderBy: {
             createdAt: 'desc',
@@ -65,17 +67,7 @@ export const verifyOTP = async (
         return { success: false, reason: 'No active OTP found. Please request a new code.' };
     }
 
-    // Check if expired
-    if (new Date() > otp.expiresAt) {
-        console.log(`[OTP] OTP expired for member ${memberId}`);
-        await prisma.oTP.update({
-            where: { id: otp.id },
-            data: { verified: true }, // Mark as used
-        });
-        return { success: false, reason: 'OTP has expired. Please request a new code.' };
-    }
-
-    // Check attempts
+    // Check attempts BEFORE doing anything else
     if (otp.attempts >= 3) {
         console.log(`[OTP] Max attempts reached for member ${memberId}`);
         await prisma.oTP.update({
@@ -85,31 +77,35 @@ export const verifyOTP = async (
         return { success: false, reason: 'Too many failed attempts. Please request a new code.' };
     }
 
-    // Increment attempts
-    await prisma.oTP.update({
-        where: { id: otp.id },
-        data: {
-            attempts: {
-                increment: 1,
-            },
-        },
-    });
-
-    // Verify code
+    // Compare code FIRST — only burn an attempt on a wrong code.
+    // Bug 2 fix: the old code incremented before comparison, which meant a
+    // double-submit or network retry could exhaust attempts even on a correct code.
     if (otp.code !== code) {
-        console.log(`[OTP] Invalid OTP code for member ${memberId}. Attempts: ${otp.attempts + 1}/3`);
+        const newAttempts = otp.attempts + 1;
+        const remaining = 3 - newAttempts;
+
+        // Mark as exhausted if this was the last allowed attempt
+        await prisma.oTP.update({
+            where: { id: otp.id },
+            data: {
+                attempts: { increment: 1 },
+                ...(remaining === 0 && { verified: true }), // Invalidate on last attempt
+            },
+        });
+
+        console.log(`[OTP] Invalid OTP code for member ${memberId}. Attempts: ${newAttempts}/3`);
         return {
             success: false,
-            reason: `Invalid code. ${2 - otp.attempts} attempt(s) remaining.`,
+            reason: remaining > 0
+                ? `Invalid code. ${remaining} attempt(s) remaining.`
+                : 'Too many failed attempts. Please request a new code.',
         };
     }
 
-    // Success - mark as verified
+    // Correct code — mark as verified (do NOT increment attempts on success)
     await prisma.oTP.update({
         where: { id: otp.id },
-        data: {
-            verified: true,
-        },
+        data: { verified: true },
     });
 
     console.log(`[OTP] Successfully verified OTP for member ${memberId}`);

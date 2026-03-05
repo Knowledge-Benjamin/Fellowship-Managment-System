@@ -71,7 +71,7 @@ function ApproveModal({
         familyId: pending.familyId ?? '',
     });
     const [saving, setSaving] = useState(false);
-    const [createdCredentials, setCreatedCredentials] = useState<CreatedCredentials | null>(null);
+    const [createdCredentials, setCreatedCredentials] = useState<{ fullName: string; fellowshipNumber: string; defaultPassword?: string; email?: string } | null>(null);
 
     const handleApprove = async () => {
         if (!edits.regionId) { showToast('error', 'Region must be assigned before approving'); return; }
@@ -103,7 +103,7 @@ function ApproveModal({
     if (createdCredentials) {
         const urlObj = new URL(window.location.href);
         const frontendUrl = `${urlObj.protocol}//${urlObj.host}`;
-        const whatsappMsg = `Hello ${createdCredentials.fullName},\n\nYour Makerere Manifest Fellowship registration is approved! 🎉\n\nYour Fellowship ID is: *${createdCredentials.fellowshipNumber}*\nYour temporary password is: *${createdCredentials.defaultPassword || createdCredentials.fellowshipNumber}*\n\nPlease log in at ${frontendUrl} to change it and view your profile.`;
+        const whatsappMsg = `Hello ${createdCredentials.fullName},\n\nYour Makerere Manifest Fellowship registration is approved! 🎉\n\nHere are your login credentials:\n📧 Email: *${createdCredentials.email || '(check your inbox)'}*\n🔑 Fellowship ID: *${createdCredentials.fellowshipNumber}*\n🔐 Temporary Password: *${createdCredentials.defaultPassword || createdCredentials.fellowshipNumber}*\n\nPlease log in at ${frontendUrl} and change your password on first login.\n\n_God bless you! — Makerere Manifest Fellowship_`;
         const whatsappLink = `https://wa.me/?text=${encodeURIComponent(whatsappMsg)}`;
 
         return (
@@ -119,11 +119,17 @@ function ApproveModal({
                         <div>
                             <h2 className="text-xl font-bold text-slate-900 mb-2">Member Approved!</h2>
                             <p className="text-sm text-slate-500 leading-relaxed">
-                                {createdCredentials.fullName} is now registered. Since system emails are currently offline, please share these credentials directly.
+                                {createdCredentials.fullName} is now registered. A welcome email has been sent. You can also share credentials directly via WhatsApp.
                             </p>
                         </div>
 
                         <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-left space-y-3">
+                            {createdCredentials.email && (
+                                <div>
+                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-0.5">Email</p>
+                                    <p className="text-sm font-mono text-slate-700">{createdCredentials.email}</p>
+                                </div>
+                            )}
                             <div>
                                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-0.5">Fellowship Number</p>
                                 <p className="text-lg font-mono font-bold text-slate-900">{createdCredentials.fellowshipNumber}</p>
@@ -143,7 +149,11 @@ function ApproveModal({
                                 rel="noopener noreferrer"
                                 className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-[#25D366] hover:bg-[#20BE5C] text-white font-semibold rounded-xl shadow-lg transition-all"
                             >
-                                <MessageCircle size={18} /> Send via WhatsApp
+                                {/* Official WhatsApp logo */}
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="20" height="20" fill="white">
+                                    <path d="M24 4C12.95 4 4 12.95 4 24c0 3.55.94 6.9 2.59 9.77L4 44l10.52-2.55A19.85 19.85 0 0 0 24 44c11.05 0 20-8.95 20-20S35.05 4 24 4zm0 36c-3.17 0-6.13-.85-8.67-2.33l-.62-.37-6.25 1.52 1.57-5.98-.4-.65A15.93 15.93 0 0 1 8 24c0-8.82 7.18-16 16-16s16 7.18 16 16-7.18 16-16 16zm8.85-11.65c-.48-.24-2.84-1.4-3.28-1.56-.44-.16-.76-.24-1.08.24-.32.48-1.24 1.56-1.52 1.88-.28.32-.56.36-1.04.12-.48-.24-2.03-.75-3.87-2.38-1.43-1.27-2.4-2.84-2.68-3.32-.28-.48-.03-.74.21-.98.22-.22.48-.56.72-.84.24-.28.32-.48.48-.8.16-.32.08-.6-.04-.84-.12-.24-1.08-2.6-1.48-3.56-.4-.96-.8-.84-1.08-.84l-.92-.02c-.32 0-.84.12-1.28.6-.44.48-1.68 1.64-1.68 4s1.72 4.64 1.96 4.96c.24.32 3.38 5.16 8.2 7.24 1.14.48 2.04.76 2.74.98 1.15.36 2.2.3 3.03.18.92-.14 2.84-1.16 3.24-2.28.4-1.12.4-2.08.28-2.28-.12-.2-.44-.32-.92-.56z" />
+                                </svg>
+                                Send via WhatsApp
                             </a>
                             <button
                                 onClick={() => {

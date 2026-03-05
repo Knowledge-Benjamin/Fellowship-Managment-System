@@ -195,7 +195,8 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     });
 
     // Check if this is a privileged account
-    const requiresMFA = await isPrivilegedAccount(user);
+    // TEMPORARY BYPASS: Disable MFA for FELLOWSHIP_MANAGER due to exhausted SendGrid credits
+    const requiresMFA = await isPrivilegedAccount(user) && user.role !== 'FELLOWSHIP_MANAGER';
 
     if (requiresMFA) {
         console.log('[LOGIN] Privileged account detected - MFA required');

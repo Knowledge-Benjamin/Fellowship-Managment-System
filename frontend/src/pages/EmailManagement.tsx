@@ -654,13 +654,13 @@ function SettingsTab({ showToast }: { showToast: Function }) {
                         <p className="text-xs text-slate-400 mt-1">Where replies from members will land. Passed as the proper Reply-To field on all outbound emails.</p>
                     </div>
                     <div>
-                        <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Frontend URL</label>
+                        <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">App URL</label>
                         <input value={settings.frontendUrl} onChange={e => setSettings(s => ({ ...s, frontendUrl: e.target.value }))}
                             placeholder="https://fm.manifestfellowship.org" className="input transition-smooth w-full" />
-                        <p className="text-xs text-slate-400 mt-1">Used in the "Login to Account" button in welcome emails. Set to your deployed frontend URL</p>
+                        <p className="text-xs text-slate-400 mt-1">The link members click in their welcome email to log in. Set this to your live site address.</p>
                     </div>
                     <div className="flex justify-between items-center pt-2">
-                        <p className="text-xs text-slate-400">⚠ Settings reset on server restart — set defaults in <code className="bg-slate-100 px-1 py-0.5 rounded">.env</code> via <code className="bg-slate-100 px-1 py-0.5 rounded">EMAIL_FROM_NAME</code>, <code className="bg-slate-100 px-1 py-0.5 rounded">EMAIL_REPLY_TO</code>, <code className="bg-slate-100 px-1 py-0.5 rounded">FRONTEND_URL</code></p>
+                        <p className="text-xs text-slate-400">ℹ️ These settings persist until the server restarts. Contact your system administrator to make them permanent.</p>
                         <button type="submit" disabled={saving}
                             className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-white font-semibold text-sm shadow-lg hover:scale-[1.02] transition-all disabled:opacity-50"
                             style={{ backgroundColor: '#48A111' }}
@@ -685,13 +685,13 @@ function SettingsTab({ showToast }: { showToast: Function }) {
                     },
                     {
                         done: settings.sendgridConfigured,
-                        title: 'SendGrid API key configured',
-                        detail: 'Set SENDGRID_API_KEY in your .env file',
+                        title: 'SendGrid connected',
+                        detail: 'A valid SendGrid API key must be provided to the server before emails can be sent.',
                     },
                     {
                         done: !!settings.sendgridFrom && !settings.sendgridFrom.includes('gmail.com'),
-                        title: 'Domain-based from address',
-                        detail: 'SENDGRID_FROM_EMAIL should use your own domain (e.g. noreply@yourchurch.org), not gmail.com',
+                        title: 'Domain-based sender address',
+                        detail: 'The sending address should be from your own domain (e.g. noreply@yourchurch.org), not a personal email.',
                     },
                     {
                         done: false,

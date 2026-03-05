@@ -12,7 +12,7 @@ interface EmailSettings {
 let emailSettings: EmailSettings = {
     fromName: process.env.EMAIL_FROM_NAME || 'Manifest Fellowship',
     replyTo: process.env.EMAIL_REPLY_TO || process.env.SENDGRID_FROM_EMAIL || process.env.GMAIL_USER || '',
-    frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
+    frontendUrl: process.env.FRONTEND_URL || '',
 };
 
 export const getEmailSettings = (_req: Request, res: Response) => {

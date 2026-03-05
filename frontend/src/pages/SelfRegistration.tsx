@@ -88,6 +88,7 @@ const SelfRegistration = () => {
     const { showToast } = useToast();
 
     const [step, setStep] = useState<Step>('consent');
+    const [consentGiven, setConsentGiven] = useState(false);
     const [invalidReason, setInvalidReason] = useState('');
     const [registrationMode, setRegistrationMode] = useState<RegistrationMode>('NEW_MEMBER');
     const [loading, setLoading] = useState(false);
@@ -365,11 +366,9 @@ const SelfRegistration = () => {
                             <input
                                 type="checkbox"
                                 id="consent-checkbox"
+                                checked={consentGiven}
                                 className="mt-1 w-5 h-5 rounded border-slate-300 text-[#48A111] focus:ring-[#48A111] transition-colors cursor-pointer"
-                                onChange={(e) => {
-                                    const btn = document.getElementById('btn-consent-proceed') as HTMLButtonElement;
-                                    if (btn) btn.disabled = !e.target.checked;
-                                }}
+                                onChange={(e) => setConsentGiven(e.target.checked)}
                             />
                             <span className="text-sm font-semibold text-slate-700 leading-snug">
                                 I CONSENT to Makerere Manifest Fellowship holding and using my information and contacting me for the above purposes.
@@ -386,7 +385,7 @@ const SelfRegistration = () => {
                         </button>
                         <button
                             id="btn-consent-proceed"
-                            disabled
+                            disabled={!consentGiven}
                             onClick={() => setStep('gate')}
                             className="flex-1 px-4 py-3 rounded-xl text-white font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                             style={{ backgroundColor: '#48A111' }}

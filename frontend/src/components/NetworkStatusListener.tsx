@@ -31,8 +31,9 @@ export const NetworkStatusListener = () => {
 
             const response = await api.post('/attendance/sync-batch', payload);
 
-            // If successful, clear the local queue
-            await db.syncQueue.clear();
+            // Clear only the records we successfully submitted (safe for multi-event queues)
+            const syncedIds = pendingRecords.map(r => r.id!).filter(Boolean);
+            await db.syncQueue.bulkDelete(syncedIds);
 
             console.log(`[PWA] Sync Complete: ${response.data.syncedCount} records synced.`);
             success(`Background sync complete: ${response.data.syncedCount} offline scans saved.`);

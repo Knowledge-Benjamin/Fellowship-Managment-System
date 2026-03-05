@@ -25,8 +25,12 @@ export const checkInPermission = async (
         const userId = req.user.id;
         const userRole = req.user.role;
 
-        // Get eventId from body (for POST) or params (for GET)
-        const eventId = req.body?.eventId || req.params?.eventId;
+        // Get eventId from body (for POST with object) or params (for GET)
+        // Special case: sync-batch sends an ARRAY as body — read from first element
+        const eventId =
+            req.body?.eventId ||
+            req.params?.eventId ||
+            (Array.isArray(req.body) && req.body[0]?.eventId);
 
         if (!eventId) {
             res.status(400).json({ error: 'Event ID is required' });

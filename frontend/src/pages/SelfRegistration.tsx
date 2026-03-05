@@ -19,7 +19,7 @@ interface Residence { id: string; name: string; type: string; }
 interface Family { id: string; name: string; familyHead: { fullName: string } | null; memberCount: number; }
 
 type RegistrationMode = 'NEW_MEMBER' | 'READMISSION';
-type Step = 'gate' | 'form' | 'success' | 'invalid';
+type Step = 'consent' | 'denied' | 'gate' | 'form' | 'success' | 'invalid';
 
 // ─── Combobox (select + freetext fallback) ────────────────────────────────────
 function Combobox({
@@ -87,7 +87,7 @@ const SelfRegistration = () => {
     }, [searchParams, setSearchParams]);
     const { showToast } = useToast();
 
-    const [step, setStep] = useState<Step>('gate');
+    const [step, setStep] = useState<Step>('consent');
     const [invalidReason, setInvalidReason] = useState('');
     const [registrationMode, setRegistrationMode] = useState<RegistrationMode>('NEW_MEMBER');
     const [loading, setLoading] = useState(false);
@@ -139,7 +139,7 @@ const SelfRegistration = () => {
         }
 
         api.get(`/register/validate?token=${tokenParam}`)
-            .then(() => setStep('gate'))
+            .then(() => setStep('consent'))
             .catch((err: any) => {
                 setInvalidReason(err.response?.data?.reason ?? 'This registration link is invalid or has expired.');
                 setStep('invalid');
@@ -331,6 +331,91 @@ const SelfRegistration = () => {
                         <strong>What happens next?</strong><br />
                         The fellowship manager reviews your submission, assigns you to a region/family, and activates your account.
                     </div>
+                </div>
+            </div>
+        );
+    }
+
+    // ── Consent / Data Privacy ────────────────────────────────────────────────
+    if (step === 'consent') {
+        return (
+            <div className="min-h-dvh flex items-center justify-center bg-slate-50 px-4 py-8">
+                <div className="w-full max-w-md bg-white rounded-2xl border border-slate-200 shadow-xl p-8">
+                    <div className="flex items-center justify-center w-16 h-16 rounded-full bg-blue-50 text-blue-600 mx-auto mb-6">
+                        <BookOpen size={28} />
+                    </div>
+                    <h1 className="text-2xl font-bold text-slate-900 text-center mb-4">Data Privacy & Consent</h1>
+                    <div className="space-y-4 text-sm text-slate-600 mb-8 bg-slate-50 p-5 border border-slate-100 rounded-xl">
+                        <p>
+                            To register you as a member, Makerere Manifest Fellowship needs to collect your personal, contact, and academic information.
+                        </p>
+                        <p>
+                            This data is used exclusively by the fellowship leadership to:
+                        </p>
+                        <ul className="list-disc pl-5 space-y-1">
+                            <li>Manage your membership profile</li>
+                            <li>Assign you to appropriate Family Groups and Regions</li>
+                            <li>Communicate important fellowship updates and information</li>
+                            <li>Provide support and spiritual care</li>
+                        </ul>
+                    </div>
+
+                    <div className="bg-slate-50 rounded-xl p-5 border border-slate-200 mb-8">
+                        <label className="flex items-start gap-4 cursor-pointer group">
+                            <input
+                                type="checkbox"
+                                id="consent-checkbox"
+                                className="mt-1 w-5 h-5 rounded border-slate-300 text-[#48A111] focus:ring-[#48A111] transition-colors cursor-pointer"
+                                onChange={(e) => {
+                                    const btn = document.getElementById('btn-consent-proceed') as HTMLButtonElement;
+                                    if (btn) btn.disabled = !e.target.checked;
+                                }}
+                            />
+                            <span className="text-sm font-semibold text-slate-700 leading-snug">
+                                I CONSENT to Makerere Manifest Fellowship holding and using my information and contacting me for the above purposes.
+                            </span>
+                        </label>
+                    </div>
+
+                    <div className="flex gap-3">
+                        <button
+                            onClick={() => setStep('denied')}
+                            className="flex-1 px-4 py-3 rounded-xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50 transition-colors"
+                        >
+                            I Decline
+                        </button>
+                        <button
+                            id="btn-consent-proceed"
+                            disabled
+                            onClick={() => setStep('gate')}
+                            className="flex-1 px-4 py-3 rounded-xl text-white font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                            style={{ backgroundColor: '#48A111' }}
+                        >
+                            Proceed
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (step === 'denied') {
+        return (
+            <div className="min-h-dvh flex items-center justify-center bg-slate-50 px-4 py-8">
+                <div className="w-full max-w-md bg-white rounded-2xl border border-slate-200 shadow-xl p-8 text-center">
+                    <div className="flex items-center justify-center w-16 h-16 rounded-full bg-slate-100 text-slate-400 mx-auto mb-6">
+                        <User size={28} />
+                    </div>
+                    <h1 className="text-2xl font-bold text-slate-900 mb-3">Registration Cancelled</h1>
+                    <p className="text-slate-600 text-sm mb-8">
+                        We respect your decision. Without your consent to collect and store your information, we cannot proceed with your membership registration.
+                    </p>
+                    <button
+                        onClick={() => setStep('consent')}
+                        className="px-6 py-3 rounded-xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50 transition-colors"
+                    >
+                        Go Back
+                    </button>
                 </div>
             </div>
         );

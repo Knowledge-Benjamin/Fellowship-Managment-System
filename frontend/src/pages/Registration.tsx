@@ -101,6 +101,7 @@ const Registration = () => {
         familyId: '', // Family assignment
         registrationMode: 'NEW_MEMBER' as 'NEW_MEMBER' | 'LEGACY_IMPORT' | 'TRANSFER' | 'READMISSION',
         assignFirstTimerTag: undefined as boolean | undefined, // undefined = use mode default
+        consent: false,
     });
     // Member data from successful registration
     const [createdMember, setCreatedMember] = useState<{
@@ -404,6 +405,7 @@ const Registration = () => {
             familyId: '',
             registrationMode: 'NEW_MEMBER' as 'NEW_MEMBER' | 'LEGACY_IMPORT' | 'TRANSFER' | 'READMISSION',
             assignFirstTimerTag: undefined,
+            consent: false,
         });
         setCreatedMember(null);
     };
@@ -1010,6 +1012,22 @@ const Registration = () => {
                                 </div>
                             </div>
                         )}
+
+                        {/* Consent Checkbox */}
+                        <div className="bg-slate-50 rounded-xl p-5 border border-slate-200 mt-6">
+                            <label className="flex items-start gap-4 cursor-pointer group">
+                                <input
+                                    type="checkbox"
+                                    required
+                                    checked={formData.consent}
+                                    onChange={(e) => setFormData({ ...formData, consent: e.target.checked })}
+                                    className="mt-1 w-5 h-5 rounded border-slate-300 text-[#48A111] focus:ring-[#48A111] transition-colors cursor-pointer"
+                                />
+                                <span className="text-sm font-semibold text-slate-700 leading-snug">
+                                    I CONSENT to Makerere Manifest Fellowship holding and using my information and contacting me for the above purposes.
+                                </span>
+                            </label>
+                        </div>
 
                         {/* Submit Button */}
                         <div className="pt-6 flex justify-center w-full">

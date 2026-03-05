@@ -452,7 +452,14 @@ export const approvePendingMember = async (req: Request, res: Response) => {
         //  - A failing email queue never rolls back the member creation
         await scheduleWelcomeEmail(member.email, member.fullName, fellowshipNumber, member.qrCode);
 
-        res.json({ message: 'Member approved and created successfully', member, fellowshipNumber });
+        res.json({
+            message: 'Member approved and created successfully',
+            member: {
+                ...member,
+                defaultPassword: fellowshipNumber
+            },
+            fellowshipNumber
+        });
     } catch (error: any) {
         console.error('[PENDING] Approve error:', error);
         res.status(500).json({ error: 'Approval failed. Please try again.' });

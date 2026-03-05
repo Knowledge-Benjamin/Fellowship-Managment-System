@@ -3,8 +3,9 @@ import api from '../api';
 import { useToast } from '../components/ToastProvider';
 import {
     CheckCircle, XCircle, ChevronDown, ChevronUp, Loader2,
-    User, MapPin, GraduationCap, Phone, Mail, AlertTriangle,
-    Clock, ThumbsUp, ThumbsDown, Building, BookOpen, Filter
+    MapPin, AlertTriangle,
+    ThumbsUp, ThumbsDown, Building, BookOpen,
+    Copy, MessageCircle, Sparkles
 } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
 import CustomSelect from '../components/CustomSelect';
@@ -39,6 +40,12 @@ interface PendingMember {
     token: { label?: string; token: string };
 }
 
+interface CreatedCredentials {
+    fullName: string;
+    fellowshipNumber: string;
+    defaultPassword?: string;
+}
+
 // ── Field badge (resolved vs. suggestion vs. missing) ─────────────────────────
 function FieldBadge({ resolved, suggestion, label }: { resolved?: string | null; suggestion?: string | null; label: string }) {
     if (resolved) return <span className="inline-flex items-center gap-1 text-xs text-[#48A111] bg-[#e9f5e1] px-2 py-0.5 rounded-full"><CheckCircle size={10} />{label}: {resolved}</span>;
@@ -64,12 +71,12 @@ function ApproveModal({
         familyId: pending.familyId ?? '',
     });
     const [saving, setSaving] = useState(false);
+    const [createdCredentials, setCreatedCredentials] = useState<CreatedCredentials | null>(null);
 
     const handleApprove = async () => {
         if (!edits.regionId) { showToast('error', 'Region must be assigned before approving'); return; }
         try {
             setSaving(true);
-            // Push edits first if any changed
             await api.patch(`/pending-members/${pending.id}`, {
                 regionId: edits.regionId || null,
                 collegeId: edits.collegeId || null,
@@ -77,9 +84,14 @@ function ApproveModal({
                 residenceId: edits.residenceId || null,
                 familyId: edits.familyId || null,
             });
-            await api.post(`/pending-members/${pending.id}/approve`);
+            const res = await api.post(`/pending-members/${pending.id}/approve`);
             showToast('success', `${pending.fullName} approved and activated!`);
-            onApprove();
+
+            if (res.data?.member) {
+                setCreatedCredentials(res.data.member);
+            } else {
+                onApprove();
+            }
         } catch (err: any) {
             showToast('error', err.response?.data?.error ?? 'Approval failed');
         } finally {
@@ -87,6 +99,75 @@ function ApproveModal({
         }
     };
 
+    // ── Credentials success screen ────────────────────────────────────────────
+    if (createdCredentials) {
+        const urlObj = new URL(window.location.href);
+        const frontendUrl = `${urlObj.protocol}//${urlObj.host}`;
+        const whatsappMsg = `Hello ${createdCredentials.fullName},\n\nYour Makerere Manifest Fellowship registration is approved! 🎉\n\nYour Fellowship ID is: *${createdCredentials.fellowshipNumber}*\nYour temporary password is: *${createdCredentials.defaultPassword || createdCredentials.fellowshipNumber}*\n\nPlease log in at ${frontendUrl} to change it and view your profile.`;
+        const whatsappLink = `https://wa.me/?text=${encodeURIComponent(whatsappMsg)}`;
+
+        return (
+            <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                <div className="bg-white rounded-2xl border border-slate-100 shadow-2xl w-full max-w-md overflow-hidden text-center">
+                    <div className="bg-[#e9f5e1] py-8 flex items-center justify-center">
+                        <div className="w-16 h-16 bg-white rounded-full shadow-sm flex items-center justify-center text-[#48A111]">
+                            <Sparkles size={32} />
+                        </div>
+                    </div>
+
+                    <div className="p-6 space-y-6">
+                        <div>
+                            <h2 className="text-xl font-bold text-slate-900 mb-2">Member Approved!</h2>
+                            <p className="text-sm text-slate-500 leading-relaxed">
+                                {createdCredentials.fullName} is now registered. Since system emails are currently offline, please share these credentials directly.
+                            </p>
+                        </div>
+
+                        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-left space-y-3">
+                            <div>
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-0.5">Fellowship Number</p>
+                                <p className="text-lg font-mono font-bold text-slate-900">{createdCredentials.fellowshipNumber}</p>
+                            </div>
+                            {createdCredentials.defaultPassword && (
+                                <div>
+                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-0.5">Default Password</p>
+                                    <p className="text-sm font-mono font-semibold text-slate-700">{createdCredentials.defaultPassword}</p>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex flex-col gap-3">
+                            <a
+                                href={whatsappLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-[#25D366] hover:bg-[#20BE5C] text-white font-semibold rounded-xl shadow-lg transition-all"
+                            >
+                                <MessageCircle size={18} /> Send via WhatsApp
+                            </a>
+                            <button
+                                onClick={() => {
+                                    navigator.clipboard.writeText(whatsappMsg);
+                                    showToast('success', 'Message copied to clipboard');
+                                }}
+                                className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-white border-2 border-slate-200 text-slate-700 font-semibold rounded-xl hover:bg-slate-50 transition-all"
+                            >
+                                <Copy size={18} /> Copy Message
+                            </button>
+                            <button
+                                onClick={() => onApprove()}
+                                className="w-full py-3 px-4 text-slate-400 hover:text-slate-600 font-semibold text-sm transition-colors"
+                            >
+                                Done, close this
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // ── Default approval form ─────────────────────────────────────────────────
     return (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl border border-slate-100 shadow-2xl w-full max-w-lg max-h-[90dvh] overflow-y-auto">

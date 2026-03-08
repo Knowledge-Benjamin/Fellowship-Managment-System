@@ -220,7 +220,7 @@ export const submitSelfReg = async (req: Request, res: Response) => {
 
         // 2. Duplicate email checks
         const [existingPending, existingMember] = await Promise.all([
-            prisma.pendingMember.findUnique({ where: { email: data.email } }),
+            prisma.pendingMember.findFirst({ where: { email: data.email, status: 'PENDING' } }),
             prisma.member.findUnique({ where: { email: data.email } }),
         ]);
 

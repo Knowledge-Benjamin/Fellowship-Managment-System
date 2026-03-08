@@ -288,6 +288,23 @@ const SelfRegistration = () => {
     const isCentral = selectedRegion?.name === 'Central';
     const isNonResident = selectedRegion?.name === 'Non-Resident';
 
+    const isFormValid = (() => {
+        if (!formData.fullName.trim() || !formData.email.trim() || !formData.gender || !formData.phoneNumber) return false;
+
+        if (formData.isMakerereStudent) {
+            if (!formData.regionId) return false;
+            if (!formData.collegeId && !formData.collegeSuggestion.trim()) return false;
+            if (!formData.courseId && !formData.courseSuggestion.trim()) return false;
+            if (isCentral && !formData.residenceId && !formData.residenceSuggestion.trim()) return false;
+            if (!isCentral && !isNonResident && !formData.hostelName.trim()) return false;
+        } else {
+            if (!formData.classificationTagName) return false;
+            if (formData.classificationTagName === 'OTHER_CAMPUS_STUDENT' && !formData.courseId && !formData.courseSuggestion.trim()) return false;
+        }
+
+        return true;
+    })();
+
     // ── Validating ────────────────────────────────────────────────────────────
     if (validating) {
         return (
@@ -706,11 +723,14 @@ const SelfRegistration = () => {
                 )}
 
                 {/* Submit */}
-                <button type="submit" disabled={loading}
-                    className="w-full text-white font-bold py-3.5 rounded-2xl shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                    style={{ backgroundColor: '#48A111' }}
-                    onMouseEnter={e => { if (!loading) e.currentTarget.style.backgroundColor = '#F2B50B'; }}
-                    onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#48A111'; }}>
+                <button type="submit" disabled={loading || !isFormValid}
+                    className={`w-full text-white font-bold py-3.5 rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2 ${isFormValid && !loading
+                            ? 'hover:scale-[1.02] active:scale-[0.98] cursor-pointer'
+                            : 'opacity-50 cursor-not-allowed bg-slate-400'
+                        }`}
+                    style={isFormValid && !loading ? { backgroundColor: '#48A111' } : {}}
+                    onMouseEnter={e => { if (!loading && isFormValid) e.currentTarget.style.backgroundColor = '#F2B50B'; }}
+                    onMouseLeave={e => { if (!loading && isFormValid) e.currentTarget.style.backgroundColor = '#48A111'; }}>
                     {loading ? <><Loader2 size={18} className="animate-spin" /> Submitting…</> : <>Submit Registration <ArrowRight size={18} /></>}
                 </button>
                 <p className="text-center text-xs text-slate-400">By submitting, you agree to our data collection policies. Your data is only accessible to the fellowship management team.</p>

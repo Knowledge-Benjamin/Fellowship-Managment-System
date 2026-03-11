@@ -5,7 +5,7 @@ import {
     CheckCircle, XCircle, ChevronDown, ChevronUp, Loader2,
     MapPin, AlertTriangle,
     ThumbsUp, ThumbsDown, Building, BookOpen,
-    Copy, MessageCircle, Sparkles
+    Copy, Sparkles, Edit3, User, Phone, Mail
 } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
 import CustomSelect from '../components/CustomSelect';
@@ -53,6 +53,30 @@ function FieldBadge({ resolved, suggestion, label }: { resolved?: string | null;
     return <span className="inline-flex items-center gap-1 text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{label}: not provided</span>;
 }
 
+// ── Inline input helper ───────────────────────────────────────────────────────
+function EditField({ label, icon, value, onChange, type = 'text', readOnly = false }: {
+    label: string; icon: React.ReactNode; value: string;
+    onChange: (v: string) => void; type?: string; readOnly?: boolean;
+}) {
+    return (
+        <div className="space-y-1">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
+                {icon} {label}
+            </label>
+            <input
+                type={type}
+                value={value}
+                onChange={e => onChange(e.target.value)}
+                readOnly={readOnly}
+                className={`w-full px-3 py-2 rounded-xl border-2 text-sm text-slate-800 transition-all outline-none
+                    ${readOnly
+                        ? 'bg-slate-50 border-slate-100 text-slate-400 cursor-not-allowed'
+                        : 'bg-white border-slate-200 focus:border-[#48A111] focus:ring-2 focus:ring-[#48A111]/10'}`}
+            />
+        </div>
+    );
+}
+
 // ── Approval modal ────────────────────────────────────────────────────────────
 function ApproveModal({
     pending, regions, colleges, courses, residences,
@@ -64,29 +88,57 @@ function ApproveModal({
 }) {
     const { showToast } = useToast();
     const [edits, setEdits] = useState({
-        regionId: pending.regionId ?? '',
+        // Personal
+        fullName: pending.fullName,
+        email: pending.email,
+        phoneNumber: pending.phoneNumber,
+        gender: pending.gender,
+        // Academic
         collegeId: pending.collegeId ?? '',
         courseId: pending.courseId ?? '',
+        initialYearOfStudy: pending.initialYearOfStudy?.toString() ?? '',
+        initialSemester: pending.initialSemester?.toString() ?? '',
         residenceId: pending.residenceId ?? '',
+        hostelName: pending.hostelName ?? '',
+        // Assignment
+        regionId: pending.regionId ?? '',
         familyId: pending.familyId ?? '',
     });
+    const set = (k: keyof typeof edits) => (v: string) => setEdits(p => ({ ...p, [k]: v }));
     const [saving, setSaving] = useState(false);
     const [createdCredentials, setCreatedCredentials] = useState<{ fullName: string; fellowshipNumber: string; defaultPassword?: string; email?: string } | null>(null);
 
     const handleApprove = async () => {
         if (!edits.regionId) { showToast('error', 'Region must be assigned before approving'); return; }
+        if (!edits.fullName.trim()) { showToast('error', 'Full name is required'); return; }
+        if (!edits.email.trim()) { showToast('error', 'Email is required'); return; }
         try {
             setSaving(true);
             await api.patch(`/pending-members/${pending.id}`, {
+                fullName: edits.fullName.trim(),
+                email: edits.email.trim(),
+                phoneNumber: edits.phoneNumber.trim(),
+                gender: edits.gender,
                 regionId: edits.regionId || null,
                 collegeId: edits.collegeId || null,
                 courseId: edits.courseId || null,
+                initialYearOfStudy: edits.initialYearOfStudy ? parseInt(edits.initialYearOfStudy, 10) : null,
+                initialSemester: edits.initialSemester ? parseInt(edits.initialSemester, 10) : null,
                 residenceId: edits.residenceId || null,
+                hostelName: edits.hostelName.trim() || null,
                 familyId: edits.familyId || null,
             });
-            const res = await api.post(`/pending-members/${pending.id}/approve`);
-            showToast('success', `${pending.fullName} approved and activated!`);
-
+            // Detect if FM changed any personal field so the email can include a notice
+            const editedByFM =
+                edits.fullName.trim() !== pending.fullName ||
+                edits.email.trim() !== pending.email ||
+                edits.phoneNumber.trim() !== pending.phoneNumber ||
+                edits.gender !== pending.gender ||
+                (edits.initialYearOfStudy || '') !== (pending.initialYearOfStudy?.toString() ?? '') ||
+                (edits.initialSemester || '') !== (pending.initialSemester?.toString() ?? '') ||
+                (edits.hostelName.trim() || '') !== (pending.hostelName ?? '');
+            const res = await api.post(`/pending-members/${pending.id}/approve`, { editedByFM });
+            showToast('success', `${edits.fullName} approved and activated!`);
             if (res.data?.member) {
                 setCreatedCredentials(res.data.member);
             } else {
@@ -177,72 +229,120 @@ function ApproveModal({
         );
     }
 
-    // ── Default approval form ─────────────────────────────────────────────────
+    // ── Approval + edit form ──────────────────────────────────────────────────
     return (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl border border-slate-100 shadow-2xl w-full max-w-lg max-h-[90dvh] overflow-y-auto">
-                <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 sticky top-0 bg-white rounded-t-2xl">
+                <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 sticky top-0 bg-white rounded-t-2xl z-10">
                     <div>
-                        <h2 className="font-bold text-slate-900">Approve Registration</h2>
-                        <p className="text-xs text-slate-500 mt-0.5">{pending.fullName} · {pending.email}</p>
+                        <h2 className="font-bold text-slate-900 flex items-center gap-2"><Edit3 size={15} className="text-[#48A111]" /> Review &amp; Approve</h2>
+                        <p className="text-xs text-slate-400 mt-0.5">Correct any field, then approve</p>
                     </div>
                     <button onClick={onClose} className="p-2 rounded-xl hover:bg-slate-100 text-slate-400"><XCircle size={18} /></button>
                 </div>
 
                 <div className="p-6 space-y-5">
-                    {/* Region — required */}
-                    <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
-                            <MapPin size={11} /> Region <span className="text-red-400">*</span>
-                        </label>
-                        <CustomSelect value={edits.regionId} onChange={v => setEdits(p => ({ ...p, regionId: v }))} required
-                            placeholder="Assign region"
-                            options={[{ value: '', label: 'Select region', disabled: true }, ...regions.map(r => ({ value: r.id, label: r.name }))]} />
-                        {!edits.regionId && <p className="text-xs text-red-400">Region must be set before approval.</p>}
+
+                    {/* ── Personal Info ── */}
+                    <div>
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3 flex items-center gap-1.5"><User size={11} /> Personal Information</p>
+                        <div className="space-y-3">
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Full Name</label>
+                                <input className="input" value={edits.fullName} onChange={e => set('fullName')(e.target.value)} placeholder="Full name" />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Email</label>
+                                <input className="input" type="email" value={edits.email} onChange={e => set('email')(e.target.value)} placeholder="Email address" />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Phone Number</label>
+                                <input className="input" type="tel" value={edits.phoneNumber} onChange={e => set('phoneNumber')(e.target.value)} placeholder="Phone number" />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Gender</label>
+                                <CustomSelect value={edits.gender} onChange={set('gender')}
+                                    options={[{ value: 'MALE', label: 'Male' }, { value: 'FEMALE', label: 'Female' }]} />
+                            </div>
+                        </div>
                     </div>
 
-                    {/* College */}
-                    <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
-                            <Building size={11} /> College
-                        </label>
-                        {pending.collegeSuggestion && !pending.collegeId && (
-                            <p className="text-xs text-amber-600 bg-amber-50 px-3 py-2 rounded-lg">
-                                Suggestion: <strong>"{pending.collegeSuggestion}"</strong> — select a match or leave blank to auto-create.
-                            </p>
-                        )}
-                        <CustomSelect value={edits.collegeId} onChange={v => setEdits(p => ({ ...p, collegeId: v }))}
-                            placeholder="Match college"
-                            options={[{ value: '', label: 'Leave blank (use suggestion or skip)' }, ...colleges.map(c => ({ value: c.id, label: c.name }))]} />
-                    </div>
-
-                    {/* Course */}
-                    <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
-                            <BookOpen size={11} /> Course
-                        </label>
-                        {pending.courseSuggestion && !pending.courseId && (
-                            <p className="text-xs text-amber-600 bg-amber-50 px-3 py-2 rounded-lg">
-                                Suggestion: <strong>"{pending.courseSuggestion}"</strong> — select a match or leave blank to auto-create.
-                            </p>
-                        )}
-                        <CustomSelect value={edits.courseId} onChange={v => setEdits(p => ({ ...p, courseId: v }))}
-                            placeholder="Match course"
-                            options={[{ value: '', label: 'Leave blank (use suggestion or skip)' }, ...courses.map(c => ({ value: c.id, label: c.name }))]} />
-                    </div>
-
-                    {/* Residence */}
-                    {pending.residenceSuggestion && !pending.residenceId && (
-                        <div className="space-y-1.5">
-                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Residence</label>
-                            <p className="text-xs text-amber-600 bg-amber-50 px-3 py-2 rounded-lg">
-                                Suggestion: <strong>"{pending.residenceSuggestion}"</strong>
-                            </p>
-                            <CustomSelect value={edits.residenceId} onChange={v => setEdits(p => ({ ...p, residenceId: v }))}
-                                placeholder="Match residence"
-                                options={[{ value: '', label: 'Leave blank (auto-create)' }, ...residences.map(r => ({ value: r.id, label: r.name }))]} />
+                    {/* ── Academic ── */}
+                    {pending.isMakerereStudent && (
+                        <div>
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3 flex items-center gap-1.5"><BookOpen size={11} /> Academic</p>
+                            <div className="space-y-3">
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wide flex items-center gap-1.5"><Building size={11} /> College</label>
+                                    {pending.collegeSuggestion && !pending.collegeId && (
+                                        <p className="text-xs text-amber-600 bg-amber-50 px-3 py-2 rounded-lg">
+                                            Suggestion: <strong>"{pending.collegeSuggestion}"</strong> — select a match or leave blank to auto-create.
+                                        </p>
+                                    )}
+                                    <CustomSelect value={edits.collegeId} onChange={set('collegeId')}
+                                        placeholder="Match college"
+                                        options={[{ value: '', label: 'Leave blank (use suggestion or skip)' }, ...colleges.map(c => ({ value: c.id, label: c.name }))]} />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wide flex items-center gap-1.5"><BookOpen size={11} /> Course</label>
+                                    {pending.courseSuggestion && !pending.courseId && (
+                                        <p className="text-xs text-amber-600 bg-amber-50 px-3 py-2 rounded-lg">
+                                            Suggestion: <strong>"{pending.courseSuggestion}"</strong> — select a match or leave blank to auto-create.
+                                        </p>
+                                    )}
+                                    <CustomSelect value={edits.courseId} onChange={set('courseId')}
+                                        placeholder="Match course"
+                                        options={[{ value: '', label: 'Leave blank (use suggestion or skip)' }, ...courses.map(c => ({ value: c.id, label: c.name }))]} />
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Year of Study</label>
+                                        <CustomSelect value={edits.initialYearOfStudy} onChange={set('initialYearOfStudy')}
+                                            options={[
+                                                { value: '', label: 'Not set' },
+                                                ...[1,2,3,4,5,6,7].map(y => ({ value: String(y), label: `Year ${y}` })),
+                                            ]} />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Semester</label>
+                                        <CustomSelect value={edits.initialSemester} onChange={set('initialSemester')}
+                                            options={[
+                                                { value: '', label: 'Not set' },
+                                                { value: '1', label: 'Semester 1' },
+                                                { value: '2', label: 'Semester 2' },
+                                            ]} />
+                                    </div>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Residence</label>
+                                    {pending.residenceSuggestion && !pending.residenceId && (
+                                        <p className="text-xs text-amber-600 bg-amber-50 px-3 py-2 rounded-lg">
+                                            Suggestion: <strong>"{pending.residenceSuggestion}"</strong>
+                                        </p>
+                                    )}
+                                    <CustomSelect value={edits.residenceId} onChange={set('residenceId')}
+                                        placeholder="Match residence"
+                                        options={[{ value: '', label: 'Leave blank (auto-create or skip)' }, ...residences.map(r => ({ value: r.id, label: r.name }))]} />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Hostel / Hall</label>
+                                    <input className="input" value={edits.hostelName} onChange={e => set('hostelName')(e.target.value)} placeholder="e.g. Complex Hall" />
+                                </div>
+                            </div>
                         </div>
                     )}
+
+                    {/* ── Assignment ── */}
+                    <div>
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3 flex items-center gap-1.5"><MapPin size={11} /> Assignment</p>
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Region <span className="text-red-400">*</span></label>
+                            <CustomSelect value={edits.regionId} onChange={set('regionId')} required
+                                placeholder="Assign region"
+                                options={[{ value: '', label: 'Select region', disabled: true }, ...regions.map(r => ({ value: r.id, label: r.name }))]} />
+                            {!edits.regionId && <p className="text-xs text-red-400">Region must be set before approval.</p>}
+                        </div>
+                    </div>
 
                     <div className="flex gap-3 pt-2">
                         <button onClick={onClose} className="flex-1 px-5 py-2.5 rounded-xl border-2 border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition-all">

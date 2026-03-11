@@ -356,6 +356,7 @@ export const approvePendingMember = async (req: Request, res: Response) => {
     try {
         const id = req.params.id as string;
         const reviewerId = String((req as any).user?.id ?? '');
+        const editedByFM = req.body?.editedByFM === true;
 
         // ── Resolve the pending member record ────────────────────────────────
         const pending = await prisma.pendingMember.findUnique({
@@ -450,7 +451,7 @@ export const approvePendingMember = async (req: Request, res: Response) => {
         // Queue welcome email AFTER the transaction commits so that:
         //  - QR code generation cannot timeout the DB transaction
         //  - A failing email queue never rolls back the member creation
-        await scheduleWelcomeEmail(member.email, member.fullName, fellowshipNumber, member.qrCode);
+        await scheduleWelcomeEmail(member.email, member.fullName, fellowshipNumber, member.qrCode, editedByFM);
 
         res.json({
             message: 'Member approved and created successfully',

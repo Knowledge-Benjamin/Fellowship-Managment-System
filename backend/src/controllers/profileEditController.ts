@@ -531,3 +531,66 @@ export const updateMyProfile = async (req: Request, res: Response) => {
         res.status(500).json({ message: 'Failed to update profile' });
     }
 };
+
+// ── PATCH /members/:id ───────────────────────────────────────────────────────
+// Fellowship Manager: direct edit of any registered member (no approval needed).
+
+const fmMemberUpdateSchema = z.object({
+    fullName: z.string().min(2).max(100).optional(),
+    email: z.string().email().optional(),
+    phoneNumber: z.string().min(5).max(20).optional(),
+    gender: z.enum(['MALE', 'FEMALE']).optional(),
+    regionId: z.string().uuid().optional(),
+    courseId: z.string().uuid().nullable().optional(),
+    residenceId: z.string().uuid().nullable().optional(),
+    hostelName: z.string().max(100).nullable().optional(),
+    initialYearOfStudy: z.number().int().min(1).max(10).nullable().optional(),
+    initialSemester: z.number().int().min(1).max(2).nullable().optional(),
+});
+
+export const updateMemberById = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const actorRole = req.user?.role;
+        if (actorRole !== 'FELLOWSHIP_MANAGER') {
+            return res.status(403).json({ message: 'Only the Fellowship Manager can directly edit member profiles.' });
+        }
+
+        const data = fmMemberUpdateSchema.parse(req.body);
+
+        const existing = await prisma.member.findUnique({ where: { id: String(id) }, select: { id: true, isDeleted: true } });
+        if (!existing || existing.isDeleted) {
+            return res.status(404).json({ message: 'Member not found' });
+        }
+
+        const updated = await prisma.member.update({
+            where: { id: String(id) },
+            data: {
+                ...(data.fullName !== undefined && { fullName: data.fullName }),
+                ...(data.email !== undefined && { email: data.email }),
+                ...(data.phoneNumber !== undefined && { phoneNumber: data.phoneNumber }),
+                ...(data.gender !== undefined && { gender: data.gender }),
+                ...(data.regionId !== undefined && { regionId: data.regionId }),
+                ...(data.courseId !== undefined && { courseId: data.courseId }),
+                ...(data.residenceId !== undefined && { residenceId: data.residenceId }),
+                ...(data.hostelName !== undefined && { hostelName: data.hostelName }),
+                ...(data.initialYearOfStudy !== undefined && { initialYearOfStudy: data.initialYearOfStudy }),
+                ...(data.initialSemester !== undefined && { initialSemester: data.initialSemester }),
+            },
+            select: {
+                id: true, fullName: true, email: true, phoneNumber: true,
+                gender: true, regionId: true, courseId: true, hostelName: true,
+                initialYearOfStudy: true, initialSemester: true,
+            },
+        });
+
+        console.log(`[PROFILE] FM direct-edit: member ${id} updated by FM ${req.user?.id}`);
+        res.json({ message: 'Member profile updated.', member: updated });
+    } catch (error) {
+        if (error instanceof z.ZodError) {
+            return res.status(400).json({ message: 'Validation failed', details: error.issues });
+        }
+        console.error('[PROFILE] Error in FM direct member update:', error);
+        res.status(500).json({ message: 'Failed to update member' });
+    }
+};

@@ -227,6 +227,7 @@ model Attendance {
   eventId     String
   method      CheckInMethod
   checkedInAt DateTime      @default(now())
+  isFirstTimer Boolean      @default(false)
 
   member Member @relation(fields: [memberId], references: [id])
   event  Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)

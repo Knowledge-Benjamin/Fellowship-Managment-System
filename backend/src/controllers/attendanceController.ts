@@ -86,19 +86,7 @@ export const checkIn = async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'You have already checked in for this event' });
         }
 
-        const attendance = await prisma.attendance.create({
-            data: {
-                memberId: member.id,
-                eventId,
-                method,
-            },
-            include: {
-                member: true,
-                event: true,
-            },
-        });
-
-        // Auto-remove PENDING_FIRST_ATTENDANCE tag if this is their first attendance
+        // Check if this is their first attendance
         const firstTimerTag = await prisma.memberTag.findFirst({
             where: {
                 memberId: member.id,
@@ -106,6 +94,19 @@ export const checkIn = async (req: Request, res: Response) => {
                 isActive: true,
             },
             include: { tag: true },
+        });
+
+        const attendance = await prisma.attendance.create({
+            data: {
+                memberId: member.id,
+                eventId,
+                method,
+                isFirstTimer: !!firstTimerTag,
+            },
+            include: {
+                member: true,
+                event: true,
+            },
         });
 
         if (firstTimerTag) {
@@ -445,19 +446,20 @@ export const syncOfflineBatch = async (req: Request, res: Response) => {
 
                 if (existing) continue; // Ignore if they already synced
 
+                // Check for PENDING_FIRST_ATTENDANCE before creation
+                const firstTimerTag = await prisma.memberTag.findFirst({
+                    where: { memberId: record.memberId, tag: { name: 'PENDING_FIRST_ATTENDANCE' }, isActive: true },
+                    include: { tag: true },
+                });
+
                 await prisma.attendance.create({
                     data: {
                         memberId: record.memberId,
                         eventId: eventId,
                         method: record.method,
                         checkedInAt: new Date(record.timestamp), // Use the offline real time
+                        isFirstTimer: !!firstTimerTag,
                     },
-                });
-
-                // Auto-remove PENDING_FIRST_ATTENDANCE
-                const firstTimerTag = await prisma.memberTag.findFirst({
-                    where: { memberId: record.memberId, tag: { name: 'PENDING_FIRST_ATTENDANCE' }, isActive: true },
-                    include: { tag: true },
                 });
 
                 if (firstTimerTag) {

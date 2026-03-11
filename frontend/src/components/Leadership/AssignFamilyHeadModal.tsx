@@ -52,8 +52,10 @@ const AssignFamilyHeadModal: React.FC<AssignFamilyHeadModalProps> = ({
     const fetchMembers = async () => {
         setFetchingMembers(true);
         try {
-            // regionId is enforced server-side — DB returns only members in this region
-            const response = await api.get(`/members?regionId=${family.region.id}`);
+            // limit=500 ensures all members in the region are returned.
+            // The server enforces a hard cap of 500 (Math.min(500, ...)) so this is safe.
+            // Without this, the default limit=50 would silently truncate the list.
+            const response = await api.get(`/members?regionId=${family.region.id}&limit=500`);
             setMembers(response.data.data || []);
         } catch (error) {
             toast.error('Failed to load members');

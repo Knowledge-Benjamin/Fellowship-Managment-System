@@ -497,7 +497,8 @@ export const scheduleWelcomeEmail = async (
     email: string,
     fullName: string,
     fellowshipNumber: string,
-    qrCodeValue: string
+    qrCodeValue: string,
+    editedByFM?: boolean
 ): Promise<void> => {
     try {
         const settings = getSettings();
@@ -511,6 +512,23 @@ export const scheduleWelcomeEmail = async (
         });
 
         const subject = '🎉 Welcome to Fellowship Manager!';
+
+        // ── FM-edit notice (conditional) ─────────────────────────────────────
+        const fmEditNoticeHtml = editedByFM ? `
+                        <div style="background:#fff8e1;border-left:4px solid #f59e0b;padding:16px 18px;margin:20px 0;border-radius:6px;">
+                            <p style="margin:0 0 6px 0;font-weight:700;color:#92400e;font-size:14px;">✏️ A Note About Your Registration Details</p>
+                            <p style="margin:0;color:#78350f;font-size:13px;line-height:1.6;">
+                                Some of the information you submitted was reviewed and adjusted by the Fellowship Manager during approval — for example, correcting a spelling, matching your college or course to our records, or assigning your region.
+                            </p>
+                            <p style="margin:10px 0 0;color:#78350f;font-size:13px;">
+                                Please <strong>log in and review your profile</strong> to confirm everything looks correct. If you believe any detail is wrong, you can submit a <strong>profile edit request</strong> directly from your account page and our team will review it promptly.
+                            </p>
+                        </div>` : '';
+
+        const fmEditNoticeText = editedByFM
+            ? '\nNote: Some details on your registration were adjusted by the Fellowship Manager during approval (e.g. name spelling, college/course matching, or region assignment). After logging in, please review your profile. If anything looks incorrect, submit a profile edit request from your account page and our team will review it.\n'
+            : '';
+
         const html = `
             <!DOCTYPE html>
             <html>
@@ -567,7 +585,9 @@ export const scheduleWelcomeEmail = async (
                             <strong>ℹ️ First Login:</strong> Your default password is the same as your fellowship number. Please change it after your first login for security purposes.
                         </div>
 
-                        <h3 style="color: #0f172a; margin: 30px 0 15px 0;">📱 Your Personal QR Code</h3>
+                        ${fmEditNoticeHtml}
+
+                        <h3 style="color: #0f172a; margin: 30px 0 15px 0;">🚀 Getting Started</h3>
                         <p style="color: #64748b; margin-bottom: 15px;">Use this QR code for quick check-in at fellowship events:</p>
                         
                         <div class="qr-container">
@@ -632,7 +652,7 @@ Default Password: ${fellowshipNumber}
 Email: ${email}
 
 Your default password is the same as your fellowship number. Please change it after your first login.
-
+${fmEditNoticeText}
 Login to your account here: ${loginUrl}
 
 Getting Started:

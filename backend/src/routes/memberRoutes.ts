@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { getMembers, createMember, getMemberAcademicStatus, softDeleteMember, bulkSoftDeleteMembers, getQRCodeImage } from '../controllers/memberController';
-import { getMyProfile, submitEditRequest, getEditRequests, reviewEditRequest, updateMyProfile } from '../controllers/profileEditController';
+import { getMyProfile, submitEditRequest, getEditRequests, reviewEditRequest, updateMyProfile, updateMemberById } from '../controllers/profileEditController';
 import { protect, authorize } from '../middleware/authMiddleware';
 
 const router = Router();
@@ -33,6 +33,9 @@ router.patch('/edit-requests/:id', protect, reviewEditRequest);
 
 // Get member's academic status
 router.get('/:id/academic-status', protect, getMemberAcademicStatus);
+
+// FM direct edit of any registered member (no approval workflow)
+router.patch('/:id', protect, authorize('FELLOWSHIP_MANAGER'), updateMemberById);
 
 // Soft delete member (manager only)
 router.delete('/:id', protect, authorize('FELLOWSHIP_MANAGER'), softDeleteMember);

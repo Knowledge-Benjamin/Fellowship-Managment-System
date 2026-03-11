@@ -34,37 +34,12 @@ export const aggregateAttendanceStats = async (attendances: any[], guestAttendan
         { MALE: 0, FEMALE: 0 }
     );
 
-    // 3. First Timers (Tag-Based with Fallback)
-    const memberIds = attendances.map((a: any) => a.memberId);
-
-    // Priority 1: Check for PENDING_FIRST_ATTENDANCE tag
-    const firstTimerTags = await prisma.memberTag.findMany({
-        where: {
-            memberId: { in: memberIds },
-            tag: { name: 'PENDING_FIRST_ATTENDANCE' },
-            isActive: true,
-        },
-        select: { memberId: true }
-    });
-
-    let firstTimerIds: string[] = firstTimerTags.map(t => t.memberId);
-
-    // Priority 2: Fallback to attendance history if no tags found
-    if (firstTimerIds.length === 0 && memberIds.length > 0) {
-        const previousAttendances = await prisma.attendance.findMany({
-            where: {
-                memberId: { in: memberIds },
-                event: {
-                    date: { lt: eventDate },
-                },
-            },
-            select: { memberId: true },
-            distinct: ['memberId'],
-        });
-
-        const returningMemberIds = new Set(previousAttendances.map((a: any) => a.memberId));
-        firstTimerIds = memberIds.filter((id: string) => !returningMemberIds.has(id));
-    }
+    // 3. First Timers — read directly from the isFirstTimer field recorded at check-in time.
+    // The PENDING_FIRST_ATTENDANCE tag is removed during check-in so querying it here
+    // would always return 0. Reading the persisted field is the correct approach.
+    const firstTimerIds: string[] = attendances
+        .filter((a: any) => a.isFirstTimer === true)
+        .map((a: any) => a.memberId);
 
     // Total count for summary stats
     const firstTimersCount = firstTimerIds.length;

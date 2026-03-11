@@ -3,11 +3,13 @@ import api from '../api';
 import { useToast } from '../components/ToastProvider';
 import {
     Users, Search, Tag as TagIcon, X, Loader2, Check,
-    Trash2, UserCheck, Hash, Mail, Phone, MapPin, BookOpen
+    Trash2, UserCheck, Hash, Mail, Phone, MapPin, BookOpen, Pencil,
+    Edit2, ChevronDown, ChevronUp, CheckCircle, XCircle
 } from 'lucide-react';
 import TagBadge from '../components/TagBadge';
 import EmptyState from '../components/EmptyState';
 import LoadingSpinner from '../components/LoadingSpinner';
+import CustomSelect from '../components/CustomSelect';
 
 interface Member {
     id: string;
@@ -15,8 +17,11 @@ interface Member {
     email: string;
     fellowshipNumber: string;
     phoneNumber: string;
+    gender: string;
     region: { id: string; name: string };
     courseRelation?: { id: string; name: string; durationYears: number };
+    residenceId?: string;
+    hostelName?: string;
     initialYearOfStudy?: number;
     initialSemester?: number;
     tags: Tag[];
@@ -29,6 +34,164 @@ interface Tag {
     type: 'SYSTEM' | 'CUSTOM';
     isSystem: boolean;
 }
+
+interface EditChange { field: string; oldValue: string; newValue: string; }
+interface EditRequest {
+    id: string;
+    status: 'PENDING' | 'APPROVED' | 'REJECTED';
+    changes: EditChange[];
+    reason: string;
+    createdAt: string;
+    member: { id: string; fullName: string; fellowshipNumber: string; email: string; region?: { name: string } | null; };
+}
+
+interface RefData { id: string; name: string; }
+
+/* ── Edit modal ── */
+function EditMemberModal({
+    member, regions, colleges, courses, residences, onClose, onSaved,
+}: {
+    member: Member;
+    regions: RefData[]; colleges: RefData[]; courses: RefData[]; residences: RefData[];
+    onClose: () => void;
+    onSaved: (updated: Partial<Member>) => void;
+}) {
+    const { showToast } = useToast();
+    const [form, setForm] = useState({
+        fullName: member.fullName,
+        email: member.email,
+        phoneNumber: member.phoneNumber,
+        gender: member.gender,
+        regionId: member.region?.id ?? '',
+        courseId: member.courseRelation?.id ?? '',
+        initialYearOfStudy: member.initialYearOfStudy?.toString() ?? '',
+        initialSemester: member.initialSemester?.toString() ?? '',
+        residenceId: member.residenceId ?? '',
+        hostelName: member.hostelName ?? '',
+    });
+    const [saving, setSaving] = useState(false);
+    const set = (k: keyof typeof form) => (v: string) => setForm(p => ({ ...p, [k]: v }));
+
+    const handleSave = async () => {
+        if (!form.fullName.trim()) { showToast('error', 'Full name is required'); return; }
+        if (!form.email.trim()) { showToast('error', 'Email is required'); return; }
+        if (!form.regionId) { showToast('error', 'Region is required'); return; }
+        try {
+            setSaving(true);
+            const res = await api.patch(`/members/${member.id}`, {
+                fullName: form.fullName.trim(),
+                email: form.email.trim(),
+                phoneNumber: form.phoneNumber.trim(),
+                gender: form.gender,
+                regionId: form.regionId,
+                courseId: form.courseId || null,
+                initialYearOfStudy: form.initialYearOfStudy ? parseInt(form.initialYearOfStudy, 10) : null,
+                initialSemester: form.initialSemester ? parseInt(form.initialSemester, 10) : null,
+                residenceId: form.residenceId || null,
+                hostelName: form.hostelName.trim() || null,
+            });
+            showToast('success', `${form.fullName} updated`);
+            onSaved(res.data.member);
+        } catch (err: any) {
+            showToast('error', err.response?.data?.message ?? 'Update failed');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-2xl w-full max-w-lg max-h-[90dvh] overflow-y-auto">
+                <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 sticky top-0 bg-white rounded-t-2xl z-10">
+                    <div>
+                        <h2 className="font-bold text-slate-900 flex items-center gap-2"><Pencil size={14} className="text-[#48A111]" /> Edit Member</h2>
+                        <p className="text-xs text-slate-400 mt-0.5">{member.fellowshipNumber}</p>
+                    </div>
+                    <button onClick={onClose} className="p-2 rounded-xl hover:bg-slate-100 text-slate-400"><X size={18} /></button>
+                </div>
+
+                <div className="p-6 space-y-5">
+                    {/* Personal */}
+                    <div>
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3">Personal</p>
+                        <div className="space-y-3">
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Full Name</label>
+                                <input className="input" value={form.fullName} onChange={e => set('fullName')(e.target.value)} />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Email</label>
+                                <input className="input" type="email" value={form.email} onChange={e => set('email')(e.target.value)} />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Phone</label>
+                                <input className="input" type="tel" value={form.phoneNumber} onChange={e => set('phoneNumber')(e.target.value)} />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Gender</label>
+                                <CustomSelect value={form.gender} onChange={set('gender')}
+                                    options={[{ value: 'MALE', label: 'Male' }, { value: 'FEMALE', label: 'Female' }]} />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Academic */}
+                    <div>
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3">Academic</p>
+                        <div className="space-y-3">
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Course</label>
+                                <CustomSelect value={form.courseId} onChange={set('courseId')}
+                                    options={[{ value: '', label: 'None' }, ...courses.map(c => ({ value: c.id, label: c.name }))]} />
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Year of Study</label>
+                                    <CustomSelect value={form.initialYearOfStudy} onChange={set('initialYearOfStudy')}
+                                        options={[{ value: '', label: 'Not set' }, ...[1,2,3,4,5,6,7].map(y => ({ value: String(y), label: `Year ${y}` }))]} />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Semester</label>
+                                    <CustomSelect value={form.initialSemester} onChange={set('initialSemester')}
+                                        options={[{ value: '', label: 'Not set' }, { value: '1', label: 'Sem 1' }, { value: '2', label: 'Sem 2' }]} />
+                                </div>
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Residence</label>
+                                <CustomSelect value={form.residenceId} onChange={set('residenceId')}
+                                    options={[{ value: '', label: 'None' }, ...residences.map(r => ({ value: r.id, label: r.name }))]} />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Hostel / Hall</label>
+                                <input className="input" value={form.hostelName} onChange={e => set('hostelName')(e.target.value)} placeholder="e.g. Complex Hall" />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Assignment */}
+                    <div>
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3">Assignment</p>
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Region <span className="text-red-400">*</span></label>
+                            <CustomSelect value={form.regionId} onChange={set('regionId')}
+                                options={[{ value: '', label: 'Select region', disabled: true }, ...regions.map(r => ({ value: r.id, label: r.name }))]} />
+                        </div>
+                    </div>
+
+                    <div className="flex gap-3 pt-1">
+                        <button onClick={onClose} className="flex-1 px-5 py-2.5 rounded-xl border-2 border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition-all">Cancel</button>
+                        <button onClick={handleSave} disabled={saving}
+                            className="flex-1 px-5 py-2.5 rounded-xl text-white font-semibold text-sm shadow-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                            style={{ backgroundColor: '#48A111' }}>
+                            {saving ? <><Loader2 size={14} className="animate-spin" /> Saving…</> : <><Check size={14} /> Save Changes</>}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 
 /* ── Avatar initials ── */
 const Avatar = ({ name }: { name: string }) => {
@@ -58,12 +221,69 @@ const MemberManagement = () => {
     const [bulkNotes, setBulkNotes] = useState('');
     const [submitting, setSubmitting] = useState(false);
 
+    // Edit modal
+    const [editTarget, setEditTarget] = useState<Member | null>(null);
+
+    // Reference data for edit modal
+    const [regions, setRegions] = useState<RefData[]>([]);
+    const [colleges, setColleges] = useState<RefData[]>([]);
+    const [courses, setCourses] = useState<RefData[]>([]);
+    const [residences, setResidences] = useState<RefData[]>([]);
+
+    // Tabs
+    const [activeTab, setActiveTab] = useState<'members' | 'editRequests'>('members');
+
+    // Edit requests
+    const [editRequests, setEditRequests] = useState<EditRequest[]>([]);
+    const [loadingRequests, setLoadingRequests] = useState(false);
+    const [expandedReqId, setExpandedReqId] = useState<string | null>(null);
+    const [reviewNote, setReviewNote] = useState('');
+    const [reviewingId, setReviewingId] = useState<string | null>(null);
+
     useEffect(() => {
         const to = setTimeout(() => {
             fetchData(page, searchQuery);
         }, 300);
         return () => clearTimeout(to);
     }, [searchQuery, page]);
+
+    useEffect(() => {
+        // Load reference data once for the edit modal
+        Promise.all([
+            api.get('/regions').then(r => setRegions(r.data)),
+            api.get('/colleges').then(r => setColleges(r.data)),
+            api.get('/courses').then(r => setCourses(r.data)),
+            api.get('/residences').then(r => setResidences(r.data)),
+        ]).catch(() => {});
+    }, []);
+
+    const fetchEditRequests = async () => {
+        try {
+            setLoadingRequests(true);
+            const res = await api.get('/members/edit-requests?status=PENDING');
+            setEditRequests(res.data);
+        } catch { /* silent */ }
+        finally { setLoadingRequests(false); }
+    };
+
+    useEffect(() => {
+        if (activeTab === 'editRequests') fetchEditRequests();
+    }, [activeTab]);
+
+    const handleReview = async (reqId: string, status: 'APPROVED' | 'REJECTED') => {
+        try {
+            setReviewingId(reqId);
+            await api.patch(`/members/edit-requests/${reqId}`, { status, reviewNote: reviewNote.trim() || undefined });
+            showToast('success', `Request ${status.toLowerCase()}`);
+            setReviewNote('');
+            setExpandedReqId(null);
+            setEditRequests(prev => prev.filter(r => r.id !== reqId));
+        } catch (err: any) {
+            showToast('error', err.response?.data?.message ?? 'Action failed');
+        } finally {
+            setReviewingId(null);
+        }
+    };
 
     const fetchData = async (currentPage = page, search = searchQuery) => {
         try {
@@ -172,12 +392,11 @@ const MemberManagement = () => {
             )}
 
             {/* Page header */}
-            <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center justify-between mb-6">
                 <div>
                     <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Member Management</h1>
-                    <p className="text-slate-500 mt-1 text-sm">Manage member tags and assignments</p>
+                    <p className="text-slate-500 mt-1 text-sm">Manage member details, tags, and review edit requests</p>
                 </div>
-                {/* Summary pill */}
                 <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-2xl px-5 py-3 shadow-sm">
                     <Users size={18} className="text-[#48A111]" />
                     <span className="font-bold text-slate-900 text-lg">{totalMembers}</span>
@@ -185,7 +404,36 @@ const MemberManagement = () => {
                 </div>
             </div>
 
-            {/* Search + Bulk actions bar */}
+            {/* Tab bar */}
+            <div className="flex gap-1 bg-slate-100 p-1 rounded-xl mb-6 w-fit">
+                <button
+                    onClick={() => setActiveTab('members')}
+                    className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
+                        activeTab === 'members'
+                            ? 'bg-white text-slate-900 shadow-sm'
+                            : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                >
+                    <span className="flex items-center gap-2"><Users size={14} /> Members</span>
+                </button>
+                <button
+                    onClick={() => setActiveTab('editRequests')}
+                    className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
+                        activeTab === 'editRequests'
+                            ? 'bg-white text-slate-900 shadow-sm'
+                            : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                >
+                    <span className="flex items-center gap-2">
+                        <Edit2 size={14} /> Edit Requests
+                        {editRequests.length > 0 && (
+                            <span className="ml-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-xs font-bold">{editRequests.length}</span>
+                        )}
+                    </span>
+                </button>
+            </div>
+            {/* ── Members Tab ── */}
+            {activeTab === 'members' && (<>
             <div className="flex flex-col sm:flex-row gap-3 mb-6">
                 {/* Search */}
                 <div className="relative flex-1">
@@ -362,15 +610,24 @@ const MemberManagement = () => {
                                                 )}
                                             </td>
 
-                                            {/* Delete */}
+                                            {/* Edit */}
                                             <td className="py-3 px-4">
-                                                <button
-                                                    onClick={() => handleDelete(member.id, member.fullName)}
-                                                    className="p-1.5 rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-500 transition-all"
-                                                    title="Delete member"
-                                                >
-                                                    <Trash2 size={15} />
-                                                </button>
+                                                <div className="flex items-center gap-1">
+                                                    <button
+                                                        onClick={() => setEditTarget(member)}
+                                                        className="p-1.5 rounded-lg text-slate-400 hover:bg-[#e9f5e1] hover:text-[#48A111] transition-all"
+                                                        title="Edit member"
+                                                    >
+                                                        <Pencil size={15} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDelete(member.id, member.fullName)}
+                                                        className="p-1.5 rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-500 transition-all"
+                                                        title="Delete member"
+                                                    >
+                                                        <Trash2 size={15} />
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     );
@@ -409,6 +666,140 @@ const MemberManagement = () => {
                         </div>
                     </div>
                 </div>
+            )}
+            </>)}
+
+            {/* ── Edit Requests Tab ── */}
+            {activeTab === 'editRequests' && (
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+                    <div className="flex items-center justify-between mb-6">
+                        <h2 className="text-xl font-bold text-slate-900 flex items-center gap-3">
+                            <div className="p-2 rounded-xl bg-amber-50"><Edit2 className="text-amber-500" size={20} /></div>
+                            Profile Edit Requests
+                            {editRequests.length > 0 && (
+                                <span className="text-sm px-2.5 py-1 rounded-full bg-amber-50 text-amber-600 border border-amber-200 font-semibold">
+                                    {editRequests.length} pending
+                                </span>
+                            )}
+                        </h2>
+                        <button onClick={fetchEditRequests} className="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1 transition-colors">
+                            <Loader2 size={12} className={loadingRequests ? 'animate-spin' : ''} /> Refresh
+                        </button>
+                    </div>
+
+                    {loadingRequests ? (
+                        <div className="text-center py-10 text-slate-400"><Loader2 className="animate-spin mx-auto" size={28} /></div>
+                    ) : editRequests.length === 0 ? (
+                        <div className="text-center py-14 bg-slate-50 border border-slate-200 rounded-2xl">
+                            <CheckCircle className="mx-auto mb-3" style={{ color: '#48A111' }} size={40} />
+                            <p className="text-slate-500 font-medium">No pending edit requests</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            {editRequests.map(req => (
+                                <div key={req.id} className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                                    {/* Header row */}
+                                    <button
+                                        className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50 transition-colors"
+                                        onClick={() => setExpandedReqId(expandedReqId === req.id ? null : req.id)}
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center text-amber-600 font-bold text-sm border border-amber-100">
+                                                {req.member.fullName.charAt(0)}
+                                            </div>
+                                            <div>
+                                                <p className="text-slate-900 font-bold">{req.member.fullName}</p>
+                                                <p className="text-xs text-slate-500 font-mono mt-0.5">{req.member.fellowshipNumber}</p>
+                                                {req.member.region && (
+                                                    <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5"><MapPin size={9} /> {req.member.region.name}</p>
+                                                )}
+                                            </div>
+                                            <div className="flex flex-wrap gap-1.5 ml-2">
+                                                {req.changes.map((c, i) => (
+                                                    <span key={i} className="text-xs px-2.5 py-1 bg-slate-100 text-slate-600 border border-slate-200 rounded-full font-medium capitalize">
+                                                        {c.field.replace(/([A-Z])/g, ' $1')}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-3 text-slate-400 shrink-0">
+                                            <span className="text-xs">{new Date(req.createdAt).toLocaleDateString()}</span>
+                                            {expandedReqId === req.id ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                                        </div>
+                                    </button>
+
+                                    {/* Expanded body */}
+                                    {expandedReqId === req.id && (
+                                        <div className="px-5 pb-5 pt-4 border-t border-slate-100 bg-slate-50 space-y-4">
+                                            {/* Changes diff */}
+                                            <div className="space-y-2">
+                                                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Changes Requested</p>
+                                                {req.changes.map((c, i) => (
+                                                    <div key={i} className="flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-xl text-sm shadow-sm">
+                                                        <span className="font-semibold text-slate-700 capitalize w-32 shrink-0">{c.field.replace(/([A-Z])/g, ' $1')}</span>
+                                                        <span className="text-slate-400 line-through truncate max-w-[150px]">{c.oldValue || '—'}</span>
+                                                        <span className="font-bold shrink-0" style={{ color: '#48A111' }}>→ {c.newValue}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                            {/* Reason */}
+                                            <div className="p-4 bg-amber-50 border border-amber-100 rounded-xl">
+                                                <p className="text-xs font-bold text-amber-600 mb-1.5 uppercase tracking-wider">Member's Reason</p>
+                                                <p className="text-sm text-amber-900 leading-relaxed font-medium">{req.reason}</p>
+                                            </div>
+
+                                            {/* Review note */}
+                                            <div>
+                                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Review Note (optional)</label>
+                                                <textarea
+                                                    value={reviewNote}
+                                                    onChange={e => setReviewNote(e.target.value)}
+                                                    placeholder="Leave a note for the member…"
+                                                    rows={2}
+                                                    maxLength={500}
+                                                    className="input resize-none"
+                                                />
+                                            </div>
+
+                                            {/* Actions */}
+                                            <div className="flex gap-3">
+                                                <button
+                                                    onClick={() => handleReview(req.id, 'APPROVED')}
+                                                    disabled={reviewingId === req.id}
+                                                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-bold shadow-md transition-all disabled:opacity-60"
+                                                    style={{ backgroundColor: '#48A111' }}
+                                                >
+                                                    <CheckCircle size={16} />
+                                                    {reviewingId === req.id ? 'Processing…' : 'Approve'}
+                                                </button>
+                                                <button
+                                                    onClick={() => handleReview(req.id, 'REJECTED')}
+                                                    disabled={reviewingId === req.id}
+                                                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white border-2 border-slate-200 hover:border-red-200 hover:bg-red-50 text-slate-700 hover:text-red-600 text-sm font-bold transition-all disabled:opacity-60"
+                                                >
+                                                    <XCircle size={16} /> Reject
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {editTarget && (
+                <EditMemberModal
+                    member={editTarget}
+                    regions={regions} colleges={colleges} courses={courses} residences={residences}
+                    onClose={() => setEditTarget(null)}
+                    onSaved={(updated) => {
+                        setMembers(ms => ms.map(m => m.id === editTarget.id ? { ...m, ...updated } : m));
+                        setEditTarget(null);
+                    }}
+                />
             )}
 
             {/* ── Bulk Tag Modal ── */}

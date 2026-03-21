@@ -36,6 +36,7 @@ const EmailManagement = lazy(() => import('./pages/EmailManagement'));
 // Newly added Campaign routes
 const Campaigns = lazy(() => import('./pages/Campaigns'));
 const CampaignManagement = lazy(() => import('./pages/CampaignManagement'));
+import Sidebar from './components/Sidebar';
 
 // Roles that can view dispatched reports
 const LEADER_ROLES = ['FELLOWSHIP_MANAGER', 'REGIONAL_HEAD', 'FAMILY_HEAD', 'TEAM_LEADER'] as const;
@@ -53,19 +54,27 @@ function AppContent() {
   const isRegistrationPage = location.pathname === '/' || location.pathname === '/register';
 
   return (
-    <div className="min-h-screen bg-slate-50 relative">
-      {/* Decorative Background Elements */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-indigo-400 opacity-10 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-teal-400 opacity-10 rounded-full blur-3xl"></div>
-      </div>
+    <div className="flex h-screen bg-slate-50 overflow-hidden">
+      {/* Universal Sidebar for Desktop */}
+      {isAuthenticated && !isRegistrationPage && location.pathname !== '/login' && <Sidebar />}
 
-      <Navbar />
+      {/* Main Content Wrapper */}
+      <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
+        {/* Decorative Background Elements */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+          <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-indigo-400 opacity-10 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-teal-400 opacity-10 rounded-full blur-3xl"></div>
+        </div>
 
-      {/* Main Content */}
-      <main className={`relative pt-32 pb-12 min-h-screen ${isRegistrationPage ? '' : 'px-6'}`}>
-        <div className={isRegistrationPage ? 'w-full' : 'max-w-7xl mx-auto'}>
-          <Suspense fallback={<div className="flex justify-center items-center h-[50vh]"><div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div></div>}>
+        {/* Mobile Navbar (Hidden on Desktop) */}
+        <div className="md:hidden z-50">
+          <Navbar />
+        </div>
+
+        {/* Main Scrolling Content Area */}
+        <main className={`flex-1 overflow-y-auto relative z-10 pb-12 ${isRegistrationPage ? '' : 'pt-24 md:pt-10 px-6 md:px-10'}`}>
+          <div className={isRegistrationPage ? 'w-full' : 'max-w-7xl mx-auto'}>
+            <Suspense fallback={<div className="flex justify-center items-center h-[50vh]"><div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div></div>}>
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route path="/force-change-password" element={<ForcePasswordChange />} />
@@ -273,6 +282,7 @@ function AppContent() {
 
       {/* Footer Decoration */}
       <div className="fixed bottom-0 left-0 right-0 h-px bg-slate-200 pointer-events-none"></div>
+      </div> {/* Close Main Content Wrapper */}
     </div>
   );
 }

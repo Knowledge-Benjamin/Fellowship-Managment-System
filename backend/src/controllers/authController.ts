@@ -7,7 +7,7 @@ import jwt from 'jsonwebtoken';
 import { asyncHandler } from '../utils/asyncHandler';
 import { isPrivilegedAccount, isAccountLocked, getRemainingLockoutTime } from '../utils/securityHelper';
 import { createOTP, verifyOTP as verifyOTPCode } from '../services/otpService';
-import { sendOTPEmail, sendAccountLockedEmail } from '../services/emailService';
+import { sendOTPEmail, sendAccountLockedEmail, sendPasswordChangedEmail } from '../services/emailService';
 
 // Input validation schemas
 const loginSchema = z.object({
@@ -22,6 +22,17 @@ const verifyOTPSchema = z.object({
 
 const resendOTPSchema = z.object({
     tempToken: z.string().min(1, 'Temporary token is required'),
+});
+
+const forceChangePasswordSchema = z.object({
+    email: z.string().email('Invalid email format'),
+    oldPassword: z.string().min(1, 'Old password is required'),
+    newPassword: z.string().min(8, 'New password must be at least 8 characters'),
+});
+
+const changePasswordSchema = z.object({
+    oldPassword: z.string().min(1, 'Old password is required'),
+    newPassword: z.string().min(8, 'New password must be at least 8 characters'),
 });
 
 // JWT token generation
@@ -268,7 +279,7 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
 
     console.log('[LOGIN] Response sent successfully for:', email);
 
-    // Successful login - return full token
+    // Successful login - return full token or trigger forced reset
     res.json({
         id: user.id,
         fullName: user.fullName,
@@ -276,6 +287,7 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
         role: user.role,
         fellowshipNumber: user.fellowshipNumber,
         qrCode: user.qrCode,
+        forcePasswordChange: user.forcePasswordChange,
         tags: validTags,
         message: 'Login successful',
         token: generateToken(user.id),
@@ -385,6 +397,7 @@ export const verifyOTP = asyncHandler(async (req: Request, res: Response) => {
         role: user.role,
         fellowshipNumber: user.fellowshipNumber,
         qrCode: user.qrCode,
+        forcePasswordChange: user.forcePasswordChange,
         tags: validTags,
         message: 'Login successful',
         token: generateToken(user.id),
@@ -495,8 +508,125 @@ export const getMe = asyncHandler(async (req: Request, res: Response) => {
         email: user.email,
         role: user.role,
         fellowshipNumber: user.fellowshipNumber,
-        qrCode: user.qrCode,
+        qrcCde: user.qrCode,
+        forcePasswordChange: user.forcePasswordChange,
         tags,
     });
+});
+
+/**
+ * Force Change Password (called when forcePasswordChange is true)
+ * Requires standard email/old password combination to prevent direct API jumps, then applies the new password.
+ */
+export const forceChangePassword = asyncHandler(async (req: Request, res: Response) => {
+    const result = forceChangePasswordSchema.safeParse(req.body);
+    if (!result.success) {
+        res.status(400);
+        throw new Error(result.error.issues[0].message);
+    }
+
+    const { email, oldPassword, newPassword } = result.data;
+
+    const user = await prisma.member.findFirst({
+        where: { email, ...activeMemberFilter },
+        include: {
+            memberTags: {
+                where: { isActive: true },
+                include: { tag: { select: { name: true, color: true } } },
+            },
+        },
+    });
+
+    if (!user) {
+        res.status(401);
+        throw new Error('Invalid email or old password');
+    }
+
+    const isValidPassword = await bcrypt.compare(oldPassword, user.password);
+    if (!isValidPassword) {
+        res.status(401);
+        throw new Error('Invalid old password');
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    const updatedUser = await prisma.member.update({
+        where: { id: user.id },
+        data: {
+            password: hashedPassword,
+            forcePasswordChange: false,
+            lastSuccessfulLogin: new Date(),
+        },
+    });
+
+    // Notify user
+    await sendPasswordChangedEmail(user.email, user.fullName);
+
+    const validTags = user.memberTags
+        .filter((mt) => mt.tag && mt.isActive)
+        .map((mt) => ({
+            name: mt.tag!.name,
+            isActive: mt.isActive,
+            color: mt.tag!.color,
+            expiresAt: mt.expiresAt,
+        }));
+
+    res.json({
+        id: updatedUser.id,
+        fullName: updatedUser.fullName,
+        email: updatedUser.email,
+        role: updatedUser.role,
+        fellowshipNumber: updatedUser.fellowshipNumber,
+        qrCode: updatedUser.qrCode,
+        forcePasswordChange: updatedUser.forcePasswordChange,
+        tags: validTags,
+        message: 'Password completely updated and logged in.',
+        token: generateToken(updatedUser.id),
+    });
+});
+
+/**
+ * Change Password (Authenticated Profile endpoint)
+ */
+export const changePassword = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.id;
+    if (!userId) {
+        res.status(401);
+        throw new Error('Unauthorized');
+    }
+
+    const result = changePasswordSchema.safeParse(req.body);
+    if (!result.success) {
+        res.status(400);
+        throw new Error(result.error.issues[0].message);
+    }
+
+    const { oldPassword, newPassword } = result.data;
+
+    const user = await prisma.member.findFirst({
+        where: { id: userId, ...activeMemberFilter },
+    });
+
+    if (!user) {
+        res.status(404);
+        throw new Error('User not found');
+    }
+
+    const isValidPassword = await bcrypt.compare(oldPassword, user.password);
+    if (!isValidPassword) {
+        res.status(400);
+        throw new Error('Incorrect current password');
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    await prisma.member.update({
+        where: { id: user.id },
+        data: { password: hashedPassword },
+    });
+
+    await sendPasswordChangedEmail(user.email, user.fullName);
+
+    res.json({ message: 'Password updated successfully' });
 });
 

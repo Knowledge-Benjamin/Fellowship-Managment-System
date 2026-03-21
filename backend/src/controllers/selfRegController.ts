@@ -405,8 +405,8 @@ export const approvePendingMember = async (req: Request, res: Response) => {
         // createMemberRecord handles: Member row, all tag assignments,
         // finalist/alumni evaluation, and queuing the welcome email.
         // Family assignment + marking APPROVED are caller-specific and stay here — all in the same tx.
-        const { member, fellowshipNumber } = await prisma.$transaction(async (tx) => {
-            const { member, fellowshipNumber } = await createMemberRecord(
+        const { member, fellowshipNumber, temporaryPassword } = await prisma.$transaction(async (tx) => {
+            const { member, fellowshipNumber, temporaryPassword } = await createMemberRecord(
                 {
                     fullName: pending.fullName,
                     email: pending.email,
@@ -445,19 +445,19 @@ export const approvePendingMember = async (req: Request, res: Response) => {
                 data: { status: 'APPROVED', reviewedBy: reviewerId, reviewedAt: new Date() },
             });
 
-            return { member, fellowshipNumber };
+            return { member, fellowshipNumber, temporaryPassword };
         }, { timeout: 15000 });
 
         // Queue welcome email AFTER the transaction commits so that:
         //  - QR code generation cannot timeout the DB transaction
         //  - A failing email queue never rolls back the member creation
-        await scheduleWelcomeEmail(member.email, member.fullName, fellowshipNumber, member.qrCode, editedByFM);
+        await scheduleWelcomeEmail(member.email, member.fullName, fellowshipNumber, temporaryPassword || '', member.qrCode, editedByFM);
 
         res.json({
             message: 'Member approved and created successfully',
             member: {
                 ...member,
-                defaultPassword: fellowshipNumber
+                defaultPassword: temporaryPassword
             },
             fellowshipNumber
         });

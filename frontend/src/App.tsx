@@ -13,6 +13,7 @@ const ManualCheckIn = lazy(() => import('./pages/ManualCheckIn'));
 const TagManagement = lazy(() => import('./pages/TagManagement'));
 const MemberManagement = lazy(() => import('./pages/MemberManagement'));
 const Login = lazy(() => import('./pages/Login'));
+const ForcePasswordChange = lazy(() => import('./pages/ForcePasswordChange'));
 const Profile = lazy(() => import('./pages/Profile'));
 const CourseManagement = lazy(() => import('./pages/CourseManagement'));
 const ResidenceManagement = lazy(() => import('./pages/ResidenceManagement'));
@@ -64,6 +65,7 @@ function AppContent() {
           <Suspense fallback={<div className="flex justify-center items-center h-[50vh]"><div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div></div>}>
             <Routes>
               <Route path="/login" element={<Login />} />
+              <Route path="/force-change-password" element={<ForcePasswordChange />} />
 
               {/* Public self-registration (no auth required) */}
               <Route path="/register" element={<SelfRegistration />} />

@@ -50,7 +50,7 @@ export const createMember = async (req: Request, res: Response) => {
         }
 
         // ── Atomic transaction: create member + tags + email ─────────────────
-        const { member, fellowshipNumber } = await prisma.$transaction(async (tx) => {
+        const { member, fellowshipNumber, temporaryPassword } = await prisma.$transaction(async (tx) => {
             return createMemberRecord(
                 {
                     fullName: validatedData.fullName,
@@ -75,7 +75,7 @@ export const createMember = async (req: Request, res: Response) => {
         // Queue welcome email AFTER the transaction commits so that:
         //  - QR code generation cannot timeout the DB transaction
         //  - A failing email queue never rolls back the member creation
-        await scheduleWelcomeEmail(member.email, member.fullName, fellowshipNumber, member.qrCode);
+        await scheduleWelcomeEmail(member.email, member.fullName, fellowshipNumber, temporaryPassword || '', member.qrCode, undefined);
 
         // ── Fetch complete member for response ───────────────────────────────
         const completeMember = await prisma.member.findUnique({
@@ -98,7 +98,10 @@ export const createMember = async (req: Request, res: Response) => {
 
         res.status(201).json({
             message: 'Member registered successfully',
-            member: responseData,
+            member: {
+                ...responseData,
+                defaultPassword: temporaryPassword
+            },
             fellowshipNumber,
         });
     } catch (error) {

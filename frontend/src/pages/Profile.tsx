@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import TagBadge from '../components/TagBadge';
 import EditRequestModal from '../components/EditRequestModal';
+import ChangePasswordModal from '../components/ChangePasswordModal';
 
 interface Tag {
     id: string;
@@ -69,6 +70,7 @@ const Profile = () => {
     const [extProfile, setExtProfile] = useState<ExtendedProfile | null>(null);
     const [loadingExtProfile, setLoadingExtProfile] = useState(true);
     const [showEditModal, setShowEditModal] = useState(false);
+    const [showPasswordModal, setShowPasswordModal] = useState(false);
 
     useEffect(() => {
         if (user?.id) {
@@ -414,6 +416,26 @@ const Profile = () => {
                         </div>
                     </div>
                 </div>
+
+                {/* Security Section */}
+                <div className="mt-8 bg-white rounded-2xl p-8 border border-slate-200 shadow-xl">
+                    <h3 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
+                        <Shield className="text-[#48A111]" size={24} />
+                        Security Settings
+                    </h3>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                        <div>
+                            <p className="font-semibold text-slate-900">Account Password</p>
+                            <p className="text-sm text-slate-500">Update your password to keep your account secure</p>
+                        </div>
+                        <button
+                            onClick={() => setShowPasswordModal(true)}
+                            className="px-4 py-2 bg-white border border-slate-300 text-slate-700 font-medium rounded-xl hover:bg-slate-50 transition-colors shadow-sm whitespace-nowrap"
+                        >
+                            Change Password
+                        </button>
+                    </div>
+                </div>
             </div>
 
             {/* Edit Request Modal (non-FM only) */}
@@ -433,6 +455,12 @@ const Profile = () => {
                     onSuccess={fetchExtProfile}
                 />
             )}
+
+            {/* Password Change Modal */}
+            <ChangePasswordModal
+                isOpen={showPasswordModal}
+                onClose={() => setShowPasswordModal(false)}
+            />
         </>
     );
 };

@@ -116,6 +116,7 @@ model Member {
   
   
   // Security fields
+  forcePasswordChange    Boolean   @default(true)
   failedLoginAttempts    Int       @default(0)
   lockedUntil            DateTime?
   lastLoginAttempt       DateTime?

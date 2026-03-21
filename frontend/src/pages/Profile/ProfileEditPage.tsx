@@ -12,6 +12,7 @@ import CustomSelect from '../../components/CustomSelect';
 import AddCollegeModal from '../../components/AddCollegeModal';
 import AddCourseModal from '../../components/AddCourseModal';
 import AddResidenceModal from '../../components/AddResidenceModal';
+import ChangePasswordModal from '../../components/ChangePasswordModal';
 import '../../styles/phoneInput.css';
 
 interface College { id: string; name: string; code?: string; }
@@ -34,6 +35,7 @@ const ProfileEditPage: React.FC = () => {
     const [isCourseModalOpen, setIsCourseModalOpen] = useState(false);
     const [isCollegeModalOpen, setIsCollegeModalOpen] = useState(false);
     const [isResidenceModalOpen, setIsResidenceModalOpen] = useState(false);
+    const [showPasswordModal, setShowPasswordModal] = useState(false);
 
     // Form state
     const [formData, setFormData] = useState({
@@ -412,6 +414,24 @@ const ProfileEditPage: React.FC = () => {
                             </div>
                         </div>
                     </form>
+                    
+                    <hr className="my-8 border-slate-200" />
+                    
+                    {/* Security Section for FM Editing Their Own Profile */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-slate-50 rounded-xl border border-slate-200">
+                        <div>
+                            <p className="font-semibold text-slate-900">Security: Account Password</p>
+                            <p className="text-sm text-slate-500">Update your password to keep your account secure</p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setShowPasswordModal(true)}
+                            className="px-4 py-2 bg-white border border-slate-300 text-slate-700 font-medium rounded-xl hover:bg-slate-50 transition-colors shadow-sm whitespace-nowrap"
+                        >
+                            Change Password
+                        </button>
+                    </div>
+
                 </div>
             </div>
 
@@ -419,6 +439,7 @@ const ProfileEditPage: React.FC = () => {
             <AddCollegeModal isOpen={isCollegeModalOpen} onClose={() => setIsCollegeModalOpen(false)} onSuccess={handleCollegeSaved} />
             <AddCourseModal isOpen={isCourseModalOpen} onClose={() => setIsCourseModalOpen(false)} onSuccess={handleCourseSaved} preSelectedCollegeId={formData.collegeId} />
             <AddResidenceModal isOpen={isResidenceModalOpen} onClose={() => setIsResidenceModalOpen(false)} onSuccess={handleResidenceSaved} />
+            <ChangePasswordModal isOpen={showPasswordModal} onClose={() => setShowPasswordModal(false)} />
         </div>
     );
 };

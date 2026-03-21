@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import { Prisma } from '@prisma/client';
 import { generateFellowshipNumber } from '../utils/fellowshipNumberGenerator';
 import { updateMemberTags } from '../utils/finalistHelper';
+import { randomBytes } from 'crypto';
 // NOTE: Welcome email is queued by callers AFTER the transaction commits
 // via scheduleWelcomeEmail() from emailService — not inside this service.
 
@@ -51,6 +52,7 @@ export interface CreatedMemberResult {
     /** The newly created Member row (with region + courseRelation includes). */
     member: Awaited<ReturnType<typeof _createMemberRow>>;
     fellowshipNumber: string;
+    temporaryPassword?: string;
 }
 
 // ─── Internal helper (typed return for the member create) ─────────────────────
@@ -104,7 +106,10 @@ export async function createMemberRecord(
 
     // 1. Pre-generate credentials (outside-of-row writes, safe to do inline)
     const fellowshipNumber = await generateFellowshipNumber();
-    const hashedPassword = await bcrypt.hash(fellowshipNumber, 10);
+    
+    // Generate secure 8-character random password
+    const temporaryPassword = randomBytes(4).toString('hex');
+    const hashedPassword = await bcrypt.hash(temporaryPassword, 10);
 
     // 2. Create Member row
     const member = await _createMemberRow(tx, {
@@ -172,5 +177,5 @@ export async function createMemberRecord(
     //    so that slow QR-code generation cannot cause a transaction timeout
     //    or roll back a successfully created member row.
 
-    return { member, fellowshipNumber };
+    return { member, fellowshipNumber, temporaryPassword };
 }

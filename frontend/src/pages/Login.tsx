@@ -118,6 +118,16 @@ const Login = () => {
                     setError(message);
                 }
 
+                if (userData.forcePasswordChange) {
+                    navigate('/force-change-password', { 
+                        state: { 
+                            email: userData.email, 
+                            oldPassword: password 
+                        } 
+                    });
+                    return;
+                }
+
                 login(token, {
                     id: userData.id,
                     fullName: userData.fullName,
@@ -154,6 +164,17 @@ const Login = () => {
 
             // Add slight delay to show success state
             setTimeout(() => {
+                if (userData.forcePasswordChange) {
+                    navigate('/force-change-password', { 
+                        state: { 
+                            email: userData.email, 
+                            // During OTP flow we still have the original password in state
+                            oldPassword: password 
+                        } 
+                    });
+                    return;
+                }
+
                 login(token, {
                     id: userData.id,
                     fullName: userData.fullName,

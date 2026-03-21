@@ -240,6 +240,7 @@ export const sendWelcomeEmail = async (
     email: string,
     fullName: string,
     fellowshipNumber: string,
+    temporaryPassword: string,
     qrCodeValue: string
 ): Promise<boolean> => {
     try {
@@ -294,8 +295,8 @@ export const sendWelcomeEmail = async (
                         </div>
 
                         <div class="credential-item">
-                            <div class="credential-label">Default Password</div>
-                            <div class="credential-value">${fellowshipNumber}</div>
+                            <div class="credential-label">Temporary Password</div>
+                            <div class="credential-value">${temporaryPassword}</div>
                         </div>
 
                         <div class="credential-item">
@@ -304,7 +305,7 @@ export const sendWelcomeEmail = async (
                         </div>
 
                         <div class="info-box">
-                            <strong>ℹ️ First Login:</strong> Your default password is the same as your fellowship number. Please change it after your first login for security purposes.
+                            <strong>⚠️ Security Requirement:</strong> Your temporary password is provided above. For your security, you will be required to change this password immediately upon your first login.
                         </div>
 
                         <h3 style="color: #0f172a; margin: 30px 0 15px 0;">📱 Your Personal QR Code</h3>
@@ -323,10 +324,10 @@ export const sendWelcomeEmail = async (
 
                         <h3 style="color: #0f172a; margin: 30px 0 15px 0;">🚀 Getting Started</h3>
                         <ol class="steps-list" style="color: #64748b;">
-                            <li><strong style="color: #0f172a;">Log in</strong> to your account using your fellowship number and password</li>
-                            <li><strong style="color: #0f172a;">Update your profile</strong> with additional information if needed</li>
-                            <li><strong style="color: #0f172a;">Change your password</strong> for security</li>
+                            <li><strong style="color: #0f172a;">Log in</strong> using your email and the temporary password above</li>
+                            <li><strong style="color: #0f172a;">Set a secure password</strong> when prompted</li>
                             <li><strong style="color: #0f172a;">Save your QR code</strong> for quick event check-ins</li>
+                            <li><strong style="color: #0f172a;">Update your profile</strong> with additional information if needed</li>
                             <li><strong style="color: #0f172a;">Explore</strong> the fellowship management system</li>
                         </ol>
 
@@ -497,6 +498,7 @@ export const scheduleWelcomeEmail = async (
     email: string,
     fullName: string,
     fellowshipNumber: string,
+    temporaryPassword: string,
     qrCodeValue: string,
     editedByFM?: boolean
 ): Promise<void> => {
@@ -572,8 +574,8 @@ export const scheduleWelcomeEmail = async (
                         </div>
 
                         <div class="credential-item">
-                            <div class="credential-label">Default Password</div>
-                            <div class="credential-value">${fellowshipNumber}</div>
+                            <div class="credential-label">Temporary Password</div>
+                            <div class="credential-value">${temporaryPassword}</div>
                         </div>
 
                         <div class="credential-item">
@@ -582,7 +584,7 @@ export const scheduleWelcomeEmail = async (
                         </div>
 
                         <div class="info-box">
-                            <strong>ℹ️ First Login:</strong> Your default password is the same as your fellowship number. Please change it after your first login for security purposes.
+                            <strong>⚠️ Security Requirement:</strong> Your temporary password is provided above. For your security, you will be required to change this password immediately upon your first login.
                         </div>
 
                         ${fmEditNoticeHtml}
@@ -1032,4 +1034,70 @@ Fellowship Management System
     `.trim();
 
     return await sendEmail(memberEmail, subject, html, text);
+};
+
+/**
+ * Notify a user that their password was changed (either forced or voluntary).
+ */
+export const sendPasswordChangedEmail = async (
+    email: string,
+    fullName: string
+): Promise<boolean> => {
+    const subject = '🔒 Your Password Has Been Changed';
+
+    const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                .header { background: linear-gradient(135deg, #48A111 0%, #2d7a08 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+                .content { background: #f8fafc; padding: 30px; border-radius: 0 0 10px 10px; }
+                .info-box { background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin: 20px 0; }
+                .footer { text-align: center; padding: 20px; color: #64748b; font-size: 12px; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1 style="margin: 0;">Password Changed</h1>
+                    <p style="margin: 5px 0 0 0; opacity: 0.9;">Security Alert</p>
+                </div>
+                <div class="content">
+                    <p>Hello <strong>${fullName}</strong>,</p>
+                    <p>This email is to confirm that the password for your Fellowship account has just been changed.</p>
+
+                    <div class="info-box">
+                        <p style="margin: 0; color: #475569;">If you made this change, you don't need to do anything else. Your account is secure.</p>
+                    </div>
+
+                    <p style="color: #ef4444; font-weight: bold;">Did you not make this change?</p>
+                    <p>If you did not change your password or authorize this action, please contact your fellowship administrator immediately as your account may be compromised.</p>
+
+                    <p style="margin-top: 30px;">Best regards,<br/><strong>Fellowship Management System</strong></p>
+                </div>
+                <div class="footer">
+                    <p>This is an automated notification. Do not reply to this email.</p>
+                    <p>&copy; ${new Date().getFullYear()} Fellowship Manager. All rights reserved.</p>
+                </div>
+            </div>
+        </body>
+        </html>
+    `;
+
+    const text = `
+Hello ${fullName},
+
+This email is to confirm that the password for your Fellowship account has just been changed.
+
+If you made this change, you don't need to do anything else. Your account is secure.
+
+If you did NOT change your password, please contact your fellowship administrator immediately to secure your account.
+
+Fellowship Management System
+    `.trim();
+
+    // No transaction passed, use direct sendEmail
+    return await sendEmail(email, subject, html, text);
 };

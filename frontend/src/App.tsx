@@ -41,7 +41,7 @@ import Sidebar from './components/Sidebar';
 // Roles that can view dispatched reports
 const LEADER_ROLES = ['FELLOWSHIP_MANAGER', 'REGIONAL_HEAD', 'FAMILY_HEAD', 'TEAM_LEADER'] as const;
 import { ToastProvider } from './components/ToastProvider';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import CheckInPermissionGuard from './components/CheckInPermissionGuard';
 import Navbar from './components/Navbar';
@@ -51,6 +51,7 @@ import { NetworkStatusListener } from './components/NetworkStatusListener';
 
 function AppContent() {
   const location = useLocation();
+  const { isAuthenticated } = useAuth();
   const isRegistrationPage = location.pathname === '/' || location.pathname === '/register';
 
   return (

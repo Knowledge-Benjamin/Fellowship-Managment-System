@@ -5,6 +5,7 @@ import { toast } from 'react-hot-toast';
 import api from '../../api';
 import { useAuth } from '../../context/AuthContext';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import TransferManagementPanel from './components/TransferManagementPanel';
 
 interface FamilyData {
     id: string;
@@ -400,6 +401,9 @@ const RegionalDashboard = () => {
                         </div>
                     )}
                 </div>
+
+                {/* Transfer Requests Panel */}
+                <TransferManagementPanel currentRegionId={region.id} />
 
                 {/* Gender Distribution */}
                 <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-8">

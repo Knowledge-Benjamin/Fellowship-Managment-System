@@ -3,6 +3,7 @@ import { z } from 'zod';
 import prisma from '../prisma';
 import { getNowInEAT, getEventTimeInEAT } from '../utils/timezone';
 import { activeMemberFilter } from '../utils/queryHelpers';
+import { advancePledgeToAttended } from './bringOneController';
 
 // Validation schemas
 const checkInSchema = z.object({
@@ -119,6 +120,11 @@ export const checkIn = async (req: Request, res: Response) => {
                 },
             });
             console.log(`[FIRST-TIMER] Tag removed for member ${member.fullName} after first attendance at event ${event.name}`);
+            
+            // Execute Bring 1 auto-advance to ATTENDED
+            advancePledgeToAttended(member.id).catch(err => 
+                console.error('[BRING-ONE] Auto-advance to ATTENDED failed:', err)
+            );
         }
 
         res.status(201).json({
@@ -467,6 +473,11 @@ export const syncOfflineBatch = async (req: Request, res: Response) => {
                         where: { id: firstTimerTag.id },
                         data: { isActive: false, removedAt: new Date(), removedBy: record.memberId },
                     });
+                    
+                    // Execute Bring 1 auto-advance to ATTENDED
+                    advancePledgeToAttended(record.memberId).catch(err => 
+                        console.error('[BRING-ONE] Auto-advance to ATTENDED failed for offline sync:', err)
+                    );
                 }
 
                 syncedCount++;

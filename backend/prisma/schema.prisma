@@ -41,10 +41,10 @@ enum TagType {
 }
 
 enum RegistrationMode {
-  NEW_MEMBER        // Fresh registration, auto-assign PENDING_FIRST_ATTENDANCE tag
-  LEGACY_IMPORT     // Bulk import of existing members, skip first-timer tag
-  TRANSFER          // Transfer from another fellowship
-  READMISSION       // Returning after absence
+  NEW_MEMBER // Fresh registration, auto-assign PENDING_FIRST_ATTENDANCE tag
+  LEGACY_IMPORT // Bulk import of existing members, skip first-timer tag
+  TRANSFER // Transfer from another fellowship
+  READMISSION // Returning after absence
 }
 
 enum DecisionType {
@@ -70,6 +70,29 @@ enum EmailStatus {
   FAILED
 }
 
+enum BringOneStatus {
+  PLEDGED          // Member submitted intent, person hasn't shown yet
+  PENDING_APPROVAL // Person self-registered, awaiting FM approval
+  JOINED           // Approved as full Member, not yet attended
+  ATTENDED         // Checked in for first time (isFirstTimer confirmed)
+  LAPSED           // Event passed, person never showed
+}
+
+enum MobilizationStatus {
+  DRAFT
+  OPEN
+  CLOSED
+  ARCHIVED
+}
+
+enum ContactCallStatus {
+  NOT_CALLED
+  CALLED
+  CONFIRMED
+  ATTENDED
+  UNREACHABLE
+}
+
 model Region {
   id        String   @id @default(uuid())
   name      String   @unique
@@ -80,55 +103,56 @@ model Region {
   regionalHeadId String? @unique
   regionalHead   Member? @relation("RegionalHead", fields: [regionalHeadId], references: [id])
 
-  members    Member[]
-  residences Residence[]
-  families   FamilyGroup[]
-  pendingMembers PendingMember[]
+  members           Member[]
+  residences        Residence[]
+  families          FamilyGroup[]
+  pendingMembers    PendingMember[]
+  outgoingTransfers TransferRequest[] @relation("TransferFrom")
+  incomingTransfers TransferRequest[] @relation("TransferTo")
 
   @@index([name])
   @@index([regionalHeadId])
 }
 
 model Member {
-  id                     String    @id @default(uuid())
-  fullName               String
-  email                  String    @unique
-  phoneNumber            String
-  password               String
-  role                   Role      @default(MEMBER)
-  fellowshipNumber       String    @unique
-  gender                 Gender
-  regionId               String
-  region                 Region    @relation(fields: [regionId], references: [id], onDelete: Restrict)
-  residenceId            String?
-  residence              Residence? @relation(fields: [residenceId], references: [id])
-  hostelName             String?
-  courseId               String?
-  courseRelation         Course?   @relation(fields: [courseId], references: [id])
-  course                 String?
-  registrationDate       DateTime  @default(now())
-  registrationMode       RegistrationMode @default(NEW_MEMBER)
-  initialYearOfStudy     Int?
-  initialSemester        Int?
-  qrCode                 String    @unique @default(uuid())
-  createdAt              DateTime  @default(now())
-  updatedAt              DateTime  @updatedAt
-  
-  
+  id                 String           @id @default(uuid())
+  fullName           String
+  email              String           @unique
+  phoneNumber        String
+  password           String
+  role               Role             @default(MEMBER)
+  fellowshipNumber   String           @unique
+  gender             Gender
+  regionId           String
+  region             Region           @relation(fields: [regionId], references: [id], onDelete: Restrict)
+  residenceId        String?
+  residence          Residence?       @relation(fields: [residenceId], references: [id])
+  hostelName         String?
+  courseId           String?
+  courseRelation     Course?          @relation(fields: [courseId], references: [id])
+  course             String?
+  registrationDate   DateTime         @default(now())
+  registrationMode   RegistrationMode @default(NEW_MEMBER)
+  initialYearOfStudy Int?
+  initialSemester    Int?
+  qrCode             String           @unique @default(uuid())
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
   // Security fields
-  forcePasswordChange    Boolean   @default(true)
-  failedLoginAttempts    Int       @default(0)
-  lockedUntil            DateTime?
-  lastLoginAttempt       DateTime?
-  lastSuccessfulLogin    DateTime?
+  forcePasswordChange Boolean   @default(true)
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime?
+  lastLoginAttempt    DateTime?
+  lastSuccessfulLogin DateTime?
 
   // Soft delete fields
-  isDeleted              Boolean   @default(false)
-  deletedAt              DateTime?
-  deletedBy              String?
+  isDeleted Boolean   @default(false)
+  deletedAt DateTime?
+  deletedBy String?
 
   // Session security: forces re-login + MFA after privilege elevation
-  requiresReauth         Boolean   @default(false)
+  requiresReauth Boolean @default(false)
 
   attendances         Attendance[]
   transportBookings   TransportBooking[]
@@ -140,34 +164,49 @@ model Member {
   counseledSalvations Salvation[]        @relation("SalvationCounselor") // Salvations counseled by this member
 
   // Leadership roles
-  headsRegion              Region?               @relation("RegionalHead")
-  headsFamilies            FamilyGroup[]         @relation("FamilyHead")
-  assistsInFamilies        FamilyGroup[]         @relation("FamilyAssistant")
-  familiesCreated          FamilyGroup[]         @relation("FamilyCreator")
-  leadsMinistryTeams       MinistryTeam[]        @relation("TeamLeader")
-  assistsMinistryTeams     MinistryTeam[]        @relation("TeamAssistant")
-  createdTeams             MinistryTeam[]        @relation("TeamCreator")
+  headsRegion          Region?        @relation("RegionalHead")
+  headsFamilies        FamilyGroup[]  @relation("FamilyHead")
+  assistsInFamilies    FamilyGroup[]  @relation("FamilyAssistant")
+  familiesCreated      FamilyGroup[]  @relation("FamilyCreator")
+  leadsMinistryTeams   MinistryTeam[] @relation("TeamLeader")
+  assistsMinistryTeams MinistryTeam[] @relation("TeamAssistant")
+  createdTeams         MinistryTeam[] @relation("TeamCreator")
 
   // Memberships
-  familyMemberships        FamilyMember[]
-  ministryMemberships      MinistryTeamMember[]
+  familyMemberships   FamilyMember[]
+  ministryMemberships MinistryTeamMember[]
 
   // Assignments
-  familyMembersAssigned    FamilyMember[]        @relation("FamilyMemberAssigner")
-  ministryMembersAssigned  MinistryTeamMember[]  @relation("MinistryTeamAssigner")
+  familyMembersAssigned   FamilyMember[]       @relation("FamilyMemberAssigner")
+  ministryMembersAssigned MinistryTeamMember[] @relation("MinistryTeamAssigner")
 
   // Created records
-  familyMeetingsCreated    FamilyMeeting[]
-  schedulesCreated         MinistrySchedule[]
-  publishedReports         EventReport[]        @relation("PublishedReports")
-  
+  familyMeetingsCreated FamilyMeeting[]
+  schedulesCreated      MinistrySchedule[]
+  publishedReports      EventReport[]      @relation("PublishedReports")
+
   // Security relations
-  loginAttempts            LoginAttempt[]
-  otps                     OTP[]
+  loginAttempts LoginAttempt[]
+  otps          OTP[]
 
   // Profile edit requests
-  profileEditRequests      ProfileEditRequest[] @relation("EditRequester")
-  reviewedEditRequests     ProfileEditRequest[] @relation("EditReviewer")
+  profileEditRequests  ProfileEditRequest[] @relation("EditRequester")
+  reviewedEditRequests ProfileEditRequest[] @relation("EditReviewer")
+
+  transferRequests        TransferRequest[]
+  originTransferApprovals TransferRequest[] @relation("OriginTransferApprover")
+  destTransferApprovals   TransferRequest[] @relation("DestTransferApprover")
+
+  familyTransferRequests        FamilyTransferRequest[]
+  originFamilyTransferApprovals FamilyTransferRequest[] @relation("OriginFamilyTransferApprover")
+  destFamilyTransferApprovals   FamilyTransferRequest[] @relation("DestFamilyTransferApprover")
+
+  // Campaign relations
+  bringOnePledges               BringOnePledge[]        @relation("BringOnePledges")
+  bringOneCampaignsCreated      BringOneCampaign[]
+  mobilizationCampaignsCreated  MobilizationCampaign[]
+  mobilizationContactsSubmitted MobilizationContact[]   @relation("ContactSubmitter")
+  contactCallsMade              MobilizationContact[]   @relation("ContactCaller")
 
   @@index([phoneNumber])
   @@index([email])
@@ -191,44 +230,45 @@ model Event {
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
 
-  attendances       Attendance[]
-  guestAttendances  GuestAttendance[]
-  transportBookings TransportBooking[]
-  volunteers        EventVolunteer[]
-  salvations        Salvation[]
-  ministrySchedules MinistrySchedule[]
-  report            EventReport?
+  attendances           Attendance[]
+  guestAttendances      GuestAttendance[]
+  transportBookings     TransportBooking[]
+  volunteers            EventVolunteer[]
+  salvations            Salvation[]
+  ministrySchedules     MinistrySchedule[]
+  report                EventReport?
+  bringOnePledges       BringOnePledge[]
+  mobilizationCampaigns MobilizationCampaign[]
 
   @@index([date])
   @@index([isActive])
 }
 
 model EventReport {
-  id            String    @id @default(uuid())
-  eventId       String    @unique
-  event         Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  
-  isPublished   Boolean   @default(false)
-  publishedAt   DateTime?
-  publishedBy   String?
-  publisher     Member?   @relation("PublishedReports", fields: [publishedBy], references: [id], onDelete: SetNull)
-  
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id      String @id @default(uuid())
+  eventId String @unique
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  isPublished Boolean   @default(false)
+  publishedAt DateTime?
+  publishedBy String?
+  publisher   Member?   @relation("PublishedReports", fields: [publishedBy], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([eventId])
   @@index([isPublished])
   @@index([publishedBy])
 }
 
-
 model Attendance {
-  id          String        @id @default(uuid())
-  memberId    String
-  eventId     String
-  method      CheckInMethod
-  checkedInAt DateTime      @default(now())
-  isFirstTimer Boolean      @default(false)
+  id           String        @id @default(uuid())
+  memberId     String
+  eventId      String
+  method       CheckInMethod
+  checkedInAt  DateTime      @default(now())
+  isFirstTimer Boolean       @default(false)
 
   member Member @relation(fields: [memberId], references: [id])
   event  Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
@@ -401,158 +441,161 @@ model Salvation {
 // ============================================
 
 model FamilyGroup {
-  id                 String          @id @default(uuid())
-  name               String
-  regionId           String
-  region             Region          @relation(fields: [regionId], references: [id])
-  
+  id       String @id @default(uuid())
+  name     String
+  regionId String
+  region   Region @relation(fields: [regionId], references: [id])
+
   // Family Head
-  familyHeadId       String?
-  familyHead         Member?         @relation("FamilyHead", fields: [familyHeadId], references: [id])
-  
+  familyHeadId String?
+  familyHead   Member? @relation("FamilyHead", fields: [familyHeadId], references: [id])
+
   // Assistant (optional)
-  assistantId        String?
-  assistant          Member?         @relation("FamilyAssistant", fields: [assistantId], references: [id])
-  
+  assistantId String?
+  assistant   Member? @relation("FamilyAssistant", fields: [assistantId], references: [id])
+
   // Flexible Meeting Schedule
-  meetingDayLocked   Boolean         @default(false)
-  meetingDay         String?         // "Sunday", "Monday", etc.
-  meetingTimeLocked  Boolean         @default(false)
-  meetingTime        String?         // "17:00" in 24hr format
-  meetingVenueLocked Boolean         @default(false)
-  meetingVenue       String?         // "Olympia", "MSH Common Room"
-  
+  meetingDayLocked   Boolean @default(false)
+  meetingDay         String? // "Sunday", "Monday", etc.
+  meetingTimeLocked  Boolean @default(false)
+  meetingTime        String? // "17:00" in 24hr format
+  meetingVenueLocked Boolean @default(false)
+  meetingVenue       String? // "Olympia", "MSH Common Room"
+
   // Auto-generated tag name for family members
-  memberTagName      String          // e.g., "GRACE_FAMILY_MEMBER"
-  
-  isActive           Boolean         @default(true)
-  createdAt          DateTime        @default(now())
-  createdBy          String
-  creator            Member          @relation("FamilyCreator", fields: [createdBy], references: [id])
-  updatedAt          DateTime        @updatedAt
-  
-  members            FamilyMember[]
-  meetings           FamilyMeeting[]
-  pendingMembers     PendingMember[]
-  
+  memberTagName String // e.g., "GRACE_FAMILY_MEMBER"
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  createdBy String
+  creator   Member   @relation("FamilyCreator", fields: [createdBy], references: [id])
+  updatedAt DateTime @updatedAt
+
+  members        FamilyMember[]
+  meetings       FamilyMeeting[]
+  pendingMembers PendingMember[]
+
+  outgoingTransfers FamilyTransferRequest[] @relation("FamilyTransferFrom")
+  incomingTransfers FamilyTransferRequest[] @relation("FamilyTransferTo")
+
   @@index([regionId])
   @@index([familyHeadId])
   @@index([createdBy])
 }
 
 model FamilyMember {
-  id         String      @id @default(uuid())
-  familyId   String
-  family     FamilyGroup @relation(fields: [familyId], references: [id], onDelete: Cascade)
-  memberId   String
-  member     Member      @relation(fields: [memberId], references: [id], onDelete: Cascade)
-  
-  joinedAt   DateTime    @default(now())
-  leftAt     DateTime?
-  isActive   Boolean     @default(true)
-  
+  id       String      @id @default(uuid())
+  familyId String
+  family   FamilyGroup @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  memberId String
+  member   Member      @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  joinedAt DateTime  @default(now())
+  leftAt   DateTime?
+  isActive Boolean   @default(true)
+
   assignedBy String
-  assigner   Member      @relation("FamilyMemberAssigner", fields: [assignedBy], references: [id])
-  
-  notes      String?
-  
+  assigner   Member @relation("FamilyMemberAssigner", fields: [assignedBy], references: [id])
+
+  notes String?
+
   @@unique([familyId, memberId, isActive])
   @@index([familyId])
   @@index([memberId])
 }
 
 model MinistryTeam {
-  id             String                @id @default(uuid())
-  name           String                @unique
-  description    String?
-  
+  id          String  @id @default(uuid())
+  name        String  @unique
+  description String?
+
   // Auto-generated tag names
-  leaderTagName  String
-  memberTagName  String
-  
+  leaderTagName String
+  memberTagName String
+
   // Team Leader
-  leaderId       String?
-  leader         Member?               @relation("TeamLeader", fields: [leaderId], references: [id])
-  
+  leaderId String?
+  leader   Member? @relation("TeamLeader", fields: [leaderId], references: [id])
+
   // Assistant Leader (optional)
-  assistantId    String?
-  assistant      Member?               @relation("TeamAssistant", fields: [assistantId], references: [id])
-  
-  isActive       Boolean               @default(true)
-  createdAt      DateTime              @default(now())
-  createdBy      String
-  creator        Member                @relation("TeamCreator", fields: [createdBy], references: [id])
-  updatedAt      DateTime              @updatedAt
-  
-  members        MinistryTeamMember[]
-  schedules      MinistrySchedule[]
-  
+  assistantId String?
+  assistant   Member? @relation("TeamAssistant", fields: [assistantId], references: [id])
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  createdBy String
+  creator   Member   @relation("TeamCreator", fields: [createdBy], references: [id])
+  updatedAt DateTime @updatedAt
+
+  members   MinistryTeamMember[]
+  schedules MinistrySchedule[]
+
   @@index([name])
   @@index([leaderId])
   @@index([createdBy])
 }
 
 model MinistryTeamMember {
-  id         String       @id @default(uuid())
-  teamId     String
-  team       MinistryTeam @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  memberId   String
-  member     Member       @relation(fields: [memberId], references: [id], onDelete: Cascade)
-  
+  id       String       @id @default(uuid())
+  teamId   String
+  team     MinistryTeam @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  memberId String
+  member   Member       @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
   // Specific role (optional, free text)
-  role       String?      // "Lead Vocalist", "Keyboardist", "Door 1", etc.
-  
-  joinedAt   DateTime     @default(now())
-  leftAt     DateTime?
-  isActive   Boolean      @default(true)
-  
+  role String? // "Lead Vocalist", "Keyboardist", "Door 1", etc.
+
+  joinedAt DateTime  @default(now())
+  leftAt   DateTime?
+  isActive Boolean   @default(true)
+
   assignedBy String
-  assigner   Member       @relation("MinistryTeamAssigner", fields: [assignedBy], references: [id])
-  
-  notes      String?
-  
+  assigner   Member @relation("MinistryTeamAssigner", fields: [assignedBy], references: [id])
+
+  notes String?
+
   @@unique([teamId, memberId, isActive])
   @@index([teamId])
   @@index([memberId])
 }
 
 model FamilyMeeting {
-  id        String      @id @default(uuid())
-  familyId  String
-  family    FamilyGroup @relation(fields: [familyId], references: [id], onDelete: Cascade)
-  
+  id       String      @id @default(uuid())
+  familyId String
+  family   FamilyGroup @relation(fields: [familyId], references: [id], onDelete: Cascade)
+
   date      DateTime
   venue     String?
   topic     String?
-  notes     String?     @db.Text
-  attendees String[]    // Member IDs who attended
-  
+  notes     String?  @db.Text
+  attendees String[] // Member IDs who attended
+
   createdBy String
-  creator   Member      @relation(fields: [createdBy], references: [id])
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
-  
+  creator   Member   @relation(fields: [createdBy], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([familyId])
   @@index([date])
 }
 
 model MinistrySchedule {
-  id        String       @id @default(uuid())
-  teamId    String
-  team      MinistryTeam @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  eventId   String?
-  event     Event?       @relation(fields: [eventId], references: [id], onDelete: SetNull)
-  
+  id      String       @id @default(uuid())
+  teamId  String
+  team    MinistryTeam @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  eventId String?
+  event   Event?       @relation(fields: [eventId], references: [id], onDelete: SetNull)
+
   date      DateTime
-  memberIds String[]     // Who's scheduled to serve
-  
-  notes     String?      @db.Text
-  
+  memberIds String[] // Who's scheduled to serve
+
+  notes String? @db.Text
+
   createdBy String
-  creator   Member       @relation(fields: [createdBy], references: [id])
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
-  
+  creator   Member   @relation(fields: [createdBy], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([teamId])
   @@index([eventId])
   @@index([date])
@@ -563,15 +606,15 @@ model MinistrySchedule {
 // ============================================
 
 model AcademicPeriod {
-  id              String   @id @default(uuid())
-  academicYear    String   // "2025/2026"
-  periodNumber    Int      // 1 or 2
-  periodName      String   // "First Period" / "Second Period"
-  startDate       DateTime
-  endDate         DateTime
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
+  id           String   @id @default(uuid())
+  academicYear String // "2025/2026"
+  periodNumber Int // 1 or 2
+  periodName   String // "First Period" / "Second Period"
+  startDate    DateTime
+  endDate      DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
   @@unique([academicYear, periodNumber])
   @@index([startDate, endDate])
 }
@@ -581,17 +624,17 @@ model AcademicPeriod {
 // ===================================
 
 model LoginAttempt {
-  id          String   @id @default(cuid())
-  memberId    String?
-  email       String
-  ipAddress   String
-  userAgent   String?
-  success     Boolean
-  reason      String?  // "invalid_password", "account_locked", "invalid_email", etc.
-  timestamp   DateTime @default(now())
-  
-  member      Member?  @relation(fields: [memberId], references: [id], onDelete: Cascade)
-  
+  id        String   @id @default(cuid())
+  memberId  String?
+  email     String
+  ipAddress String
+  userAgent String?
+  success   Boolean
+  reason    String? // "invalid_password", "account_locked", "invalid_email", etc.
+  timestamp DateTime @default(now())
+
+  member Member? @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
   @@index([email])
   @@index([timestamp])
   @@index([ipAddress])
@@ -599,16 +642,16 @@ model LoginAttempt {
 }
 
 model OTP {
-  id          String   @id @default(cuid())
-  memberId    String
-  code        String
-  expiresAt   DateTime
-  verified    Boolean  @default(false)
-  attempts    Int      @default(0)
-  createdAt   DateTime @default(now())
-  
-  member      Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
-  
+  id        String   @id @default(cuid())
+  memberId  String
+  code      String
+  expiresAt DateTime
+  verified  Boolean  @default(false)
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
   @@index([memberId])
   @@index([expiresAt])
 }
@@ -645,25 +688,25 @@ enum EditRequestStatus {
 }
 
 model ProfileEditRequest {
-  id         String            @id @default(uuid())
-  memberId   String
-  member     Member            @relation("EditRequester", fields: [memberId], references: [id], onDelete: Cascade)
+  id       String @id @default(uuid())
+  memberId String
+  member   Member @relation("EditRequester", fields: [memberId], references: [id], onDelete: Cascade)
 
   // JSON array: [{ field: "phoneNumber", oldValue: "...", newValue: "..." }]
-  changes    Json
+  changes Json
 
   // Member's justification for the change
-  reason     String
+  reason String
 
-  status     EditRequestStatus @default(PENDING)
+  status EditRequestStatus @default(PENDING)
 
   reviewedBy String?
-  reviewer   Member?           @relation("EditReviewer", fields: [reviewedBy], references: [id], onDelete: SetNull)
+  reviewer   Member?   @relation("EditReviewer", fields: [reviewedBy], references: [id], onDelete: SetNull)
   reviewNote String?
   reviewedAt DateTime?
 
-  createdAt  DateTime          @default(now())
-  updatedAt  DateTime          @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([memberId])
   @@index([status])
@@ -700,34 +743,34 @@ model RegistrationToken {
 }
 
 model PendingMember {
-  id                String              @id @default(uuid())
-  tokenId           String
-  token             RegistrationToken   @relation(fields: [tokenId], references: [id])
+  id      String            @id @default(uuid())
+  tokenId String
+  token   RegistrationToken @relation(fields: [tokenId], references: [id])
 
   fullName          String
-  email             String              @unique
+  email             String           @unique
   phoneNumber       String
   gender            Gender
-  isMakerereStudent Boolean            @default(true)
-  registrationMode  RegistrationMode   @default(NEW_MEMBER)
+  isMakerereStudent Boolean          @default(true)
+  registrationMode  RegistrationMode @default(NEW_MEMBER)
 
-  regionId          String?
-  region            Region?             @relation(fields: [regionId], references: [id])
+  regionId String?
+  region   Region? @relation(fields: [regionId], references: [id])
 
-  collegeId         String?
-  collegeSuggestion String?
-  courseId          String?
-  courseSuggestion  String?
+  collegeId          String?
+  collegeSuggestion  String?
+  courseId           String?
+  courseSuggestion   String?
   initialYearOfStudy Int?
   initialSemester    Int?
 
-  residenceId         String?
-  residenceSuggestion String?
-  hostelName          String?
+  residenceId           String?
+  residenceSuggestion   String?
+  hostelName            String?
   classificationTagName String? // e.g. ALUMNI, OTHER_CAMPUS_STUDENT, OTHER — for non-Makerere members
 
-  familyId            String?
-  family              FamilyGroup?        @relation(fields: [familyId], references: [id])
+  familyId String?
+  family   FamilyGroup? @relation(fields: [familyId], references: [id])
 
   status      PendingMemberStatus @default(PENDING)
   reviewedBy  String?
@@ -741,3 +784,190 @@ model PendingMember {
   @@index([status])
   @@index([tokenId])
 }
+
+// ===================================
+// MEMBER TRANSFER REQUESTS
+// ===================================
+
+enum TransferStatus {
+  PENDING_ORIGIN
+  PENDING_DESTINATION
+  REJECTED_BY_ORIGIN
+  REJECTED_BY_DESTINATION
+  COMPLETED
+}
+
+model TransferRequest {
+  id       String @id @default(uuid())
+  memberId String
+  member   Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  fromRegionId String
+  fromRegion   Region @relation("TransferFrom", fields: [fromRegionId], references: [id])
+  toRegionId   String
+  toRegion     Region @relation("TransferTo", fields: [toRegionId], references: [id])
+
+  status TransferStatus @default(PENDING_ORIGIN)
+  reason String?        @db.Text
+
+  originApproverId String?
+  originApprover   Member?   @relation("OriginTransferApprover", fields: [originApproverId], references: [id])
+  originReviewNote String?   @db.Text
+  originReviewedAt DateTime?
+
+  destApproverId String?
+  destApprover   Member?   @relation("DestTransferApprover", fields: [destApproverId], references: [id])
+  destReviewNote String?   @db.Text
+  destReviewedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([memberId])
+  @@index([fromRegionId])
+  @@index([toRegionId])
+  @@index([status])
+}
+
+// ===================================
+// FAMILY TRANSFER REQUESTS
+// ===================================
+
+model FamilyTransferRequest {
+  id       String @id @default(uuid())
+  memberId String
+  member   Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  fromFamilyId String
+  fromFamily   FamilyGroup @relation("FamilyTransferFrom", fields: [fromFamilyId], references: [id])
+  toFamilyId   String
+  toFamily     FamilyGroup @relation("FamilyTransferTo", fields: [toFamilyId], references: [id])
+
+  status TransferStatus @default(PENDING_ORIGIN) // We gracefully reuse the TransferStatus enum
+  reason String?        @db.Text
+
+  originApproverId String?
+  originApprover   Member?   @relation("OriginFamilyTransferApprover", fields: [originApproverId], references: [id])
+  originReviewNote String?   @db.Text
+  originReviewedAt DateTime?
+
+  destApproverId String?
+  destApprover   Member?   @relation("DestFamilyTransferApprover", fields: [destApproverId], references: [id])
+  destReviewNote String?   @db.Text
+  destReviewedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([memberId])
+  @@index([fromFamilyId])
+  @@index([toFamilyId])
+  @@index([status])
+}
+
+// ===================================
+// CAMPAIGN SYSTEM
+// ===================================
+
+model BringOneCampaign {
+  id          String             @id @default(uuid())
+  // No eventId — this is a standing fellowship-level config, not per-event
+  title       String             // e.g. "Bring 1 Campaign", "Bring 2 Initiative"
+  description String?
+  minPledges  Int                @default(1) // configurable: 1, 2, 5, etc.
+  isActive    Boolean            @default(false) // only one should be active at a time
+  createdBy   String
+  creator     Member             @relation(fields: [createdBy], references: [id])
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  pledges BringOnePledge[]
+
+  @@index([isActive])
+  @@index([createdBy])
+}
+
+model BringOnePledge {
+  id         String           @id @default(uuid())
+  campaignId String
+  campaign   BringOneCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  eventId    String           // which event this pledge is for
+  event      Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  inviterId  String
+  inviter    Member           @relation("BringOnePledges", fields: [inviterId], references: [id])
+
+  // Person being brought
+  name   String
+  email  String  // Primary match key
+  phone1 String? // Fallback match key 1
+  phone2 String? // Fallback match key 2
+
+  status BringOneStatus @default(PLEDGED)
+
+  // Populated once matched at registration time
+  pendingMemberId String?
+  memberId        String?
+  matchedBy       String? // "email" | "phone1" | "phone2"
+  resolvedAt      DateTime?
+
+  isDuplicate Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([campaignId])
+  @@index([inviterId])
+  @@index([email])
+  @@index([phone1])
+  @@index([phone2])
+  @@index([status])
+}
+
+
+model MobilizationCampaign {
+  id                 String             @id @default(uuid())
+  eventId            String
+  event              Event              @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  title              String
+  description        String?
+  submissionDeadline DateTime
+  status             MobilizationStatus @default(DRAFT)
+  maxContacts        Int                @default(20)
+  createdBy          String
+  creator            Member             @relation(fields: [createdBy], references: [id])
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  contacts MobilizationContact[]
+
+  @@index([eventId])
+  @@index([status])
+  @@index([createdBy])
+}
+
+model MobilizationContact {
+  id            String               @id @default(uuid())
+  campaignId    String
+  campaign      MobilizationCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  submittedById String
+  submittedBy   Member               @relation("ContactSubmitter", fields: [submittedById], references: [id])
+
+  name         String
+  phone        String
+  email        String?
+  relationship String?
+
+  callStatus ContactCallStatus @default(NOT_CALLED)
+  calledById String?
+  calledBy   Member?           @relation("ContactCaller", fields: [calledById], references: [id], onDelete: SetNull)
+  calledAt   DateTime?
+  notes      String?
+
+  isDuplicate Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([campaignId])
+  @@index([submittedById])
+  @@index([phone])
+  @@index([callStatus])
+}
+

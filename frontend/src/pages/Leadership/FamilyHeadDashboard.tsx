@@ -6,6 +6,7 @@ import { toast } from 'react-hot-toast';
 import { formatDistanceToNow } from 'date-fns';
 import api from '../../api';
 import { useAuth } from '../../context/AuthContext';
+import FamilyTransferManagementPanel from './components/FamilyTransferManagementPanel';
 
 interface Member {
     id: string;
@@ -229,6 +230,8 @@ const FamilyHeadDashboard = () => {
                         </div>
                     </div>
                 </div>
+
+                <FamilyTransferManagementPanel currentFamilyId={family.id} />
 
                 {/* Members List */}
                 <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mt-8">

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getMembers, createMember, getMemberAcademicStatus, softDeleteMember, bulkSoftDeleteMembers, getQRCodeImage } from '../controllers/memberController';
+import { getMembers, exportMembersToExcel, createMember, getMemberAcademicStatus, softDeleteMember, bulkSoftDeleteMembers, getQRCodeImage } from '../controllers/memberController';
 import { getMyProfile, submitEditRequest, getEditRequests, reviewEditRequest, updateMyProfile, updateMemberById } from '../controllers/profileEditController';
 import { protect, authorize } from '../middleware/authMiddleware';
 
@@ -10,6 +10,9 @@ router.get('/qr/:qrCodeValue', getQRCodeImage);
 
 // Create new member (manager only)
 router.post('/', protect, authorize('FELLOWSHIP_MANAGER'), createMember);
+
+// Export filtered members to Excel (manager only)
+router.get('/export', protect, authorize('FELLOWSHIP_MANAGER'), exportMembersToExcel);
 
 // Get all members (with optional search filter)
 router.get('/', protect, getMembers);

@@ -59,6 +59,7 @@ async function getMemberProfile(memberId: string) {
             fullName: true,
             email: true,
             phoneNumber: true,
+            gender: true,
             fellowshipNumber: true,
             hostelName: true,
             courseId: true,
@@ -80,6 +81,12 @@ async function getMemberProfile(memberId: string) {
                     family: { select: { id: true, name: true } },
                 },
                 take: 1,
+            },
+            ministryMemberships: {
+                where: { isActive: true },
+                include: {
+                    team: { select: { id: true, name: true } },
+                },
             },
         },
     });
@@ -104,6 +111,7 @@ export const getMyProfile = async (req: Request, res: Response) => {
         });
 
         const family = member.familyMemberships?.[0]?.family ?? null;
+        const teams = member.ministryMemberships?.map(mt => mt.team) ?? [];
         const course = member.courseRelation ?? null;
         const residence = member.residence ?? null;
 
@@ -112,12 +120,14 @@ export const getMyProfile = async (req: Request, res: Response) => {
             fullName: member.fullName,
             email: member.email,
             phoneNumber: member.phoneNumber,
+            gender: member.gender,
             fellowshipNumber: member.fellowshipNumber,
             hostelName: member.hostelName ?? null,
             region: member.region
                 ? { ...member.region, name: formatRegionName(member.region.name) }
                 : null,
             family,
+            teams,
             residence,
             academic: course
                 ? {

@@ -7,11 +7,12 @@ import QRCode from 'react-qr-code';
 import {
     User, Mail, Hash, Shield, Tag as TagIcon, Loader2,
     BookOpen, GraduationCap, Download, Phone, MapPin, Users,
-    Clock, CheckCircle, XCircle, Edit2
+    Clock, Edit2, Briefcase, Camera, Building, Calendar, Flag
 } from 'lucide-react';
 import TagBadge from '../components/TagBadge';
 import EditRequestModal from '../components/EditRequestModal';
 import ChangePasswordModal from '../components/ChangePasswordModal';
+import CampaignTab from './Profile/CampaignTab';
 
 interface Tag {
     id: string;
@@ -43,9 +44,11 @@ interface PendingEditRequest {
 
 interface ExtendedProfile {
     phoneNumber: string;
+    gender: string | null;
     hostelName: string | null;
     region: { id: string; name: string } | null;
     family: { id: string; name: string } | null;
+    teams: Array<{ id: string; name: string }>;
     residence: { id: string; name: string; type: string } | null;
     academic: {
         courseId: string | null;
@@ -71,6 +74,7 @@ const Profile = () => {
     const [loadingExtProfile, setLoadingExtProfile] = useState(true);
     const [showEditModal, setShowEditModal] = useState(false);
     const [showPasswordModal, setShowPasswordModal] = useState(false);
+    const [activeTab, setActiveTab] = useState<'personal' | 'fellowship' | 'academic' | 'security' | 'campaigns'>('personal');
 
     useEffect(() => {
         if (user?.id) {
@@ -111,7 +115,7 @@ const Profile = () => {
         try {
             setLoadingExtProfile(true);
             const response = await api.get('/members/me');
-            setExtProfile(response.data);
+            setExtProfile({ ...response.data, teams: response.data.teams || [] });
         } catch (error) {
             console.error('Failed to fetch extended profile:', error);
         } finally {
@@ -151,12 +155,11 @@ const Profile = () => {
     const renderEditRequestStatus = () => {
         if (loadingExtProfile) return null;
 
-        // FM: direct edit page (no approval needed)
         if (isManager) {
             return (
                 <button
                     onClick={() => navigate('/profile/edit')}
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-all"
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold bg-white text-slate-700 shadow-sm border border-slate-200 hover:bg-slate-50 transition-all"
                 >
                     <Edit2 size={15} />
                     Edit Profile
@@ -164,281 +167,376 @@ const Profile = () => {
             );
         }
 
-        // Everyone else: edit request modal
         if (!pendingRequest) {
             return (
                 <button
                     onClick={() => setShowEditModal(true)}
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-all"
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold bg-white text-slate-700 shadow-sm border border-slate-200 hover:bg-slate-50 transition-all"
                 >
                     <Edit2 size={15} />
                     Request Edit
                 </button>
             );
         }
+        
         if (pendingRequest.status === 'PENDING') {
             return (
-                <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-sm font-medium">
+                <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-sm font-medium shadow-sm">
                     <Clock size={15} />
-                    Edit request pending review
+                    Edit pending
                 </div>
             );
         }
         return null;
     };
 
+    const tabs = [
+        { id: 'personal', label: 'Personal Details', icon: User },
+        { id: 'fellowship', label: 'Fellowship Life', icon: Briefcase },
+        { id: 'academic', label: 'Academic & Housing', icon: GraduationCap },
+        { id: 'campaigns', label: 'Bring 1 Campaign', icon: Flag },
+        { id: 'security', label: 'Security', icon: Shield }
+    ] as const;
+
     return (
-        <>
-            <div className="max-w-4xl mx-auto animate-fade-in">
-                {/* Header */}
-                <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
-                    <h1 className="text-3xl font-bold text-slate-900">My Profile</h1>
-                    {renderEditRequestStatus()}
-                </div>
-
-                <div className="grid md:grid-cols-3 gap-8">
-                    {/* User Info Card */}
-                    <div className="md:col-span-2 space-y-6">
-                        <div className="bg-white rounded-2xl p-8 border border-slate-200 shadow-xl">
-                            <div className="flex items-center gap-4 mb-8">
-                                <div
-                                    className="w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold"
-                                    style={{ backgroundColor: '#e9f5e1', color: '#48A111', outline: '1.5px solid #c5e3b0' }}
-                                >
-                                    {user.fullName.charAt(0)}
-                                </div>
-                                <div>
-                                    <h2 className="text-2xl font-bold text-slate-900">{user.fullName}</h2>
-                                    <span
-                                        className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border mt-2"
-                                        style={{ backgroundColor: '#e9f5e1', color: '#48A111', borderColor: '#c5e3b0' }}
-                                    >
-                                        {user.role.replace('_', ' ')}
-                                    </span>
-                                </div>
+        <div className="max-w-6xl mx-auto space-y-6 animate-fade-in pb-12">
+            {/* Header Banner */}
+            <div className="relative rounded-3xl overflow-hidden bg-[#48A111] shadow-xl">
+                <div className="absolute inset-0 opacity-20 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-white to-[#48A111]"></div>
+                <div className="relative px-8 py-10 md:py-14 flex flex-col md:flex-row items-center md:items-start justify-between gap-6">
+                    <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
+                        <div className="w-24 h-24 md:w-32 md:h-32 rounded-3xl bg-white shadow-lg flex items-center justify-center text-4xl font-bold text-[#48A111] relative group overflow-hidden border-4 border-[#e9f5e1]/30">
+                            {user.fullName.charAt(0)}
+                            <div className="absolute inset-0 bg-black/5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Camera className="text-white drop-shadow-md" />
                             </div>
-
-                            <div className="space-y-4">
-                                {/* Email */}
-                                <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
-                                    <Mail style={{ color: '#48A111' }} size={22} />
-                                    <div>
-                                        <p className="text-xs text-slate-500">Email Address</p>
-                                        <p className="text-slate-900 font-medium">{user.email}</p>
-                                    </div>
-                                </div>
-
-                                {/* Phone */}
-                                <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
-                                    <Phone style={{ color: '#48A111' }} size={22} />
-                                    <div className="flex-1">
-                                        <p className="text-xs text-slate-500">Phone Number</p>
-                                        {loadingExtProfile ? (
-                                            <div className="flex items-center gap-2 mt-1">
-                                                <Loader2 size={14} className="animate-spin text-slate-400" />
-                                                <span className="text-sm text-slate-400">Loading…</span>
-                                            </div>
-                                        ) : (
-                                            <p className="text-slate-900 font-medium">
-                                                {extProfile?.phoneNumber || '—'}
-                                            </p>
-                                        )}
-                                    </div>
-                                    {pendingRequest?.changes.some((c) => c.field === 'phoneNumber') && (
-                                        <span className="text-xs px-2 py-1 rounded-full bg-amber-50 text-amber-600 border border-amber-200 flex items-center gap-1">
-                                            <Clock size={11} /> Pending
-                                        </span>
-                                    )}
-                                </div>
-
-                                {/* Fellowship Number */}
-                                <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
-                                    <Hash style={{ color: '#48A111' }} size={22} />
-                                    <div>
-                                        <p className="text-xs text-slate-500">Fellowship Number</p>
-                                        <p className="text-slate-900 font-medium font-mono">{user.fellowshipNumber}</p>
-                                    </div>
-                                </div>
-
-                                {/* Region */}
-                                <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
-                                    <MapPin style={{ color: '#48A111' }} size={22} />
-                                    <div>
-                                        <p className="text-xs text-slate-500">Region</p>
-                                        {loadingExtProfile ? (
-                                            <div className="flex items-center gap-2 mt-1">
-                                                <Loader2 size={14} className="animate-spin text-slate-400" />
-                                                <span className="text-sm text-slate-400">Loading…</span>
-                                            </div>
-                                        ) : (
-                                            <p className="text-slate-900 font-medium">
-                                                {extProfile?.region?.name || 'Not assigned'}
-                                            </p>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Family */}
-                                {!loadingExtProfile && extProfile?.family && (
-                                    <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
-                                        <Users style={{ color: '#48A111' }} size={22} />
-                                        <div>
-                                            <p className="text-xs text-slate-500">Family Group</p>
-                                            <p className="text-slate-900 font-medium">{extProfile.family.name}</p>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Role */}
-                                <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
-                                    <Shield style={{ color: '#48A111' }} size={22} />
-                                    <div>
-                                        <p className="text-xs text-slate-500">Account Role</p>
-                                        <p className="text-slate-900 font-medium">{user.role.replace('_', ' ')}</p>
-                                    </div>
-                                </div>
-
-                                {/* Academic Status */}
-                                {loadingAcademic ? (
-                                    <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
-                                        <Loader2 className="animate-spin" style={{ color: '#48A111' }} size={22} />
-                                        <p className="text-sm text-slate-500">Loading academic status…</p>
-                                    </div>
-                                ) : academicStatus && academicStatus.currentYear !== null ? (
-                                    <>
-                                        <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
-                                            <GraduationCap style={{ color: '#48A111' }} size={22} />
-                                            <div className="flex-1">
-                                                <p className="text-xs text-slate-500">Academic Standing</p>
-                                                <div className="flex items-center gap-3 mt-1">
-                                                    <p className="text-slate-900 font-medium">
-                                                        Year {academicStatus.currentYear}, Semester {academicStatus.currentSemester}
-                                                    </p>
-                                                    {academicStatus.isFinalist && (
-                                                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-50 text-yellow-700 border border-yellow-200">
-                                                            Finalist
-                                                        </span>
-                                                    )}
-                                                    {academicStatus.isAlumni && (
-                                                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200">
-                                                            Alumni
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-                                        {academicStatus.course && (
-                                            <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
-                                                <BookOpen style={{ color: '#48A111' }} size={22} />
-                                                <div>
-                                                    <p className="text-xs text-slate-500">Course</p>
-                                                    <p className="text-slate-900 font-medium">{academicStatus.course.name}</p>
-                                                    <p className="text-xs text-slate-500 mt-1">{academicStatus.course.durationYears} years</p>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </>
-                                ) : null}
-
-                                {/* Tags */}
-                                <div className="flex items-start gap-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
-                                    <TagIcon className="mt-1" style={{ color: '#48A111' }} size={22} />
-                                    <div className="flex-1">
-                                        <p className="text-xs text-slate-500 mb-3">Member Tags</p>
-                                        {loadingTags ? (
-                                            <div className="flex items-center gap-2 text-slate-500">
-                                                <Loader2 size={16} className="animate-spin" />
-                                                <span className="text-sm">Loading tags…</span>
-                                            </div>
-                                        ) : tags.length > 0 ? (
-                                            <div className="flex flex-wrap gap-2">
-                                                {tags.map((tag) => (
-                                                    <TagBadge key={tag.id} tag={tag} size="sm" />
-                                                ))}
-                                            </div>
-                                        ) : (
-                                            <p className="text-slate-500 text-sm">No tags assigned</p>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Pending edit request status card */}
-                                {pendingRequest && (
-                                    <div className="p-4 rounded-xl border border-amber-200 bg-amber-50">
-                                        <p className="text-sm font-semibold text-amber-800 mb-3 flex items-center gap-2">
-                                            <Clock size={15} />
-                                            Pending Edit Request
-                                        </p>
-                                        <div className="space-y-2">
-                                            {pendingRequest.changes.map((c, i) => (
-                                                <div key={i} className="flex items-center gap-2 text-sm">
-                                                    <span className="font-medium text-amber-900 capitalize">
-                                                        {c.field.replace(/([A-Z])/g, ' $1')}:
-                                                    </span>
-                                                    <span className="text-slate-500 line-through">{c.oldValue}</span>
-                                                    <span className="text-amber-800 font-medium">→ {c.newValue}</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                        <p className="text-xs text-amber-700 mt-2">
-                                            Awaiting review by your Regional Head
-                                        </p>
-                                    </div>
-                                )}
+                        </div>
+                        <div className="text-center md:text-left text-white mt-3">
+                            <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-3">{user.fullName}</h1>
+                            <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
+                                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-[#F2B50B] text-slate-900 shadow-sm uppercase tracking-wider">
+                                    {user.role.replace('_', ' ')}
+                                </span>
+                                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-white/20 text-white backdrop-blur-sm shadow-sm font-mono tracking-wide">
+                                    <Hash size={12} className="mr-1" /> {user.fellowshipNumber}
+                                </span>
                             </div>
                         </div>
                     </div>
-
-                    {/* QR Code Card */}
-                    <div className="md:col-span-1">
-                        <div className="bg-white rounded-2xl p-8 shadow-xl flex flex-col items-center justify-center text-center h-full min-h-[400px]">
-                            <div className="mb-6">
-                                <QRCode
-                                    id="profile-qr-code"
-                                    value={user.qrCode}
-                                    size={200}
-                                />
-                            </div>
-                            <h3 className="text-slate-900 font-bold text-xl mb-2">Your Check-in QR</h3>
-                            <p className="text-slate-500 text-sm mb-6">
-                                Show this code at the entrance to check in to events
-                            </p>
-                            <button
-                                onClick={downloadQRCode}
-                                className="flex items-center gap-2 px-4 py-2 rounded-xl text-white text-sm font-semibold w-full justify-center shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98]"
-                                style={{ backgroundColor: '#48A111' }}
-                                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F2B50B')}
-                                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#48A111')}
-                            >
-                                <Download className="w-4 h-4" />
-                                Download QR Code
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Security Section */}
-                <div className="mt-8 bg-white rounded-2xl p-8 border border-slate-200 shadow-xl">
-                    <h3 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
-                        <Shield className="text-[#48A111]" size={24} />
-                        Security Settings
-                    </h3>
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
-                        <div>
-                            <p className="font-semibold text-slate-900">Account Password</p>
-                            <p className="text-sm text-slate-500">Update your password to keep your account secure</p>
-                        </div>
-                        <button
-                            onClick={() => setShowPasswordModal(true)}
-                            className="px-4 py-2 bg-white border border-slate-300 text-slate-700 font-medium rounded-xl hover:bg-slate-50 transition-colors shadow-sm whitespace-nowrap"
-                        >
-                            Change Password
-                        </button>
+                    <div className="flex-shrink-0 mt-4 md:mt-0">
+                        {renderEditRequestStatus()}
                     </div>
                 </div>
             </div>
 
-            {/* Edit Request Modal (non-FM only) */}
+            {/* Main Content Area */}
+            <div className="grid lg:grid-cols-3 gap-6">
+                
+                {/* Left Sidebar: Nav & QR */}
+                <div className="lg:col-span-1 space-y-6">
+                    {/* Navigation Tabs */}
+                    <div className="bg-white rounded-3xl p-3 shadow-sm border border-slate-200">
+                        <nav className="flex flex-col space-y-1">
+                            {tabs.map(tab => {
+                                const Icon = tab.icon;
+                                const isActive = activeTab === tab.id;
+                                return (
+                                    <button
+                                        key={tab.id}
+                                        onClick={() => setActiveTab(tab.id as any)}
+                                        className={`flex items-center gap-3 px-4 py-3.5 rounded-2xl text-sm font-semibold transition-all duration-200 ${
+                                            isActive 
+                                            ? 'bg-[#e9f5e1] text-[#48A111] translate-x-1 shadow-sm' 
+                                            : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                                        }`}
+                                    >
+                                        <Icon size={18} className={isActive ? 'text-[#48A111]' : 'text-slate-400'} />
+                                        {tab.label}
+                                    </button>
+                                );
+                            })}
+                        </nav>
+                    </div>
+
+                    {/* QR Code Card */}
+                    <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200 text-center flex flex-col items-center">
+                        <div className="p-4 bg-white rounded-2xl shadow-sm border border-slate-100 mb-4 inline-block hover:shadow-md transition-shadow">
+                            <QRCode
+                                id="profile-qr-code"
+                                value={user.qrCode}
+                                size={140}
+                                level="M"
+                            />
+                        </div>
+                        <h3 className="text-slate-900 font-bold text-lg mb-1">Check-in Pass</h3>
+                        <p className="text-slate-500 text-xs mb-5 px-4 leading-relaxed">
+                            Present this QR code at events for quick check-in.
+                        </p>
+                        <button
+                            onClick={downloadQRCode}
+                            className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-bold w-full justify-center shadow-md transition-all hover:shadow-lg hover:-translate-y-0.5"
+                            style={{ backgroundColor: '#48A111' }}
+                        >
+                            <Download size={16} />
+                            Save Image
+                        </button>
+                    </div>
+                </div>
+
+                {/* Right Content Space */}
+                <div className="lg:col-span-2">
+                    <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden min-h-[500px]">
+                        
+                        {/* Personal Tab */}
+                        {activeTab === 'personal' && (
+                            <div className="p-8 animate-fade-in space-y-8">
+                                <div>
+                                    <h2 className="text-2xl font-bold text-slate-900 mb-6 flex items-center gap-2">
+                                        <User className="text-[#48A111]" size={24} /> Personal Details
+                                    </h2>
+                                    <div className="grid md:grid-cols-2 gap-5">
+                                        <div className="p-5 rounded-2xl bg-slate-50 border border-slate-100 transition-colors hover:border-[#c5e3b0]">
+                                            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Email Address</p>
+                                            <div className="flex items-center gap-2 text-slate-900 font-medium break-all mt-2">
+                                                <Mail size={18} className="text-[#48A111]" /> {user.email}
+                                            </div>
+                                        </div>
+                                        <div className="p-5 rounded-2xl bg-slate-50 border border-slate-100 transition-colors hover:border-[#c5e3b0]">
+                                            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Phone Number</p>
+                                            <div className="flex items-center gap-2 text-slate-900 font-medium mt-2">
+                                                <Phone size={18} className="text-[#48A111]" /> 
+                                                {loadingExtProfile ? <Loader2 size={14} className="animate-spin text-slate-400" /> : extProfile?.phoneNumber || '—'}
+                                            </div>
+                                        </div>
+                                        <div className="p-5 rounded-2xl bg-slate-50 border border-slate-100 transition-colors hover:border-[#c5e3b0]">
+                                            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Gender</p>
+                                            <div className="flex items-center gap-2 text-slate-900 font-medium capitalize mt-2">
+                                                <User size={18} className="text-[#48A111]" /> 
+                                                {loadingExtProfile ? <Loader2 size={14} className="animate-spin text-slate-400" /> : extProfile?.gender?.toLowerCase() || '—'}
+                                            </div>
+                                        </div>
+                                        <div className="p-5 rounded-2xl bg-slate-50 border border-slate-100 transition-colors hover:border-[#c5e3b0]">
+                                            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Account Role</p>
+                                            <div className="flex items-center gap-2 text-slate-900 font-medium capitalize mt-2">
+                                                <Shield size={18} className="text-[#48A111]" /> {user.role.replace('_', ' ').toLowerCase()}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                {pendingRequest && (
+                                    <div className="p-5 rounded-2xl border border-amber-200 bg-amber-50 shadow-sm relative overflow-hidden">
+                                        <div className="absolute top-0 left-0 w-1.5 h-full bg-amber-400"></div>
+                                        <p className="text-sm font-bold text-amber-800 mb-4 flex items-center gap-2">
+                                            <Clock size={16} /> Pending Edit Request Overview
+                                        </p>
+                                        <div className="space-y-2">
+                                            {pendingRequest.changes.map((c, i) => (
+                                                <div key={i} className="flex items-center gap-3 text-sm bg-white p-3 rounded-xl border border-amber-100">
+                                                    <span className="font-semibold text-amber-900 capitalize w-32 shrink-0">
+                                                        {c.field.replace(/([A-Z])/g, ' $1')}:
+                                                    </span>
+                                                    <span className="text-slate-400 line-through truncate">{c.oldValue}</span>
+                                                    <span className="text-amber-700 font-bold">→</span>
+                                                    <span className="text-emerald-700 font-bold truncate">{c.newValue}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Fellowship Life Tab */}
+                        {activeTab === 'fellowship' && (
+                            <div className="p-8 animate-fade-in space-y-8">
+                                <div>
+                                    <h2 className="text-2xl font-bold text-slate-900 mb-6 flex items-center gap-2">
+                                        <Briefcase className="text-[#48A111]" size={24} /> Fellowship Life
+                                    </h2>
+                                    <div className="grid md:grid-cols-2 gap-5 mb-8">
+                                        <div className="p-6 rounded-2xl bg-gradient-to-br from-[#e9f5e1] to-white border border-[#c5e3b0] shadow-sm">
+                                            <div className="flex items-center justify-between mb-3">
+                                                <p className="text-xs font-bold text-[#48A111] uppercase tracking-wider">Region</p>
+                                                <div className="p-2 bg-white rounded-lg opacity-80 shadow-sm"><MapPin size={18} className="text-[#48A111]" /></div>
+                                            </div>
+                                            <p className="text-slate-900 font-bold text-xl">
+                                                {loadingExtProfile ? <Loader2 size={18} className="animate-spin text-slate-400" /> : extProfile?.region?.name || 'Unassigned'}
+                                            </p>
+                                        </div>
+                                        
+                                        <div className="p-6 rounded-2xl bg-gradient-to-br from-[#e9f5e1] to-white border border-[#c5e3b0] shadow-sm">
+                                            <div className="flex items-center justify-between mb-3">
+                                                <p className="text-xs font-bold text-[#48A111] uppercase tracking-wider">Family Group</p>
+                                                <div className="p-2 bg-white rounded-lg opacity-80 shadow-sm"><Users size={18} className="text-[#48A111]" /></div>
+                                            </div>
+                                            <p className="text-slate-900 font-bold text-xl">
+                                                {loadingExtProfile ? <Loader2 size={18} className="animate-spin text-slate-400" /> : extProfile?.family?.name || 'Unassigned'}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-6">
+                                        <div className="p-5 rounded-3xl border border-slate-200 shadow-sm bg-white">
+                                            <div className="flex items-center gap-2 mb-4 border-b border-slate-100 pb-4">
+                                                <User className="text-[#48A111]" size={20} />
+                                                <h3 className="text-lg font-bold text-slate-900">Ministry Teams</h3>
+                                            </div>
+                                            {loadingExtProfile ? (
+                                                <div className="flex gap-2 text-slate-400 py-3">
+                                                    <Loader2 size={18} className="animate-spin" /> Fetching teams...
+                                                </div>
+                                            ) : extProfile?.teams?.length ? (
+                                                <div className="flex flex-wrap gap-2 pt-1">
+                                                    {extProfile.teams.map(t => (
+                                                        <span key={t.id} className="inline-flex items-center px-4 py-2 rounded-xl bg-slate-50 text-slate-700 text-sm font-semibold border border-slate-200">
+                                                            {t.name}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <div className="py-4 text-center rounded-xl bg-slate-50 border border-slate-100 border-dashed">
+                                                    <p className="text-slate-500 font-medium">Not serving in any ministry team currently.</p>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="p-5 rounded-3xl border border-slate-200 shadow-sm bg-white">
+                                            <div className="flex items-center gap-2 mb-4 border-b border-slate-100 pb-4">
+                                                <TagIcon className="text-[#48A111]" size={20} />
+                                                <h3 className="text-lg font-bold text-slate-900">Special Tags</h3>
+                                            </div>
+                                            {loadingTags ? (
+                                                <div className="flex gap-2 text-slate-400 py-3">
+                                                    <Loader2 size={18} className="animate-spin" /> Fetching tags...
+                                                </div>
+                                            ) : tags.length > 0 ? (
+                                                <div className="flex flex-wrap gap-2 pt-1">
+                                                    {tags.map((tag) => (
+                                                        <TagBadge key={tag.id} tag={tag} size="md" />
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <div className="py-4 text-center rounded-xl bg-slate-50 border border-slate-100 border-dashed">
+                                                    <p className="text-slate-500 font-medium">No special tags assigned.</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Academic & Residence Tab */}
+                        {activeTab === 'academic' && (
+                            <div className="p-8 animate-fade-in space-y-8">
+                                <div>
+                                    <h2 className="text-2xl font-bold text-slate-900 mb-6 flex items-center gap-2">
+                                        <GraduationCap className="text-[#48A111]" size={24} /> Education & Housing
+                                    </h2>
+                                    
+                                    {loadingAcademic || loadingExtProfile ? (
+                                        <div className="flex items-center justify-center py-12">
+                                            <Loader2 size={32} className="text-[#48A111] animate-spin" />
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-5">
+                                            <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col md:flex-row gap-5 md:items-center justify-between shadow-sm">
+                                                <div className="flex gap-5 items-center">
+                                                    <div className="w-14 h-14 rounded-2xl bg-white border border-[#c5e3b0] flex items-center justify-center shrink-0 shadow-sm">
+                                                        <Building className="text-[#48A111]" size={26} />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Institution</p>
+                                                        <p className="text-slate-900 font-extrabold text-lg">{academicStatus?.course?.durationYears ? extProfile?.academic?.collegeName || 'Unknown College' : 'N/A'}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col md:flex-row gap-5 md:items-center justify-between shadow-sm">
+                                                <div className="flex gap-5 items-center">
+                                                    <div className="w-14 h-14 rounded-2xl bg-white border border-[#c5e3b0] flex items-center justify-center shrink-0 shadow-sm">
+                                                        <BookOpen className="text-[#48A111]" size={26} />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Course of Study</p>
+                                                        <p className="text-slate-900 font-extrabold text-lg">{academicStatus?.course?.name || 'Not filled'}</p>
+                                                        {academicStatus?.course?.durationYears && (
+                                                            <p className="text-sm font-medium text-slate-500 mt-1">{academicStatus.course.durationYears} Year Program</p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex flex-col sm:flex-row gap-5 pt-2">
+                                                <div className="flex-1 p-6 rounded-2xl bg-slate-50 border border-slate-200 flex items-start gap-4 shadow-sm">
+                                                    <Calendar className="text-[#48A111] shrink-0 mt-1" size={22} />
+                                                    <div>
+                                                        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Current Standing</p>
+                                                        <p className="text-slate-900 font-bold text-lg">
+                                                            {academicStatus?.currentYear ? `Year ${academicStatus.currentYear}` : '—'}
+                                                        </p>
+                                                        <div className="flex gap-2 mt-3">
+                                                            {academicStatus?.isFinalist && (
+                                                                <span className="px-3 py-1 rounded-lg text-[11px] font-bold bg-[#F2B50B]/20 text-yellow-900 border border-[#F2B50B]/40 uppercase tracking-wider">Finalist</span>
+                                                            )}
+                                                            {academicStatus?.isAlumni && (
+                                                                <span className="px-3 py-1 rounded-lg text-[11px] font-bold bg-[#48A111]/10 text-[#48A111] border border-[#48A111]/30 uppercase tracking-wider">Alumni</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex-1 p-6 rounded-2xl bg-slate-50 border border-slate-200 flex items-start gap-4 shadow-sm">
+                                                    <MapPin className="text-[#48A111] shrink-0 mt-1" size={22} />
+                                                    <div>
+                                                        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Current Residence</p>
+                                                        <p className="text-slate-900 font-bold text-lg">
+                                                            {extProfile?.residence?.name || extProfile?.hostelName || 'Not filled'}
+                                                        </p>
+                                                        {extProfile?.residence && (
+                                                            <p className="text-sm font-medium text-slate-500 mt-1 capitalize">{extProfile.residence.type.toLowerCase()}</p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Security Tab */}
+                        {activeTab === 'security' && (
+                            <div className="p-8 animate-fade-in space-y-8">
+                                <div>
+                                    <h2 className="text-2xl font-bold text-slate-900 mb-6 flex items-center gap-2">
+                                        <Shield className="text-[#48A111]" size={24} /> Security Settings
+                                    </h2>
+                                    <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-6 shadow-sm">
+                                        <div>
+                                            <p className="font-bold text-slate-900 text-lg">Account Password</p>
+                                            <p className="text-sm font-medium text-slate-500 mt-1">Ensure your account uses a strong, unique password.</p>
+                                        </div>
+                                        <button
+                                            onClick={() => setShowPasswordModal(true)}
+                                            className="px-6 py-3 bg-white border border-slate-300 text-slate-700 font-bold rounded-xl hover:bg-slate-50 hover:border-slate-400 transition-all shadow-sm whitespace-nowrap"
+                                        >
+                                            Change Password
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+                <div className="lg:col-span-2 space-y-6">
+                    {activeTab === 'campaigns' && <CampaignTab />}
+                </div>
+
+            </div>
+
+            {/* Modals */}
             {showEditModal && !isManager && extProfile && (
                 <EditRequestModal
                     isOpen={showEditModal}
@@ -456,12 +554,11 @@ const Profile = () => {
                 />
             )}
 
-            {/* Password Change Modal */}
             <ChangePasswordModal
                 isOpen={showPasswordModal}
                 onClose={() => setShowPasswordModal(false)}
             />
-        </>
+        </div>
     );
 };
 

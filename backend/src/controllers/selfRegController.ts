@@ -4,6 +4,7 @@ import { z } from 'zod';
 import prisma from '../prisma';
 import { createMemberRecord } from '../services/memberService';
 import { scheduleWelcomeEmail } from '../services/emailService';
+import { matchAndAdvancePledge, advancePledgeToJoined } from './bringOneController';
 import cache from '../utils/cache';
 
 // ─── Schemas ──────────────────────────────────────────────────────────────────
@@ -276,6 +277,13 @@ export const submitSelfReg = async (req: Request, res: Response) => {
             return pm;
         }, { timeout: 15000 });
 
+        // Execute Bring 1 automatic pledge match (runs in background without failing the request)
+        matchAndAdvancePledge({
+            email: data.email,
+            phone: data.phoneNumber,
+            pendingMemberId: pending.id,
+        }).catch(err => console.error('[BRING-ONE] Auto-match failed during registration:', err));
+
         res.status(201).json({
             message: 'Registration submitted successfully. We\'ll review your details and activate your account.',
             id: pending.id,
@@ -448,10 +456,12 @@ export const approvePendingMember = async (req: Request, res: Response) => {
             return { member, fellowshipNumber, temporaryPassword };
         }, { timeout: 15000 });
 
-        // Queue welcome email AFTER the transaction commits so that:
-        //  - QR code generation cannot timeout the DB transaction
         //  - A failing email queue never rolls back the member creation
         await scheduleWelcomeEmail(member.email, member.fullName, fellowshipNumber, temporaryPassword || '', member.qrCode, editedByFM);
+
+        // Execute Bring 1 auto-advance to JOINED
+        advancePledgeToJoined(pending.id, member.id)
+            .catch(err => console.error('[BRING-ONE] Auto-advance to JOINED failed:', err));
 
         res.json({
             message: 'Member approved and created successfully',

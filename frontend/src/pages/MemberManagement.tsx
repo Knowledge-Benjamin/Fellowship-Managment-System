@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import api from '../api';
 import { useToast } from '../components/ToastProvider';
 import {
     Users, Search, Tag as TagIcon, X, Loader2, Check,
     Trash2, UserCheck, Hash, Mail, Phone, MapPin, BookOpen, Pencil,
-    Edit2, ChevronDown, ChevronUp, CheckCircle, XCircle
+    Edit2, ChevronDown, ChevronUp, CheckCircle, XCircle, Download, FileText
 } from 'lucide-react';
 import TagBadge from '../components/TagBadge';
 import EmptyState from '../components/EmptyState';
@@ -210,9 +210,19 @@ const MemberManagement = () => {
     const [allTags, setAllTags] = useState<Tag[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
+    const [filterRegion, setFilterRegion] = useState('');
+    const [filterTag, setFilterTag] = useState('');
+    const [filterFamily, setFilterFamily] = useState('');
+    const [filterTeam, setFilterTeam] = useState('');
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const [totalMembers, setTotalMembers] = useState(0);
+
+    const [families, setFamilies] = useState<RefData[]>([]);
+    const [teams, setTeams] = useState<RefData[]>([]);
+    const [exporting, setExporting] = useState(false);
+    const [showExportMenu, setShowExportMenu] = useState(false);
+    const exportRef = useRef<HTMLDivElement>(null);
 
     const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set());
     const [showBulkTagModal, setShowBulkTagModal] = useState(false);
@@ -241,11 +251,20 @@ const MemberManagement = () => {
     const [reviewingId, setReviewingId] = useState<string | null>(null);
 
     useEffect(() => {
+        const handler = (e: MouseEvent) => {
+            if (exportRef.current && !exportRef.current.contains(e.target as Node))
+                setShowExportMenu(false);
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
+
+    useEffect(() => {
         const to = setTimeout(() => {
-            fetchData(page, searchQuery);
+            fetchData(page, searchQuery, filterRegion, filterTag, filterFamily, filterTeam);
         }, 300);
         return () => clearTimeout(to);
-    }, [searchQuery, page]);
+    }, [searchQuery, page, filterRegion, filterTag, filterFamily, filterTeam]);
 
     useEffect(() => {
         // Load reference data once for the edit modal
@@ -254,6 +273,8 @@ const MemberManagement = () => {
             api.get('/colleges').then(r => setColleges(r.data)),
             api.get('/courses').then(r => setCourses(r.data)),
             api.get('/residences').then(r => setResidences(r.data)),
+            api.get('/families').then(r => setFamilies(r.data)),
+            api.get('/ministry-teams').then(r => setTeams(r.data.data || r.data)),
         ]).catch(() => {});
     }, []);
 
@@ -285,11 +306,18 @@ const MemberManagement = () => {
         }
     };
 
-    const fetchData = async (currentPage = page, search = searchQuery) => {
+    const fetchData = async (currentPage = page, search = searchQuery, region = filterRegion, tag = filterTag, fam = filterFamily, team = filterTeam) => {
         try {
             setLoading(true);
+            const params: any = { page: currentPage, limit: 50 };
+            if (search) params.search = search;
+            if (region) params.regionId = region;
+            if (tag) params.tags = tag;
+            if (fam) params.familyId = fam;
+            if (team) params.teamId = team;
+            
             const [membersRes, tagsRes] = await Promise.all([
-                api.get('/members', { params: { page: currentPage, limit: 50, search } }),
+                api.get('/members', { params }),
                 api.get('/tags'),
             ]);
             setMembers(membersRes.data.data || []);
@@ -300,6 +328,35 @@ const MemberManagement = () => {
             showToast('error', 'Failed to load data');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleExport = async () => {
+        try {
+            setExporting(true);
+            const params: any = {};
+            if (searchQuery) params.search = searchQuery;
+            if (filterRegion) params.regionId = filterRegion;
+            if (filterTag) params.tags = filterTag;
+            if (filterFamily) params.familyId = filterFamily;
+            if (filterTeam) params.teamId = filterTeam;
+
+            const res = await api.get('/members/export', {
+                params,
+                responseType: 'blob'
+            });
+            const url = window.URL.createObjectURL(new Blob([res.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', 'members_export.xlsx');
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            showToast('success', 'Export successful');
+        } catch (error) {
+            showToast('error', 'Export failed');
+        } finally {
+            setExporting(false);
         }
     };
 
@@ -397,10 +454,35 @@ const MemberManagement = () => {
                     <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Member Management</h1>
                     <p className="text-slate-500 mt-1 text-sm">Manage member details, tags, and review edit requests</p>
                 </div>
-                <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-2xl px-5 py-3 shadow-sm">
-                    <Users size={18} className="text-[#48A111]" />
-                    <span className="font-bold text-slate-900 text-lg">{totalMembers}</span>
-                    <span className="text-slate-500 text-sm">total match{totalMembers === 1 ? '' : 'es'}</span>
+                <div className="flex flex-col sm:flex-row items-end sm:items-center gap-3">
+                    <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-2xl px-5 py-3 shadow-sm">
+                        <Users size={18} className="text-[#48A111]" />
+                        <span className="font-bold text-slate-900 text-lg">{totalMembers}</span>
+                        <span className="text-slate-500 text-sm">total match{totalMembers === 1 ? '' : 'es'}</span>
+                    </div>
+                    {activeTab === 'members' && totalMembers > 0 && (
+                        <div className="relative" ref={exportRef}>
+                            <button
+                                onClick={() => setShowExportMenu(v => !v)}
+                                disabled={exporting}
+                                className="flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-colors text-sm font-medium cursor-pointer shadow-sm disabled:opacity-50"
+                            >
+                                {exporting ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}
+                                Export
+                                <ChevronDown size={13} className={`transition-transform ${showExportMenu ? 'rotate-180' : ''}`} />
+                            </button>
+                            {showExportMenu && (
+                                <div className="absolute right-0 mt-1 w-44 bg-white border border-slate-200 rounded-xl shadow-lg z-20 py-1">
+                                    <button 
+                                        onClick={() => { handleExport(); setShowExportMenu(false); }}
+                                        className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer text-left"
+                                    >
+                                        <FileText size={14} className="text-slate-400" /> Export as Excel
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -434,13 +516,13 @@ const MemberManagement = () => {
             </div>
             {/* ── Members Tab ── */}
             {activeTab === 'members' && (<>
-            <div className="flex flex-col sm:flex-row gap-3 mb-6">
+            <div className="flex flex-col lg:flex-row gap-3 mb-6 items-start lg:items-center">
                 {/* Search */}
-                <div className="relative flex-1">
+                <div className="relative flex-1 w-full lg:w-auto">
                     <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                     <input
                         type="text"
-                        placeholder="Search by name, email, number or region…"
+                        placeholder="Search by name, email or number…"
                         value={searchQuery}
                         onChange={e => {
                             setSearchQuery(e.target.value);
@@ -451,6 +533,28 @@ const MemberManagement = () => {
                         onBlur={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.boxShadow = 'none'; }}
                     />
                 </div>
+
+                {/* Filters */}
+                {selectedMembers.size === 0 && (
+                    <div className="flex flex-wrap gap-2 w-full lg:w-auto">
+                        <div className="w-[48%] lg:w-40">
+                            <CustomSelect value={filterRegion} onChange={(v) => { setFilterRegion(v); setPage(1); }}
+                                options={[{ value: '', label: 'All Regions' }, ...regions.map(r => ({ value: r.id, label: r.name }))]} />
+                        </div>
+                        <div className="w-[48%] lg:w-40">
+                            <CustomSelect value={filterTag} onChange={(v) => { setFilterTag(v); setPage(1); }}
+                                options={[{ value: '', label: 'All Tags' }, ...allTags.map(t => ({ value: t.id, label: t.name.replace(/_/g, ' ') }))]} />
+                        </div>
+                        <div className="w-[48%] lg:w-40">
+                            <CustomSelect value={filterFamily} onChange={(v) => { setFilterFamily(v); setPage(1); }}
+                                options={[{ value: '', label: 'All Families' }, ...families.map(f => ({ value: f.id, label: f.name }))]} />
+                        </div>
+                        <div className="w-[48%] lg:w-40">
+                            <CustomSelect value={filterTeam} onChange={(v) => { setFilterTeam(v); setPage(1); }}
+                                options={[{ value: '', label: 'All Teams' }, ...teams.map(t => ({ value: t.id, label: t.name }))]} />
+                        </div>
+                    </div>
+                )}
 
                 {/* Bulk action buttons (contextual) */}
                 {selectedMembers.size > 0 && (

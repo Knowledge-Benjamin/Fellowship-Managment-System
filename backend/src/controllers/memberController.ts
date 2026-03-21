@@ -8,6 +8,8 @@ import { activeMemberFilter } from '../utils/queryHelpers';
 import { Prisma } from '@prisma/client';
 import { createMemberRecord } from '../services/memberService';
 import { scheduleWelcomeEmail } from '../services/emailService';
+import { matchAndAdvanceDirectMemberPledge } from './bringOneController';
+import ExcelJS from 'exceljs';
 
 const createMemberSchema = z.object({
     fullName: z.string().min(1),
@@ -77,6 +79,13 @@ export const createMember = async (req: Request, res: Response) => {
         //  - A failing email queue never rolls back the member creation
         await scheduleWelcomeEmail(member.email, member.fullName, fellowshipNumber, temporaryPassword || '', member.qrCode, undefined);
 
+        // Execute Bring 1 auto-match for direct internal registration
+        matchAndAdvanceDirectMemberPledge({
+            email: member.email,
+            phone: member.phoneNumber,
+            memberId: member.id,
+        }).catch(err => console.error('[BRING-ONE] Auto-match failed for internal reg:', err));
+
         // ── Fetch complete member for response ───────────────────────────────
         const completeMember = await prisma.member.findUnique({
             where: { id: member.id },
@@ -119,7 +128,7 @@ export const createMember = async (req: Request, res: Response) => {
 // Get all members with optional search and tag filters
 export const getMembers = async (req: Request, res: Response) => {
     try {
-        const { search, tags, regionId, page = '1', limit = '50' } = req.query;
+        const { search, tags, regionId, familyId, teamId, page = '1', limit = '50' } = req.query;
 
         // Pagination setup
         const parsedPage = Math.max(1, parseInt(page as string, 10) || 1);
@@ -153,6 +162,26 @@ export const getMembers = async (req: Request, res: Response) => {
             where.memberTags = {
                 some: {
                     tagId: { in: tagIds },
+                    isActive: true,
+                },
+            };
+        }
+
+        // Family filter
+        if (familyId) {
+            where.familyMemberships = {
+                some: {
+                    familyId: familyId as string,
+                    isActive: true,
+                },
+            };
+        }
+
+        // Team filter
+        if (teamId) {
+            where.ministryMemberships = {
+                some: {
+                    teamId: teamId as string,
                     isActive: true,
                 },
             };
@@ -227,6 +256,116 @@ export const getMembers = async (req: Request, res: Response) => {
     } catch (error) {
         console.error('Error fetching members:', error);
         res.status(500).json({ error: 'Failed to fetch members' });
+    }
+};
+
+export const exportMembersToExcel = async (req: Request, res: Response) => {
+    try {
+        const { search, tags, regionId, familyId, teamId } = req.query;
+
+        // Parse tag IDs
+        const tagIds = tags ? (tags as string).split(',').filter(Boolean) : [];
+
+        const where: any = {
+            ...activeMemberFilter
+        };
+
+        if (regionId) where.regionId = regionId as string;
+
+        if (search) {
+            where.OR = [
+                { fullName: { contains: search as string, mode: 'insensitive' as const } },
+                { email: { contains: search as string, mode: 'insensitive' as const } },
+                { phoneNumber: { contains: search as string, mode: 'insensitive' as const } },
+                { fellowshipNumber: { contains: search as string, mode: 'insensitive' as const } },
+            ];
+        }
+
+        if (tagIds.length > 0) {
+            where.memberTags = { some: { tagId: { in: tagIds }, isActive: true } };
+        }
+
+        if (familyId) {
+            where.familyMemberships = { some: { familyId: familyId as string, isActive: true } };
+        }
+
+        if (teamId) {
+            where.ministryMemberships = { some: { teamId: teamId as string, isActive: true } };
+        }
+
+        const members = await prisma.member.findMany({
+            where,
+            select: {
+                fullName: true,
+                email: true,
+                phoneNumber: true,
+                fellowshipNumber: true,
+                gender: true,
+                initialYearOfStudy: true,
+                initialSemester: true,
+                registrationDate: true,
+                region: { select: { name: true } },
+                courseRelation: { select: { name: true } },
+                memberTags: { where: { isActive: true }, include: { tag: true } },
+                familyMemberships: { where: { isActive: true }, include: { family: true } },
+                ministryMemberships: { where: { isActive: true }, include: { team: true } },
+            },
+            orderBy: { fullName: 'asc' },
+        });
+
+        const workbook = new ExcelJS.Workbook();
+        const sheet = workbook.addWorksheet('Filtered Members', {
+            properties: { tabColor: { argb: 'FF14b8a6' } }
+        });
+
+        // Header
+        const headerRow = sheet.addRow([
+            'Fellowship #', 'Full Name', 'Gender', 'Email', 'Phone Number',
+            'Region', 'Course', 'Year', 'Semester', 'Tags', 'Families', 'Ministry Teams'
+        ]);
+        headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF14b8a6' } };
+        headerRow.height = 25;
+        headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
+
+        sheet.views = [{ state: 'frozen', xSplit: 0, ySplit: 1 }];
+        sheet.autoFilter = 'A1:L1';
+
+        members.forEach((m, i) => {
+            const row = sheet.addRow([
+                m.fellowshipNumber,
+                m.fullName,
+                m.gender,
+                m.email,
+                m.phoneNumber,
+                m.region?.name ? formatRegionName(m.region.name) : '-',
+                m.courseRelation?.name || '-',
+                m.initialYearOfStudy || '-',
+                m.initialSemester || '-',
+                m.memberTags.map((mt: any) => mt.tag.name.replace(/_/g, ' ')).join(', ') || '-',
+                m.familyMemberships.map((fm: any) => fm.family.name).join(', ') || '-',
+                m.ministryMemberships.map((mm: any) => mm.team.name).join(', ') || '-'
+            ]);
+            
+            if (i % 2 === 0) {
+                row.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+            }
+        });
+
+        sheet.columns = [
+            { width: 15 }, { width: 30 }, { width: 10 }, { width: 25 }, { width: 18 },
+            { width: 20 }, { width: 35 }, { width: 8 }, { width: 10 }, { width: 25 },
+            { width: 25 }, { width: 25 }
+        ];
+
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', 'attachment; filename="members_export.xlsx"');
+
+        await workbook.xlsx.write(res);
+        res.end();
+    } catch (error) {
+        console.error('Error exporting members:', error);
+        res.status(500).json({ error: 'Failed to export members' });
     }
 };
 

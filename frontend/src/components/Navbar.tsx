@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useCheckInAccess } from '../hooks/useCheckInAccess';
 import {
     Home, QrCode, Bus, Calendar, UserPlus, PieChart, LogIn, LogOut,
-    User, MapPin, Tag, Users, Menu, X, ChevronDown, BookOpen, Heart, FileText, Link2, Clock, Mail
+    User, MapPin, Tag, Users, Menu, X, ChevronDown, BookOpen, Heart, FileText, Link2, Clock, Mail, Target
 } from 'lucide-react';
 import api from '../api';
 import logo from '../assets/logo.jpg';
@@ -89,6 +89,7 @@ const Navbar = () => {
 
     const managementLinks = [
         { to: '/events', label: 'Events', icon: Calendar },
+        { to: '/campaign-management', label: 'Campaigns', icon: Target },
         { to: '/leadership', label: 'Leadership', icon: Users },
         { to: '/leadership/families', label: 'Families', icon: Users },
         { to: '/members', label: 'Members', icon: Users },
@@ -197,6 +198,7 @@ const Navbar = () => {
                                     {isManager && <NavLink to="/reports/custom" icon={PieChart}>Reports</NavLink>}
                                     <NavLink to="/transport" icon={Bus}>Transport</NavLink>
                                     <NavLink to="/profile" icon={User}>Profile</NavLink>
+                                    <NavLink to="/campaigns" icon={Target}>Campaigns</NavLink>
                                     {isRegionalHead && (
                                         <NavLink to="/leadership/my-region" icon={MapPin}>
                                             My Region
@@ -272,6 +274,7 @@ const Navbar = () => {
                                         {hasCheckInAccess && <NavLink to="/check-in" icon={QrCode} className="w-full">Check-in</NavLink>}
                                         <NavLink to="/transport" icon={Bus} className="w-full">Transport</NavLink>
                                         <NavLink to="/profile" icon={User} className="w-full">Profile</NavLink>
+                                        <NavLink to="/campaigns" icon={Target} className="w-full">Campaigns</NavLink>
                                         {hasTag('REGIONAL_HEAD') && <NavLink to="/leadership/my-region" icon={MapPin} className="w-full">My Region</NavLink>}
                                         {(hasTag('FAMILY_HEAD') || hasFamilyMemberTag()) && <NavLink to="/leadership/my-family" icon={Users} className="w-full">My Family</NavLink>}
                                         {(hasTeamLeaderTag() || hasTeamMemberTag()) && <NavLink to="/leadership/my-team" icon={Users} className="w-full">My Team</NavLink>}

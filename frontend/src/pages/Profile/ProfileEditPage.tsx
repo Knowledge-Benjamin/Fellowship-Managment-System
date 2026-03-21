@@ -4,7 +4,7 @@ import type { E164Number } from 'libphonenumber-js/core';
 import api from '../../api';
 import { useToast } from '../../components/ToastProvider';
 import {
-    User, Mail, Phone, Building, BookOpen, GraduationCap,
+    User, Users, Mail, Phone, Building, BookOpen, GraduationCap,
     MapPin, Plus, Loader2, ArrowLeft, Save,
 } from 'lucide-react';
 import PhoneInput from '../../components/PhoneInput';
@@ -13,6 +13,8 @@ import AddCollegeModal from '../../components/AddCollegeModal';
 import AddCourseModal from '../../components/AddCourseModal';
 import AddResidenceModal from '../../components/AddResidenceModal';
 import ChangePasswordModal from '../../components/ChangePasswordModal';
+import TransferRequestModal from '../../components/TransferRequestModal';
+import FamilyTransferRequestModal from '../../components/FamilyTransferRequestModal';
 import '../../styles/phoneInput.css';
 
 interface College { id: string; name: string; code?: string; }
@@ -36,6 +38,8 @@ const ProfileEditPage: React.FC = () => {
     const [isCollegeModalOpen, setIsCollegeModalOpen] = useState(false);
     const [isResidenceModalOpen, setIsResidenceModalOpen] = useState(false);
     const [showPasswordModal, setShowPasswordModal] = useState(false);
+    const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
+    const [isFamilyTransferModalOpen, setIsFamilyTransferModalOpen] = useState(false);
 
     // Form state
     const [formData, setFormData] = useState({
@@ -50,8 +54,9 @@ const ProfileEditPage: React.FC = () => {
         hostelName: '',
     });
 
-    // Region info (from profile, read-only — FM region change is admin-level)
+    // Region and Family info (from profile, read-only — FM region/family change is admin-level)
     const [regionName, setRegionName] = useState('');
+    const [familyName, setFamilyName] = useState('');
 
     // Load profile + reference data
     useEffect(() => {
@@ -65,6 +70,7 @@ const ProfileEditPage: React.FC = () => {
 
                 const p = profileRes.data;
                 setRegionName(p.region?.name ?? '');
+                setFamilyName(p.family?.name ?? '');
                 setColleges(collegesRes.data);
                 setResidences(residencesRes.data);
 
@@ -415,6 +421,44 @@ const ProfileEditPage: React.FC = () => {
                         </div>
                     </form>
                     
+                    
+                    {/* Fellowship Section (Readonly + Transfer) */}
+                    <hr className="my-8 border-slate-200" />
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 bg-[#e9f5e1]/30 rounded-2xl border border-[#c5e3b0]">
+                        <div>
+                            <p className="font-bold text-slate-900 text-lg flex items-center gap-2">
+                                <MapPin className="text-[#48A111]" size={20} /> Current Region: {regionName || 'None'}
+                            </p>
+                            <p className="text-sm text-slate-600 mt-1">If you have moved, you can request an official transfer to a new Regional Head.</p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setIsTransferModalOpen(true)}
+                            className="px-5 py-2.5 bg-white border-2 border-[#48A111] text-[#48A111] font-bold rounded-xl hover:bg-[#48A111] hover:text-white transition-all shadow-sm whitespace-nowrap"
+                        >
+                            Request Transfer
+                        </button>
+                    </div>
+
+                    {/* Family Section (Readonly + Transfer) */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 bg-[#e9f5e1]/30 rounded-2xl border border-[#c5e3b0] mt-4">
+                        <div>
+                            <p className="font-bold text-slate-900 text-lg flex items-center gap-2">
+                                <Users className="text-[#48A111]" size={20} /> Current Family: {familyName || 'None'}
+                            </p>
+                            <p className="text-sm text-slate-600 mt-1">If you have relocated or wish to join a different family, you can request a transfer.</p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setIsFamilyTransferModalOpen(true)}
+                            className="px-5 py-2.5 bg-white border-2 border-[#48A111] text-[#48A111] font-bold rounded-xl hover:bg-[#48A111] hover:text-white transition-all shadow-sm whitespace-nowrap"
+                            disabled={!familyName} // Only enable if they have a family
+                            title={!familyName ? "You must join a family first" : ""}
+                        >
+                            Request Family Transfer
+                        </button>
+                    </div>
+
                     <hr className="my-8 border-slate-200" />
                     
                     {/* Security Section for FM Editing Their Own Profile */}
@@ -440,6 +484,8 @@ const ProfileEditPage: React.FC = () => {
             <AddCourseModal isOpen={isCourseModalOpen} onClose={() => setIsCourseModalOpen(false)} onSuccess={handleCourseSaved} preSelectedCollegeId={formData.collegeId} />
             <AddResidenceModal isOpen={isResidenceModalOpen} onClose={() => setIsResidenceModalOpen(false)} onSuccess={handleResidenceSaved} />
             <ChangePasswordModal isOpen={showPasswordModal} onClose={() => setShowPasswordModal(false)} />
+            <TransferRequestModal isOpen={isTransferModalOpen} onClose={() => setIsTransferModalOpen(false)} currentRegionName={regionName} />
+            <FamilyTransferRequestModal isOpen={isFamilyTransferModalOpen} onClose={() => setIsFamilyTransferModalOpen(false)} currentFamilyName={familyName} />
         </div>
     );
 };

@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { z } from 'zod';
 import prisma from '../prisma';
 import ExcelJS from 'exceljs';
+import { getEventStatus } from '../utils/timezone';
 
 // ─── Validation schemas ───────────────────────────────────────────────────────
 
@@ -62,6 +63,7 @@ export const createCampaign = async (req: Request, res: Response) => {
                 submissionDeadline: new Date(data.submissionDeadline),
                 maxContacts: data.maxContacts,
                 createdBy: userId,
+                status: 'OPEN', // Force new campaigns to start open
             },
         });
 
@@ -84,14 +86,24 @@ export const getCampaigns = async (req: Request, res: Response) => {
         const campaigns = await prisma.mobilizationCampaign.findMany({
             where: isManager ? {} : { status: 'OPEN' },
             include: {
-                event: { select: { id: true, name: true, date: true, type: true } },
+                event: { select: { id: true, name: true, date: true, startTime: true, endTime: true, type: true } },
                 creator: { select: { id: true, fullName: true } },
                 _count: { select: { contacts: true } },
             },
             orderBy: { createdAt: 'desc' },
         });
 
-        res.json(campaigns);
+        const processedCampaigns = campaigns.map((c: any) => {
+            if (c.status === 'OPEN' && getEventStatus(c.event) === 'PAST') {
+                prisma.mobilizationCampaign.update({ where: { id: c.id }, data: { status: 'CLOSED' } }).catch(e => console.error('[CAMPAIGN] auto-close err', e));
+                return { ...c, status: 'CLOSED' };
+            }
+            return c;
+        });
+
+        const finalCampaigns = isManager ? processedCampaigns : processedCampaigns.filter((c: any) => c.status === 'OPEN');
+
+        res.json(finalCampaigns);
     } catch (e) {
         console.error('[CAMPAIGN] Error fetching campaigns:', e);
         res.status(500).json({ message: 'Failed to fetch campaigns' });
@@ -113,7 +125,7 @@ export const getCampaignById = async (req: Request, res: Response) => {
         const campaign = await prisma.mobilizationCampaign.findUnique({
             where: { id },
             include: {
-                event: { select: { id: true, name: true, date: true, type: true } },
+                event: { select: { id: true, name: true, date: true, startTime: true, endTime: true, type: true } },
                 creator: { select: { id: true, fullName: true } },
                 contacts: {
                     where: isManager ? {} : { submittedById: userId },
@@ -127,6 +139,12 @@ export const getCampaignById = async (req: Request, res: Response) => {
         });
 
         if (!campaign) return res.status(404).json({ message: 'Campaign not found' });
+        
+        if (campaign.status === 'OPEN' && getEventStatus(campaign.event as any) === 'PAST') {
+            campaign.status = 'CLOSED';
+            prisma.mobilizationCampaign.update({ where: { id }, data: { status: 'CLOSED' } }).catch(e => console.error('[CAMPAIGN] auto-close err', e));
+        }
+
         if (!isManager && campaign.status === 'DRAFT') {
             return res.status(403).json({ message: 'Campaign is not yet available' });
         }
@@ -183,13 +201,21 @@ export const submitContacts = async (req: Request, res: Response) => {
         const id = req.params.id as string;
         const { contacts: incoming } = submitContactsSchema.parse(req.body);
 
-        const campaign = await prisma.mobilizationCampaign.findUnique({ where: { id } });
+        const campaign = await prisma.mobilizationCampaign.findUnique({ 
+            where: { id },
+            include: { event: true } 
+        });
         if (!campaign) return res.status(404).json({ message: 'Campaign not found' });
         if (campaign.status !== 'OPEN') {
             return res.status(400).json({ message: 'This campaign is not currently accepting submissions' });
         }
         if (new Date() > new Date(campaign.submissionDeadline)) {
             return res.status(400).json({ message: 'Submission deadline has passed' });
+        }
+        
+        const eventStatus = getEventStatus(campaign.event);
+        if (eventStatus === 'PAST') {
+            return res.status(400).json({ message: 'This event has already occurred' });
         }
 
         // Count existing submissions from this member

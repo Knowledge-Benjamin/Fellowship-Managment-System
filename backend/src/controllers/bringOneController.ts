@@ -2,8 +2,7 @@ import { Request, Response } from 'express';
 import { z } from 'zod';
 import prisma from '../prisma';
 import ExcelJS from 'exceljs';
-
-// ─── Validation ───────────────────────────────────────────────────────────────
+import { getEventStatus } from '../utils/timezone';
 
 const createCampaignSchema = z.object({
     title: z.string().min(1, 'Title is required').max(150),
@@ -132,6 +131,11 @@ export const submitPledges = async (req: Request, res: Response) => {
         if (!campaign) return res.status(404).json({ message: 'Campaign not found' });
         if (!campaign.isActive) return res.status(400).json({ message: 'This campaign is not currently active' });
         if (!event) return res.status(404).json({ message: 'Event not found' });
+        
+        const eventStatus = getEventStatus(event);
+        if (eventStatus === 'PAST') {
+            return res.status(400).json({ message: 'This event has already occurred' });
+        }
 
         // Prevent duplicate pledges for same email by this member for this event
         const emails = pledges.map(p => p.email.toLowerCase());

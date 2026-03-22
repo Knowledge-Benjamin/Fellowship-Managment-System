@@ -139,14 +139,22 @@ export default function CampaignManagement() {
     const handleCreateBring1Global = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            // using the same generic fetch but passing true to isActive
-            // Note: Currently backend has no POST /bring-one/campaigns, but if it did it would go here.
-            // Wait, does bringOneController have a campaign creator? Assumed so!
-            showToast('info', 'Global campaign created (if implemented)');
+            await api.post('/bring-one/campaigns', newB1Data);
+            
+            // The backend requires us to update the newly created campaign to be active
+            // Actually, we should just fetch to get its ID, then patch it to active
+            const res = await api.get('/bring-one/campaigns');
+            if (res.data.length > 0) {
+                const newCampaignId = res.data[0].id; // assuming ordered by newest
+                await api.patch(`/bring-one/campaigns/${newCampaignId}`, { isActive: true });
+            }
+
+            showToast('success', 'Bring 1 campaign configured and activated!');
             setShowCreateB1Modal(false);
+            setNewB1Data({ title: '', description: '', minPledges: 1 });
             fetchBring1Global();
-        } catch (error) {
-            showToast('error', 'Failed to create global campaign');
+        } catch (error: any) {
+            showToast('error', error.response?.data?.message || 'Failed to create campaign');
         }
     };
 
@@ -499,6 +507,59 @@ export default function CampaignManagement() {
                             <div className="pt-4 flex justify-end gap-3">
                                 <button type="button" onClick={() => setShowCreateMobModal(false)} className="px-5 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-xl">Cancel</button>
                                 <button type="submit" className="px-5 py-2.5 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-md">Create Campaign</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Create Bring 1 Modal */}
+            {showCreateB1Modal && (
+                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-gradient-to-r from-[#e9f5e1] to-white">
+                            <h2 className="text-xl font-bold text-[#48A111] flex items-center gap-2">
+                                <Flag size={20} /> Configure Bring 1 Campaign
+                            </h2>
+                            <button onClick={() => setShowCreateB1Modal(false)} className="text-slate-400 hover:text-slate-700">
+                                <span className="text-2xl leading-none">&times;</span>
+                            </button>
+                        </div>
+                        <form onSubmit={handleCreateBring1Global} className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-1">Campaign Title</label>
+                                <input 
+                                    required type="text" placeholder="e.g. Bring 1 For Sunday Service"
+                                    value={newB1Data.title} onChange={e => setNewB1Data({...newB1Data, title: e.target.value})}
+                                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-[#48A111]"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-1">Description</label>
+                                <textarea 
+                                    rows={2} placeholder="Optional instructions for members"
+                                    value={newB1Data.description} onChange={e => setNewB1Data({...newB1Data, description: e.target.value})}
+                                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-[#48A111] resize-none"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-1">Minimum Pledges Goal</label>
+                                <input 
+                                    required type="number" min="1"
+                                    value={newB1Data.minPledges} onChange={e => setNewB1Data({...newB1Data, minPledges: parseInt(e.target.value) || 1})}
+                                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-[#48A111]"
+                                />
+                                <p className="text-xs text-slate-500 mt-1">Target number of pledges each member should bring.</p>
+                            </div>
+                            
+                            <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl flex gap-3 text-amber-800 text-sm mt-4">
+                                <AlertCircle size={20} className="shrink-0 text-amber-500 mt-0.5" />
+                                <p><strong>Note:</strong> Creating this campaign will automatically set it as the active Bring 1 Campaign ecosystem-wide. Previous campaigns will be deactivated.</p>
+                            </div>
+
+                            <div className="pt-4 flex justify-end gap-3">
+                                <button type="button" onClick={() => setShowCreateB1Modal(false)} className="px-5 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-xl">Cancel</button>
+                                <button type="submit" className="px-5 py-2.5 text-sm font-bold text-white bg-[#48A111] hover:bg-[#387f0e] rounded-xl shadow-md">Create & Activate</button>
                             </div>
                         </form>
                     </div>

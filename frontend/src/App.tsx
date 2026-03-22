@@ -1,5 +1,5 @@
 import React, { lazy, Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 
 const Registration = lazy(() => import('./pages/Registration'));
 const CheckIn = lazy(() => import('./pages/CheckIn'));
@@ -51,8 +51,8 @@ import { NetworkStatusListener } from './components/NetworkStatusListener';
 
 function AppContent() {
   const location = useLocation();
-  const { isAuthenticated } = useAuth();
-  const isRegistrationPage = location.pathname === '/' || location.pathname === '/register';
+  const { isAuthenticated, isManager } = useAuth();
+  const isRegistrationPage = location.pathname === '/register';
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">
@@ -83,8 +83,15 @@ function AppContent() {
               {/* Public self-registration (no auth required) */}
               <Route path="/register" element={<SelfRegistration />} />
 
-              {/* Protected Routes */}
+              {/* Root Redirect to Role-based Dashboard */}
               <Route path="/" element={
+                <ProtectedRoute>
+                  <Navigate to={isManager ? "/leadership" : "/profile"} replace />
+                </ProtectedRoute>
+              } />
+
+              {/* Internal FM Member Intake Form */}
+              <Route path="/internal-register" element={
                 <ProtectedRoute roles={['FELLOWSHIP_MANAGER']}>
                   <Registration />
                 </ProtectedRoute>

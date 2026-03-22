@@ -36,7 +36,7 @@ const SidebarLink = ({ to, icon: Icon, label, isCollapsed, badgeCount }: Sidebar
             title={isCollapsed ? label : undefined}
         >
             <Icon size={20} className={`shrink-0 ${isActive ? 'text-white' : 'text-slate-500 group-hover:text-[#48A111]'}`} />
-            
+
             {!isCollapsed && (
                 <span className="flex-1 truncate">{label}</span>
             )}
@@ -46,7 +46,7 @@ const SidebarLink = ({ to, icon: Icon, label, isCollapsed, badgeCount }: Sidebar
                     {badgeCount > 99 ? '99+' : badgeCount}
                 </span>
             )}
-            
+
             {/* Tooltip for collapsed state */}
             {isCollapsed && (
                 <div className="absolute left-full ml-2 px-2 py-1 bg-slate-800 text-white text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50 pointer-events-none">
@@ -60,7 +60,7 @@ const SidebarLink = ({ to, icon: Icon, label, isCollapsed, badgeCount }: Sidebar
 export default function Sidebar() {
     const { user, logout, isManager, hasTag, hasTeamLeaderTag, hasTeamMemberTag, hasFamilyMemberTag } = useAuth();
     const { hasAccess: hasCheckInAccess } = useCheckInAccess();
-    
+
     // Load initial expanded state from local storage or default to large
     const [isCollapsed, setIsCollapsed] = useState(() => {
         const saved = localStorage.getItem('sidebarCollapsed');
@@ -72,7 +72,7 @@ export default function Sidebar() {
     // Poll pending member count
     useEffect(() => {
         if (!isManager) return;
-        const fetchStats = () => api.get('/pending-members/stats').then(r => setPendingCount(r.data.pending ?? 0)).catch(() => {});
+        const fetchStats = () => api.get('/pending-members/stats').then(r => setPendingCount(r.data.pending ?? 0)).catch(() => { });
         fetchStats();
         const interval = setInterval(fetchStats, 60000);
         return () => clearInterval(interval);
@@ -90,7 +90,7 @@ export default function Sidebar() {
     const isTeamLeader = hasTeamLeaderTag() || hasTeamMemberTag();
 
     return (
-        <aside 
+        <aside
             className={`hidden md:flex flex-col bg-white border-r border-slate-200 h-screen sticky top-0 transition-all duration-300 z-40
             ${isCollapsed ? 'w-20' : 'w-72'}`}
         >
@@ -108,7 +108,7 @@ export default function Sidebar() {
             </div>
 
             {/* Toggle Button */}
-            <button 
+            <button
                 onClick={toggleSidebar}
                 className="absolute -right-3.5 top-24 bg-white border border-slate-200 text-slate-400 hover:text-slate-700 hover:shadow-md rounded-full p-1.5 transition-all z-50 cursor-pointer"
             >
@@ -117,12 +117,12 @@ export default function Sidebar() {
 
             {/* Navigation Lists */}
             <div className="flex-1 overflow-y-auto py-6 px-3 custom-scrollbar">
-                
+
                 {/* 1. Core / Personal */}
                 <div className="mb-6">
                     {!isCollapsed && <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-3">Personal</h3>}
-                    <SidebarLink to="/" icon={Home} label="Dashboard" isCollapsed={isCollapsed} />
-                    <SidebarLink to="/profile" icon={User} label="My Profile" isCollapsed={isCollapsed} />
+                    <SidebarLink to={isManager ? "/leadership" : "/profile"} icon={Home} label={isManager ? "Dashboard" : "My Dashboard"} isCollapsed={isCollapsed} />
+                    {!isManager && <SidebarLink to="/profile" icon={User} label="My Profile" isCollapsed={isCollapsed} />}
                     {hasCheckInAccess && <SidebarLink to="/check-in" icon={QrCode} label="Scan Check-in" isCollapsed={isCollapsed} />}
                     <SidebarLink to="/transport" icon={Bus} label="Transport Booking" isCollapsed={isCollapsed} />
                     <SidebarLink to="/campaigns" icon={Target} label="My Campaigns" isCollapsed={isCollapsed} />
@@ -144,9 +144,9 @@ export default function Sidebar() {
                         <div className="mb-6">
                             {!isCollapsed && <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-3">People & Groups</h3>}
                             <SidebarLink to="/members" icon={Users} label="Members Directory" isCollapsed={isCollapsed} />
+                            <SidebarLink to="/internal-register" icon={UserPlus} label="Register Member" isCollapsed={isCollapsed} />
                             <SidebarLink to="/pending-members" icon={UserPlus} label="Pending Approvals" badgeCount={pendingCount} isCollapsed={isCollapsed} />
                             <SidebarLink to="/leadership/families" icon={Users} label="Families" isCollapsed={isCollapsed} />
-                            <SidebarLink to="/leadership" icon={Users} label="Ministry Teams" isCollapsed={isCollapsed} />
                             <SidebarLink to="/residences" icon={Home} label="Residences" isCollapsed={isCollapsed} />
                         </div>
 
@@ -174,7 +174,7 @@ export default function Sidebar() {
 
             {/* Footer / Logout */}
             <div className="p-4 border-t border-slate-100 bg-slate-50/50">
-                <button 
+                <button
                     onClick={logout}
                     className={`w-full flex items-center p-2 rounded-xl text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors ${isCollapsed ? 'justify-center' : 'justify-start gap-3'}`}
                     title={isCollapsed ? "Logout" : undefined}
@@ -183,7 +183,7 @@ export default function Sidebar() {
                     {!isCollapsed && <span className="font-bold">Logout</span>}
                 </button>
             </div>
-            
+
         </aside>
     );
 }

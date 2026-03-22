@@ -390,8 +390,9 @@ export default function CampaignManagement() {
                                             ) : (
                                                 selectedMobCampaign.contacts?.map((contact: any) => (
                                                     <tr key={contact.id} className="hover:bg-slate-50/50">
-                                                        <td className="px-6 py-4 text-slate-800 font-medium">
-                                                            {contact.submittedBy?.name || 'Unknown'}
+                                                        <td className="px-6 py-4">
+                                                            <div className="font-bold text-slate-800">{contact.submittedBy?.fullName || 'Unknown'}</div>
+                                                            <div className="text-xs text-slate-500">{contact.submittedBy?.fellowshipNumber || ''}</div>
                                                         </td>
                                                         <td className="px-6 py-4">
                                                             <div className="font-bold text-slate-800">{contact.name}</div>
@@ -520,8 +521,8 @@ export default function CampaignManagement() {
                                         b1EventPledges.map(pledge => (
                                             <tr key={pledge.id} className="hover:bg-slate-50/50">
                                                 <td className="px-6 py-4">
-                                                    <div className="font-bold text-slate-800">{pledge.inviter?.name}</div>
-                                                    <div className="text-xs text-slate-500">{pledge.inviter?.email}</div>
+                                                    <div className="font-bold text-slate-800">{pledge.inviter?.fullName || 'Unknown'}</div>
+                                                    <div className="text-xs text-slate-500">{pledge.inviter?.fellowshipNumber || ''}</div>
                                                 </td>
                                                 <td className="px-6 py-4 font-semibold text-slate-700">{pledge.name}</td>
                                                 <td className="px-6 py-4">

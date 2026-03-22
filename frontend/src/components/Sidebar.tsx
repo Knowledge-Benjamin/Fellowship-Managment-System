@@ -122,7 +122,7 @@ export default function Sidebar() {
                 <div className="mb-6">
                     {!isCollapsed && <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-3">Personal</h3>}
                     <SidebarLink to={isManager ? "/leadership" : "/profile"} icon={Home} label={isManager ? "Dashboard" : "My Dashboard"} isCollapsed={isCollapsed} />
-                    {!isManager && <SidebarLink to="/profile" icon={User} label="My Profile" isCollapsed={isCollapsed} />}
+                    <SidebarLink to="/profile" icon={User} label="My Profile" isCollapsed={isCollapsed} />
                     {hasCheckInAccess && <SidebarLink to="/check-in" icon={QrCode} label="Scan Check-in" isCollapsed={isCollapsed} />}
                     <SidebarLink to="/transport" icon={Bus} label="Transport Booking" isCollapsed={isCollapsed} />
                     <SidebarLink to="/campaigns" icon={Target} label="My Campaigns" isCollapsed={isCollapsed} />

@@ -187,6 +187,26 @@ export const updateCampaign = async (req: Request, res: Response) => {
     }
 };
 
+/**
+ * DELETE /api/campaigns/:id
+ * FM deletes a campaign and all its contacts.
+ */
+export const deleteCampaign = async (req: Request, res: Response) => {
+    try {
+        const id = req.params.id as string;
+
+        const campaign = await prisma.mobilizationCampaign.findUnique({ where: { id } });
+        if (!campaign) return res.status(404).json({ message: 'Campaign not found' });
+
+        await prisma.mobilizationCampaign.delete({ where: { id } });
+
+        res.json({ message: 'Campaign deleted successfully' });
+    } catch (e) {
+        console.error('[CAMPAIGN] Error deleting campaign:', e);
+        res.status(500).json({ message: 'Failed to delete campaign' });
+    }
+};
+
 // ─── Contact Management ───────────────────────────────────────────────────────
 
 /**

@@ -4,6 +4,7 @@ import {
     createBringOneCampaign,
     getBringOneCampaigns,
     updateBringOneCampaign,
+    deleteBringOneCampaign,
     submitPledges,
     getMyPledges,
     deletePledge,
@@ -17,6 +18,7 @@ const router = Router();
 router.post('/campaigns', protect, authorize('FELLOWSHIP_MANAGER'), createBringOneCampaign);
 router.get('/campaigns', protect, getBringOneCampaigns);
 router.patch('/campaigns/:id', protect, authorize('FELLOWSHIP_MANAGER'), updateBringOneCampaign);
+router.delete('/campaigns/:id', protect, authorize('FELLOWSHIP_MANAGER'), deleteBringOneCampaign);
 
 // Pledge management (any authenticated member)
 router.post('/pledges', protect, submitPledges);

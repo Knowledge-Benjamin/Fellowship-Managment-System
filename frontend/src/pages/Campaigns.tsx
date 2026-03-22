@@ -10,6 +10,7 @@ export default function Campaigns() {
     
     // State for the currently selected campaign to submit to
     const [activeCampaignId, setActiveCampaignId] = useState<string | null>(null);
+    const [activeCampaignDetail, setActiveCampaignDetail] = useState<any | null>(null);
     const [newContacts, setNewContacts] = useState([{ name: '', phone: '', email: '', relationship: '' }]);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -23,15 +24,25 @@ export default function Campaigns() {
             const res = await api.get('/campaigns');
             const data = res.data;
             setCampaigns(data);
-            if (data.length > 0 && !activeCampaignId) {
-                // Default to first campaign
-                setActiveCampaignId(data[0].id);
+            if (data.length > 0) {
+                const firstId = activeCampaignId || data[0].id;
+                setActiveCampaignId(firstId);
+                fetchCampaignDetail(firstId);
             }
         } catch (error) {
             console.error('Failed to fetch campaigns:', error);
             showToast('error', 'Failed to load campaigns');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchCampaignDetail = async (id: string) => {
+        try {
+            const res = await api.get(`/campaigns/${id}`);
+            setActiveCampaignDetail(res.data);
+        } catch (error) {
+            console.error('Failed to fetch campaign detail:', error);
         }
     };
 
@@ -71,6 +82,7 @@ export default function Campaigns() {
             showToast('success', 'Contacts submitted successfully!');
             setNewContacts([{ name: '', phone: '', email: '', relationship: '' }]);
             fetchCampaigns(); // refresh to show updated progress
+            fetchCampaignDetail(campaign.id); // also refresh detail view
         } catch (error: any) {
             console.error('Submit error:', error);
             showToast('error', error.response?.data?.message || 'Failed to submit contacts');
@@ -99,9 +111,12 @@ export default function Campaigns() {
         );
     }
 
-    const activeCampaign = campaigns.find(c => c.id === activeCampaignId) || campaigns[0];
-    const userSubmittedCount = activeCampaign.contacts?.length || 0;
+    const activeCampaign = campaigns.find((c: any) => c.id === activeCampaignId) || campaigns[0];
+    // Use _count.contacts (from list view) for progress tracking
+    const userSubmittedCount = activeCampaignDetail?.contacts?.length || 0;
+    const totalContactCount = activeCampaign._count?.contacts || 0;
     const isFull = userSubmittedCount >= activeCampaign.maxContacts;
+    const remainingSlots = activeCampaign.maxContacts - userSubmittedCount;
     
     const deadlineStr = new Date(activeCampaign.submissionDeadline).toLocaleDateString('en-GB', {
         weekday: 'short', day: 'numeric', month: 'long', year: 'numeric'
@@ -130,10 +145,13 @@ export default function Campaigns() {
                 {/* Left Col: Campaign Selector */}
                 <div className="lg:col-span-1 space-y-4">
                     <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider px-2">Open Campaigns</h3>
-                    {campaigns.map(camp => (
+                    {campaigns.map((camp: any) => (
                         <button
                             key={camp.id}
-                            onClick={() => setActiveCampaignId(camp.id)}
+                            onClick={() => {
+                                setActiveCampaignId(camp.id);
+                                fetchCampaignDetail(camp.id);
+                            }}
                             className={`w-full text-left p-5 rounded-2xl border transition-all cursor-pointer ${
                                 activeCampaignId === camp.id 
                                 ? 'bg-white border-[#48A111] shadow-md ring-1 ring-[#48A111]' 
@@ -144,7 +162,7 @@ export default function Campaigns() {
                                 <h4 className={`font-bold ${activeCampaignId === camp.id ? 'text-[#48A111]' : 'text-slate-800'}`}>
                                     {camp.title}
                                 </h4>
-                                {camp.contacts?.length >= camp.maxContacts && (
+                                {(camp._count?.contacts || 0) >= camp.maxContacts && (
                                     <CheckCircle2 size={16} className="text-[#48A111]" />
                                 )}
                             </div>
@@ -156,12 +174,12 @@ export default function Campaigns() {
                             <div className="space-y-1">
                                 <div className="flex justify-between text-[10px] font-bold text-slate-400">
                                     <span>Progress</span>
-                                    <span>{camp.contacts?.length || 0} / {camp.maxContacts}</span>
+                                    <span>{camp._count?.contacts || 0} / {camp.maxContacts}</span>
                                 </div>
                                 <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
                                     <div 
                                         className="h-full bg-[#48A111] transition-all duration-500"
-                                        style={{ width: `${Math.min(100, ((camp.contacts?.length || 0) / camp.maxContacts) * 100)}%` }}
+                                        style={{ width: `${Math.min(100, ((camp._count?.contacts || 0) / camp.maxContacts) * 100)}%` }}
                                     />
                                 </div>
                             </div>
@@ -186,6 +204,10 @@ export default function Campaigns() {
                                 <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 rounded-xl border border-slate-100">
                                     <Users className="text-slate-400" size={18} />
                                     <span className="text-sm font-semibold text-slate-700">Goal: Up to {activeCampaign.maxContacts} contacts</span>
+                                </div>
+                                <div className="flex items-center gap-2 px-4 py-2 bg-[#e9f5e1] rounded-xl border border-[#c5e3b0]">
+                                    <CheckCircle2 className="text-[#48A111]" size={18} />
+                                    <span className="text-sm font-semibold text-[#387f0e]">My submitted: {userSubmittedCount} / {activeCampaign.maxContacts}</span>
                                 </div>
                             </div>
                         </div>
@@ -212,7 +234,7 @@ export default function Campaigns() {
                                         <Plus className="text-[#48A111]" /> Submit Contacts
                                     </h3>
                                     <p className="text-xs text-slate-500 mt-1">
-                                        You can submit {activeCampaign.maxContacts - userSubmittedCount} more contacts.
+                                        You can submit {remainingSlots} more contacts.
                                     </p>
                                 </div>
                                 <div className="text-right">
@@ -296,14 +318,14 @@ export default function Campaigns() {
                     )}
                     
                     {/* Previously Submitted List */}
-                    {activeCampaign.contacts && activeCampaign.contacts.length > 0 && (
+                    {activeCampaignDetail?.contacts && activeCampaignDetail.contacts.length > 0 && (
                         <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden p-6 pt-5">
                             <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-4 border-b border-slate-100 pb-3 flex justify-between items-center">
                                 Already Submitted Contacts
                                 <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md text-xs">{activeCampaign.contacts.length} Total</span>
                             </h3>
                             <div className="grid sm:grid-cols-2 gap-3">
-                                {activeCampaign.contacts.map((c: any) => (
+                                {activeCampaignDetail.contacts.map((c: any) => (
                                     <div key={c.id} className="p-3 rounded-xl border border-slate-100 bg-slate-50 flex flex-col gap-1">
                                         <div className="font-bold text-slate-800 text-sm">{c.name}</div>
                                         <div className="text-xs text-slate-500 flex justify-between">

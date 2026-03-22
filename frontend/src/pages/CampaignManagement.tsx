@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
-import { Target, Users, Loader2, Calendar, Plus, Flag, Download, FileSpreadsheet, Search, CheckCircle2, AlertCircle, Phone, FileText } from 'lucide-react';
+import { Target, Users, Loader2, Calendar, Plus, Flag, Download, FileSpreadsheet, Search, CheckCircle2, AlertCircle, Phone, FileText, Edit2, Trash2 } from 'lucide-react';
 import { useToast } from '../components/ToastProvider';
 
 export default function CampaignManagement() {
@@ -24,8 +24,11 @@ export default function CampaignManagement() {
     // Form States
     const [showCreateMobModal, setShowCreateMobModal] = useState(false);
     const [newMobData, setNewMobData] = useState({ eventId: '', title: '', description: '', submissionDeadline: '', maxContacts: 20 });
+    const [editMobData, setEditMobData] = useState<any | null>(null);
+
     const [showCreateB1Modal, setShowCreateB1Modal] = useState(false);
     const [newB1Data, setNewB1Data] = useState({ title: '', description: '', minPledges: 1 });
+    const [editB1Data, setEditB1Data] = useState<any | null>(null);
 
     useEffect(() => {
         fetchInitialData();
@@ -65,11 +68,10 @@ export default function CampaignManagement() {
             const res = await api.get('/campaigns');
             setMobCampaigns(res.data);
             if (!selectedMobCampaign && res.data.length > 0) {
-                setSelectedMobCampaign(res.data[0]);
+                loadMobCampaignDetail(res.data[0].id);
             } else if (selectedMobCampaign) {
-                // Refresh active
-                const updated = res.data.find((c: any) => c.id === selectedMobCampaign.id);
-                if (updated) setSelectedMobCampaign(updated);
+                // Reload full detail for currently selected campaign
+                loadMobCampaignDetail(selectedMobCampaign.id);
             }
         } catch (error) {
             showToast('error', 'Failed to load mobilization campaigns');
@@ -81,7 +83,7 @@ export default function CampaignManagement() {
     const handleCreateMobCampaign = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            await api.post('/campaigns', {
+            const res = await api.post('/campaigns', {
                 ...newMobData,
                 submissionDeadline: new Date(newMobData.submissionDeadline).toISOString()
             });
@@ -93,11 +95,49 @@ export default function CampaignManagement() {
         }
     };
 
+    const loadMobCampaignDetail = async (id: string) => {
+        try {
+            const res = await api.get(`/campaigns/${id}`);
+            setSelectedMobCampaign(res.data);
+        } catch (error) {
+            showToast('error', 'Failed to load campaign detail');
+        }
+    };
+
+    const handleUpdateMobCampaign = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            await api.patch(`/campaigns/${editMobData.id}`, {
+                title: editMobData.title,
+                description: editMobData.description,
+                submissionDeadline: new Date(editMobData.submissionDeadline).toISOString(),
+                maxContacts: Number(editMobData.maxContacts)
+            });
+            showToast('success', 'Mobilization campaign updated');
+            setEditMobData(null);
+            fetchMobCampaigns();
+        } catch (error: any) {
+            showToast('error', error.response?.data?.message || 'Failed to update campaign');
+        }
+    };
+
+    const handleDeleteMobCampaign = async () => {
+        if (!window.confirm('Are you sure you want to delete this campaign? All contacts will be permanently lost.')) return;
+        try {
+            await api.delete(`/campaigns/${selectedMobCampaign.id}`);
+            showToast('success', 'Campaign deleted');
+            setSelectedMobCampaign(null);
+            fetchMobCampaigns();
+        } catch (error: any) {
+            showToast('error', error.response?.data?.message || 'Failed to delete campaign');
+        }
+    };
+
     const handleUpdateCallStatus = async (contactId: string, status: string, notes?: string) => {
         try {
             await api.patch(`/campaigns/${selectedMobCampaign.id}/contacts/${contactId}`, { callStatus: status, notes });
             showToast('success', 'Status updated');
-            fetchMobCampaigns(); // Refresh list to get updated contact
+            loadMobCampaignDetail(selectedMobCampaign.id); // Reload full detail to refresh contact rows
         } catch (error) {
             showToast('error', 'Failed to update status');
         }
@@ -158,6 +198,36 @@ export default function CampaignManagement() {
         }
     };
 
+    const handleUpdateBring1Global = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            await api.patch(`/bring-one/campaigns/${editB1Data.id}`, {
+                title: editB1Data.title,
+                description: editB1Data.description,
+                minPledges: Number(editB1Data.minPledges)
+            });
+            showToast('success', 'Bring 1 campaign updated');
+            setEditB1Data(null);
+            fetchBring1Global();
+        } catch (error: any) {
+            showToast('error', error.response?.data?.message || 'Failed to update campaign');
+        }
+    };
+
+    const handleDeleteBring1Global = async () => {
+        if (!window.confirm('Are you sure you want to delete the current Bring 1 configuration? All related pledges will be permanently deleted.')) return;
+        try {
+            await api.delete(`/bring-one/campaigns/${b1GlobalCampaign.id}`);
+            showToast('success', 'Bring 1 campaign deleted');
+            setB1GlobalCampaign(null);
+            setB1EventPledges([]);
+            setB1Stats(null);
+            fetchBring1Global();
+        } catch (error: any) {
+            showToast('error', error.response?.data?.message || 'Failed to delete Bring 1 campaign');
+        }
+    };
+
     const handleExportBring1 = () => {
         if (!selectedB1EventId) return;
         window.open(`/api/bring-one/event/${selectedB1EventId}/export`, '_blank');
@@ -184,17 +254,36 @@ export default function CampaignManagement() {
                 {activeTab === 'mobilization' ? (
                     <button 
                         onClick={() => setShowCreateMobModal(true)}
-                        className="px-4 py-2 bg-[#48A111] hover:bg-[#387f0e] text-white rounded-lg flex items-center gap-2 font-bold transition-colors"
+                        className="px-4 py-2 bg-[#48A111] hover:bg-[#387f0e] text-white rounded-lg flex items-center gap-2 font-bold transition-colors shadow-sm"
                     >
                         <Plus size={18} /> New Mobilization
                     </button>
                 ) : (
-                    <button 
-                         onClick={() => setShowCreateB1Modal(true)}
-                        className="px-4 py-2 bg-[#48A111] hover:bg-[#387f0e] text-white rounded-lg flex items-center gap-2 font-bold transition-colors"
-                    >
-                        <Plus size={18} /> Configure Bring 1
-                    </button>
+                    <div className="flex items-center gap-2">
+                        {!b1GlobalCampaign ? (
+                            <button 
+                                 onClick={() => setShowCreateB1Modal(true)}
+                                className="px-4 py-2 bg-[#48A111] hover:bg-[#387f0e] text-white rounded-lg flex items-center gap-2 font-bold transition-colors shadow-sm"
+                            >
+                                <Plus size={18} /> Configure Bring 1
+                            </button>
+                        ) : (
+                            <>
+                                <button 
+                                    onClick={() => setEditB1Data(b1GlobalCampaign)}
+                                    className="px-4 py-2 bg-white border border-slate-200 hover:border-slate-300 text-slate-700 rounded-lg flex items-center gap-2 font-bold shadow-sm transition-colors"
+                                >
+                                    <Edit2 size={18} /> Edit Config
+                                </button>
+                                <button 
+                                    onClick={handleDeleteBring1Global}
+                                    className="px-4 py-2 bg-white border border-red-200 hover:border-red-300 hover:bg-red-50 text-red-600 rounded-lg flex items-center gap-2 font-bold shadow-sm transition-colors"
+                                >
+                                    <Trash2 size={18} /> Delete Config
+                                </button>
+                            </>
+                        )}
+                    </div>
                 )}
             </div>
 
@@ -231,10 +320,10 @@ export default function CampaignManagement() {
                             Campaigns
                         </div>
                         <div className="divide-y divide-slate-100 max-h-[600px] overflow-y-auto">
-                            {mobCampaigns.map(camp => (
+                            {mobCampaigns.map((camp: any) => (
                                 <button
                                     key={camp.id}
-                                    onClick={() => setSelectedMobCampaign(camp)}
+                                    onClick={() => loadMobCampaignDetail(camp.id)}
                                     className={`w-full text-left px-5 py-4 transition-colors ${
                                         selectedMobCampaign?.id === camp.id ? 'bg-indigo-50 border-l-4 border-indigo-600' : 'hover:bg-slate-50 border-l-4 border-transparent'
                                     }`}
@@ -244,7 +333,7 @@ export default function CampaignManagement() {
                                         <span className={`px-2 py-0.5 rounded-full font-bold ${camp.status === 'OPEN' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'}`}>
                                             {camp.status}
                                         </span>
-                                        <span className="text-slate-400">{camp.contacts?.length || 0} Contacts</span>
+                                        <span className="text-slate-400">{camp._count?.contacts || 0} Contacts</span>
                                     </div>
                                 </button>
                             ))}
@@ -263,12 +352,26 @@ export default function CampaignManagement() {
                                         <h3 className="text-xl font-bold text-slate-900">{selectedMobCampaign.title}</h3>
                                         <p className="text-sm text-slate-500">Deadline: {new Date(selectedMobCampaign.submissionDeadline).toLocaleDateString()}</p>
                                     </div>
-                                    <button 
-                                        onClick={handleExportMob}
-                                        className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 hover:border-slate-300 text-slate-700 rounded-lg shadow-sm font-semibold transition-all"
-                                    >
-                                        <FileSpreadsheet size={18} className="text-emerald-600" /> Export Excel
-                                    </button>
+                                    <div className="flex items-center gap-2">
+                                        <button 
+                                            onClick={() => setEditMobData(selectedMobCampaign)}
+                                            className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 hover:border-slate-300 text-slate-600 rounded-lg shadow-sm font-semibold transition-all"
+                                        >
+                                            <Edit2 size={18} />
+                                        </button>
+                                        <button 
+                                            onClick={handleDeleteMobCampaign}
+                                            className="flex items-center gap-2 px-3 py-2 bg-white border border-red-200 hover:border-red-300 hover:bg-red-50 text-red-600 rounded-lg shadow-sm font-semibold transition-all"
+                                        >
+                                            <Trash2 size={18} />
+                                        </button>
+                                        <button 
+                                            onClick={handleExportMob}
+                                            className="flex items-center gap-2 px-4 py-2 bg-emerald-50 border border-emerald-200 hover:border-emerald-300 text-emerald-700 rounded-lg shadow-sm font-semibold transition-all"
+                                        >
+                                            <FileSpreadsheet size={18} /> Export
+                                        </button>
+                                    </div>
                                 </div>
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-left text-sm">
@@ -560,6 +663,132 @@ export default function CampaignManagement() {
                             <div className="pt-4 flex justify-end gap-3">
                                 <button type="button" onClick={() => setShowCreateB1Modal(false)} className="px-5 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-xl">Cancel</button>
                                 <button type="submit" className="px-5 py-2.5 text-sm font-bold text-white bg-[#48A111] hover:bg-[#387f0e] rounded-xl shadow-md">Create & Activate</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Edit Mobilization Modal */}
+            {editMobData && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-scale-in">
+                        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                            <h3 className="font-bold text-lg text-slate-900 flex items-center gap-2">
+                                <Edit2 size={20} className="text-indigo-600" /> Edit Mobilization
+                            </h3>
+                        </div>
+                        <form onSubmit={handleUpdateMobCampaign} className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-1">Campaign Title</label>
+                                <input 
+                                    type="text" required
+                                    value={editMobData.title}
+                                    onChange={e => setEditMobData({...editMobData, title: e.target.value})}
+                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:border-indigo-600 transition-colors"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-1">Description</label>
+                                <textarea 
+                                    value={editMobData.description || ''}
+                                    onChange={e => setEditMobData({...editMobData, description: e.target.value})}
+                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:border-indigo-600 transition-colors min-h-[80px]"
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-1">Deadline</label>
+                                    <input 
+                                        type="date" required
+                                        value={editMobData.submissionDeadline.split('T')[0]}
+                                        onChange={e => setEditMobData({...editMobData, submissionDeadline: e.target.value})}
+                                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:border-indigo-600 transition-colors"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-1">Max Contacts</label>
+                                    <input 
+                                        type="number" required min="1"
+                                        value={editMobData.maxContacts}
+                                        onChange={e => setEditMobData({...editMobData, maxContacts: e.target.value})}
+                                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:border-indigo-600 transition-colors"
+                                    />
+                                </div>
+                            </div>
+                            
+                            <div className="pt-4 flex justify-end gap-3">
+                                <button 
+                                    type="button" 
+                                    onClick={() => setEditMobData(null)}
+                                    className="px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-lg"
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    type="submit" 
+                                    className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-lg shadow-sm"
+                                >
+                                    Save Changes
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Edit Bring 1 Modal */}
+            {editB1Data && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-scale-in">
+                        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                            <h3 className="font-bold text-lg text-slate-900 flex items-center gap-2">
+                                <Edit2 size={20} className="text-[#48A111]" /> Edit Bring 1 Config
+                            </h3>
+                        </div>
+                        <form onSubmit={handleUpdateBring1Global} className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-1">Initiative Title</label>
+                                <input 
+                                    type="text" required
+                                    placeholder="e.g. Bring 1 Campaign"
+                                    value={editB1Data.title}
+                                    onChange={e => setEditB1Data({...editB1Data, title: e.target.value})}
+                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:border-[#48A111] transition-colors"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-1">Description (Optional)</label>
+                                <textarea 
+                                    value={editB1Data.description || ''}
+                                    onChange={e => setEditB1Data({...editB1Data, description: e.target.value})}
+                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:border-[#48A111] transition-colors min-h-[80px]"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-1">Minimum Pledges per Member</label>
+                                <input 
+                                    type="number" required min="1"
+                                    value={editB1Data.minPledges}
+                                    onChange={e => setEditB1Data({...editB1Data, minPledges: e.target.value})}
+                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:border-[#48A111] transition-colors"
+                                />
+                            </div>
+                            
+                            <div className="pt-4 flex justify-end gap-3">
+                                <button 
+                                    type="button" 
+                                    onClick={() => setEditB1Data(null)}
+                                    className="px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-lg"
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    type="submit" 
+                                    className="px-6 py-2 bg-[#48A111] hover:bg-[#387f0e] text-white text-sm font-bold rounded-lg shadow-sm"
+                                >
+                                    Save Changes
+                                </button>
                             </div>
                         </form>
                     </div>

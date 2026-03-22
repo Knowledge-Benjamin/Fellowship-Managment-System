@@ -110,6 +110,26 @@ export const updateBringOneCampaign = async (req: Request, res: Response) => {
     }
 };
 
+/**
+ * DELETE /api/bring-one/campaigns/:id
+ * FM deletes a campaign and all its pledges cascade.
+ */
+export const deleteBringOneCampaign = async (req: Request, res: Response) => {
+    try {
+        const id = req.params.id as string;
+
+        const campaign = await prisma.bringOneCampaign.findUnique({ where: { id } });
+        if (!campaign) return res.status(404).json({ message: 'Campaign not found' });
+
+        await prisma.bringOneCampaign.delete({ where: { id } });
+
+        res.json({ message: 'Campaign deleted successfully' });
+    } catch (e) {
+        console.error('[BRING-ONE] Error deleting campaign:', e);
+        res.status(500).json({ message: 'Failed to delete campaign' });
+    }
+};
+
 // ─── Pledge Management ────────────────────────────────────────────────────────
 
 /**

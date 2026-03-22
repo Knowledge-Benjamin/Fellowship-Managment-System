@@ -5,6 +5,7 @@ import {
     getCampaigns,
     getCampaignById,
     updateCampaign,
+    deleteCampaign,
     submitContacts,
     updateContact,
     getCampaignContacts,
@@ -18,6 +19,7 @@ router.post('/', protect, authorize('FELLOWSHIP_MANAGER'), createCampaign);
 router.get('/', protect, getCampaigns);
 router.get('/:id', protect, getCampaignById);
 router.patch('/:id', protect, authorize('FELLOWSHIP_MANAGER'), updateCampaign);
+router.delete('/:id', protect, authorize('FELLOWSHIP_MANAGER'), deleteCampaign);
 
 // Contact management
 router.post('/:id/contacts', protect, submitContacts);

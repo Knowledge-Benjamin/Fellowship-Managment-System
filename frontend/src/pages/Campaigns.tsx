@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
-import { Target, Users, Loader2, Calendar, Plus, Trash2, ShieldAlert, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Target, Users, Loader2, Calendar, Plus, Trash2, CheckCircle2, AlertCircle, AlertTriangle, Phone } from 'lucide-react';
 import { useToast } from '../components/ToastProvider';
 
 export default function Campaigns() {
@@ -88,6 +88,15 @@ export default function Campaigns() {
             showToast('error', error.response?.data?.message || 'Failed to submit contacts');
         } finally {
             setIsSubmitting(false);
+        }
+    };
+
+    const handleUpdateCallStatus = async (campaignId: string, contactId: string, callStatus: string) => {
+        try {
+            await api.patch(`/campaigns/${campaignId}/contacts/${contactId}`, { callStatus });
+            fetchCampaignDetail(campaignId);
+        } catch (error: any) {
+            showToast('error', error.response?.data?.message || 'Failed to update status');
         }
     };
 
@@ -317,20 +326,66 @@ export default function Campaigns() {
                         </div>
                     )}
                     
-                    {/* Previously Submitted List */}
+                    {/* Previously Submitted Contacts with Call Status Tracking */}
                     {activeCampaignDetail?.contacts && activeCampaignDetail.contacts.length > 0 && (
-                        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden p-6 pt-5">
-                            <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-4 border-b border-slate-100 pb-3 flex justify-between items-center">
-                                Already Submitted Contacts
-                                <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md text-xs">{activeCampaign.contacts.length} Total</span>
-                            </h3>
-                            <div className="grid sm:grid-cols-2 gap-3">
+                        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+                            <div className="px-6 pt-5 pb-3 border-b border-slate-100 flex justify-between items-center">
+                                <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider">
+                                    My Submitted Contacts
+                                </h3>
+                                <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md text-xs font-bold">
+                                    {activeCampaignDetail.contacts.length} Total
+                                </span>
+                            </div>
+                            
+                            {/* Duplicate warning banner */}
+                            {activeCampaignDetail.contacts.some((c: any) => c.isDuplicate) && (
+                                <div className="mx-4 mt-3 px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-2 text-amber-700 text-sm">
+                                    <AlertTriangle size={16} className="shrink-0" />
+                                    <span><strong>Note:</strong> Some contacts are flagged as duplicates — they share a phone number or email already on this campaign.</span>
+                                </div>
+                            )}
+
+                            <div className="p-4 grid sm:grid-cols-2 gap-3">
                                 {activeCampaignDetail.contacts.map((c: any) => (
-                                    <div key={c.id} className="p-3 rounded-xl border border-slate-100 bg-slate-50 flex flex-col gap-1">
-                                        <div className="font-bold text-slate-800 text-sm">{c.name}</div>
-                                        <div className="text-xs text-slate-500 flex justify-between">
-                                            <span>{c.phone}</span>
-                                            {c.relationship && <span className="text-slate-400 bg-slate-200/50 px-1.5 rounded">{c.relationship}</span>}
+                                    <div key={c.id} className={`p-4 rounded-xl border flex flex-col gap-2 ${c.isDuplicate ? 'border-amber-200 bg-amber-50/50' : 'border-slate-100 bg-slate-50'}`}>
+                                        <div className="flex items-start justify-between gap-2">
+                                            <div>
+                                                <div className="font-bold text-slate-800 text-sm flex items-center gap-1.5">
+                                                    {c.name}
+                                                    {c.isDuplicate && (
+                                                        <span className="text-[10px] font-bold px-1.5 py-0.5 bg-amber-100 text-amber-700 border border-amber-200 rounded-full">DUPLICATE</span>
+                                                    )}
+                                                </div>
+                                                <div className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
+                                                    <Phone size={11} /> {c.phone}
+                                                    {c.email && <span className="ml-2 text-slate-400">{c.email}</span>}
+                                                </div>
+                                                {c.relationship && (
+                                                    <span className="text-[10px] text-slate-400 bg-slate-200/60 px-1.5 py-0.5 rounded mt-1 inline-block">{c.relationship}</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        {/* Call status tracker */}
+                                        <div className="pt-2 border-t border-slate-100">
+                                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Follow-up Status</label>
+                                            <select
+                                                value={c.callStatus}
+                                                onChange={(e) => handleUpdateCallStatus(activeCampaign.id, c.id, e.target.value)}
+                                                className={`w-full text-xs font-bold rounded-lg px-2.5 py-1.5 border transition-colors outline-none cursor-pointer ${
+                                                    c.callStatus === 'NOT_CALLED' ? 'bg-slate-100 text-slate-600 border-slate-200' :
+                                                    c.callStatus === 'CALLED'     ? 'bg-amber-100 text-amber-700 border-amber-200' :
+                                                    c.callStatus === 'CONFIRMED'  ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
+                                                    c.callStatus === 'ATTENDED'   ? 'bg-indigo-100 text-indigo-700 border-indigo-200' :
+                                                                                    'bg-red-100 text-red-700 border-red-200'
+                                                }`}
+                                            >
+                                                <option value="NOT_CALLED">Not Called</option>
+                                                <option value="CALLED">Called</option>
+                                                <option value="CONFIRMED">Confirmed Attending</option>
+                                                <option value="ATTENDED">Attended</option>
+                                                <option value="UNREACHABLE">Unreachable</option>
+                                            </select>
                                         </div>
                                     </div>
                                 ))}

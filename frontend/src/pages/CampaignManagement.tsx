@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
-import { Target, Users, Loader2, Calendar, Plus, Flag, Download, FileSpreadsheet, Search, CheckCircle2, AlertCircle, Phone, FileText, Edit2, Trash2 } from 'lucide-react';
+import { Target, Users, Loader2, Calendar, Plus, Flag, Download, FileSpreadsheet, Search, CheckCircle2, AlertCircle, Phone, FileText, Edit2, Trash2, AlertTriangle } from 'lucide-react';
 import { useToast } from '../components/ToastProvider';
 
 export default function CampaignManagement() {
@@ -380,8 +380,8 @@ export default function CampaignManagement() {
                                                 <th className="px-6 py-4">Submitted By</th>
                                                 <th className="px-6 py-4">Contact Detail</th>
                                                 <th className="px-6 py-4">Relationship</th>
-                                                <th className="px-6 py-4">Call Status</th>
-                                                <th className="px-6 py-4 text-right">Actions</th>
+                                                <th className="px-6 py-4">Follow-up Status</th>
+                                                <th className="px-6 py-4 text-right">Notes</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-100">
@@ -389,39 +389,51 @@ export default function CampaignManagement() {
                                                 <tr><td colSpan={5} className="p-8 text-center text-slate-400">No contacts submitted yet.</td></tr>
                                             ) : (
                                                 selectedMobCampaign.contacts?.map((contact: any) => (
-                                                    <tr key={contact.id} className="hover:bg-slate-50/50">
+                                                    <tr key={contact.id} className={`${contact.isDuplicate ? 'bg-amber-50/40' : 'hover:bg-slate-50/50'}`}>
                                                         <td className="px-6 py-4">
                                                             <div className="font-bold text-slate-800">{contact.submittedBy?.fullName || 'Unknown'}</div>
                                                             <div className="text-xs text-slate-500">{contact.submittedBy?.fellowshipNumber || ''}</div>
                                                         </td>
                                                         <td className="px-6 py-4">
-                                                            <div className="font-bold text-slate-800">{contact.name}</div>
+                                                            <div className="font-bold text-slate-800 flex items-center gap-1.5">
+                                                                {contact.name}
+                                                                {contact.isDuplicate && (
+                                                                    <span className="text-[10px] font-bold px-1.5 py-0.5 bg-amber-100 text-amber-700 border border-amber-200 rounded-full flex items-center gap-0.5">
+                                                                        <AlertTriangle size={9} /> DUPLICATE
+                                                                    </span>
+                                                                )}
+                                                            </div>
                                                             <div className="flex items-center gap-1 text-slate-500 text-xs mt-0.5">
                                                                 <Phone size={12} /> {contact.phone}
                                                             </div>
+                                                            {contact.email && <div className="text-xs text-slate-400 mt-0.5">{contact.email}</div>}
                                                         </td>
                                                         <td className="px-6 py-4 text-slate-600">{contact.relationship || '-'}</td>
                                                         <td className="px-6 py-4">
-                                                            <select 
-                                                                value={contact.callStatus}
-                                                                onChange={(e) => handleUpdateCallStatus(contact.id, e.target.value, contact.notes)}
-                                                                className={`text-xs font-bold rounded-full px-2.5 py-1 border transition-colors outline-none cursor-pointer ${
-                                                                    contact.callStatus === 'NOT_CALLED' ? 'bg-slate-100 text-slate-600 border-slate-200' :
-                                                                    contact.callStatus === 'CALLED' ? 'bg-amber-100 text-amber-700 border-amber-200' :
-                                                                    contact.callStatus === 'CONFIRMED' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
-                                                                    contact.callStatus === 'ATTENDED' ? 'bg-indigo-100 text-indigo-700 border-indigo-200' :
-                                                                    'bg-red-100 text-red-700 border-red-200'
-                                                                }`}
-                                                            >
-                                                                <option value="NOT_CALLED">NOT CALLED</option>
-                                                                <option value="CALLED">CALLED</option>
-                                                                <option value="CONFIRMED">CONFIRMED</option>
-                                                                <option value="UNREACHABLE">UNREACHABLE</option>
-                                                                <option value="ATTENDED">ATTENDED</option>
-                                                            </select>
+                                                            <div className="flex flex-col gap-1">
+                                                                <select 
+                                                                    value={contact.callStatus}
+                                                                    onChange={(e) => handleUpdateCallStatus(contact.id, e.target.value, contact.notes)}
+                                                                    className={`text-xs font-bold rounded-full px-2.5 py-1 border transition-colors outline-none cursor-pointer ${
+                                                                        contact.callStatus === 'NOT_CALLED' ? 'bg-slate-100 text-slate-600 border-slate-200' :
+                                                                        contact.callStatus === 'CALLED' ? 'bg-amber-100 text-amber-700 border-amber-200' :
+                                                                        contact.callStatus === 'CONFIRMED' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
+                                                                        contact.callStatus === 'ATTENDED' ? 'bg-indigo-100 text-indigo-700 border-indigo-200' :
+                                                                        'bg-red-100 text-red-700 border-red-200'
+                                                                    }`}
+                                                                >
+                                                                    <option value="NOT_CALLED">NOT CALLED</option>
+                                                                    <option value="CALLED">CALLED</option>
+                                                                    <option value="CONFIRMED">CONFIRMED</option>
+                                                                    <option value="UNREACHABLE">UNREACHABLE</option>
+                                                                    <option value="ATTENDED">ATTENDED</option>
+                                                                </select>
+                                                                {contact.calledBy && (
+                                                                    <span className="text-[10px] text-slate-400">by {contact.calledBy.fullName}</span>
+                                                                )}
+                                                            </div>
                                                         </td>
                                                         <td className="px-6 py-4 text-right">
-                                                            {/* We could put an Add Notes button here, simple implementation for now */}
                                                             <button 
                                                                 className="text-indigo-600 hover:bg-indigo-50 p-1.5 rounded"
                                                                 onClick={() => {

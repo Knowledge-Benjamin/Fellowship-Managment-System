@@ -24,7 +24,7 @@ router.delete('/:id', protect, authorize('FELLOWSHIP_MANAGER'), deleteCampaign);
 // Contact management
 router.post('/:id/contacts', protect, submitContacts);
 router.get('/:id/contacts', protect, authorize('FELLOWSHIP_MANAGER'), getCampaignContacts);
-router.patch('/:id/contacts/:contactId', protect, authorize('FELLOWSHIP_MANAGER'), updateContact);
+router.patch('/:id/contacts/:contactId', protect, updateContact); // Members update own contacts; FM updates any
 
 // Export
 router.get('/:id/export', protect, authorize('FELLOWSHIP_MANAGER'), exportCampaign);

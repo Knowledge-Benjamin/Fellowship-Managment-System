@@ -25,7 +25,7 @@ const updateCampaignSchema = z.object({
 const contactEntrySchema = z.object({
     name: z.string().min(1, 'Name is required').max(100),
     phone: z.string().min(7, 'Phone is required').max(20),
-    email: z.string().email().optional(),
+    email: z.string().email().optional().or(z.literal('').transform(() => undefined)),
     relationship: z.string().max(50).optional(),
 });
 
@@ -251,13 +251,23 @@ export const submitContacts = async (req: Request, res: Response) => {
             });
         }
 
-        // Detect duplicates within campaign (same phone)
+        // Detect duplicates within campaign (same phone OR same email)
         const incomingPhones = incoming.map(c => c.phone);
-        const existingPhones = await prisma.mobilizationContact.findMany({
+        const incomingEmails = incoming.map(c => c.email).filter(Boolean) as string[];
+
+        const existingByPhone = await prisma.mobilizationContact.findMany({
             where: { campaignId: id, phone: { in: incomingPhones } },
             select: { phone: true },
         });
-        const duplicatePhones = new Set(existingPhones.map(e => e.phone));
+        const duplicatePhones = new Set(existingByPhone.map(e => e.phone));
+
+        const existingByEmail = incomingEmails.length > 0
+            ? await prisma.mobilizationContact.findMany({
+                where: { campaignId: id, email: { in: incomingEmails } },
+                select: { email: true },
+            })
+            : [];
+        const duplicateEmails = new Set(existingByEmail.map(e => e.email as string));
 
         const created = await prisma.mobilizationContact.createMany({
             data: incoming.map(c => ({
@@ -267,14 +277,29 @@ export const submitContacts = async (req: Request, res: Response) => {
                 phone: c.phone,
                 email: c.email || null,
                 relationship: c.relationship || null,
-                isDuplicate: duplicatePhones.has(c.phone),
+                isDuplicate: duplicatePhones.has(c.phone) || (!!c.email && duplicateEmails.has(c.email)),
             })),
         });
 
-        // Flag existing entries with the same phones as duplicates too
+        // Flag existing entries that now have duplicate phone or email
+        const idsToFlag: string[] = [];
         if (duplicatePhones.size > 0) {
-            await prisma.mobilizationContact.updateMany({
+            const existing = await prisma.mobilizationContact.findMany({
                 where: { campaignId: id, phone: { in: Array.from(duplicatePhones) } },
+                select: { id: true },
+            });
+            idsToFlag.push(...existing.map(e => e.id));
+        }
+        if (duplicateEmails.size > 0) {
+            const existing = await prisma.mobilizationContact.findMany({
+                where: { campaignId: id, email: { in: Array.from(duplicateEmails) } },
+                select: { id: true },
+            });
+            idsToFlag.push(...existing.map(e => e.id));
+        }
+        if (idsToFlag.length > 0) {
+            await prisma.mobilizationContact.updateMany({
+                where: { id: { in: idsToFlag } },
                 data: { isDuplicate: true },
             });
         }
@@ -294,18 +319,25 @@ export const submitContacts = async (req: Request, res: Response) => {
 
 /**
  * PATCH /api/campaigns/:id/contacts/:contactId
- * FM updates call status, notes, or assigns caller.
+ * Member (who submitted) OR FM can update call status and notes.
+ * Members can only update their own contacts.
  */
 export const updateContact = async (req: Request, res: Response) => {
     try {
         const contactId = req.params.contactId as string;
         const userId = req.user?.id;
+        const isManager = req.user?.role === 'FELLOWSHIP_MANAGER';
         if (!userId) return res.status(401).json({ message: 'Unauthorized' });
 
         const data = updateContactSchema.parse(req.body);
 
         const contact = await prisma.mobilizationContact.findUnique({ where: { id: contactId } });
         if (!contact) return res.status(404).json({ message: 'Contact not found' });
+
+        // Members can only update contacts they personally submitted
+        if (!isManager && contact.submittedById !== userId) {
+            return res.status(403).json({ message: 'You can only update your own contacts' });
+        }
 
         const updated = await prisma.mobilizationContact.update({
             where: { id: contactId },

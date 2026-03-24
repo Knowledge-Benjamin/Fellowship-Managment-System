@@ -50,6 +50,7 @@ interface EventReportData {
         gender: 'MALE' | 'FEMALE';
         contactPhone?: string;
         region?: string;
+        residence?: string;
         college?: string;
         course?: string;
         year?: number;
@@ -65,6 +66,7 @@ interface EventReportData {
         gender: 'MALE' | 'FEMALE';
         contactPhone?: string;
         region?: string;
+        residence?: string;
         college?: string;
         course?: string;
         year?: number;
@@ -266,6 +268,7 @@ function DrilldownTable({
                                 Course: a.course || '-',
                                 Year: a.year || '-',
                                 Region: a.region || '-',
+                                'Residence/Hostel': a.residence || '-',
                                 Families: a.families?.join(', ') || '-',
                                 'Ministry Teams': a.teams?.join(', ') || '-',
                                 'Tags/Groups': a.tags?.join(', ') || '-'

@@ -261,6 +261,7 @@ export const getEventReport = async (req: Request<{ eventId: string }>, res: Res
                         member: {
                             include: {
                                 region: true,
+                                residence: true,
                                 courseRelation: {
                                     include: { college: true }
                                 },
@@ -310,6 +311,7 @@ export const getEventReport = async (req: Request<{ eventId: string }>, res: Res
             gender: a.member.gender,
             contactPhone: a.member.phoneNumber,
             region: a.member.region?.name,
+            residence: a.member.residence?.name || a.member.hostelName,
             college: a.member.courseRelation?.college?.name,
             course: a.member.courseRelation?.name,
             year: a.member.initialYearOfStudy,

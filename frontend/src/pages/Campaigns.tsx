@@ -373,18 +373,14 @@ export default function Campaigns() {
                                                 value={c.callStatus}
                                                 onChange={(e) => handleUpdateCallStatus(activeCampaign.id, c.id, e.target.value)}
                                                 className={`w-full text-xs font-bold rounded-lg px-2.5 py-1.5 border transition-colors outline-none cursor-pointer ${
-                                                    c.callStatus === 'NOT_CALLED' ? 'bg-slate-100 text-slate-600 border-slate-200' :
-                                                    c.callStatus === 'CALLED'     ? 'bg-amber-100 text-amber-700 border-amber-200' :
-                                                    c.callStatus === 'CONFIRMED'  ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
-                                                    c.callStatus === 'ATTENDED'   ? 'bg-indigo-100 text-indigo-700 border-indigo-200' :
-                                                                                    'bg-red-100 text-red-700 border-red-200'
+                                                    c.callStatus === 'PENDING'       ? 'bg-slate-100 text-slate-600 border-slate-200' :
+                                                    c.callStatus === 'CONFIRMED'     ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
+                                                                                       'bg-red-100 text-red-700 border-red-200'
                                                 }`}
                                             >
-                                                <option value="NOT_CALLED">Not Called</option>
-                                                <option value="CALLED">Called</option>
+                                                <option value="PENDING">Pending</option>
                                                 <option value="CONFIRMED">Confirmed Attending</option>
-                                                <option value="ATTENDED">Attended</option>
-                                                <option value="UNREACHABLE">Unreachable</option>
+                                                <option value="NOT_CONFIRMED">Not Confirmed</option>
                                             </select>
                                         </div>
                                     </div>

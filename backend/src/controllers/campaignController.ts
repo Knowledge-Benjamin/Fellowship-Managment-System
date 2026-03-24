@@ -34,9 +34,10 @@ const submitContactsSchema = z.object({
 });
 
 const updateContactSchema = z.object({
-    callStatus: z.enum(['NOT_CALLED', 'CALLED', 'CONFIRMED', 'ATTENDED', 'UNREACHABLE']).optional(),
+    callStatus: z.enum(['PENDING', 'CONFIRMED', 'NOT_CONFIRMED']).optional(),
     notes: z.string().max(500).optional(),
     calledById: z.string().uuid().optional(),
+    isDuplicate: z.boolean().optional(),
 });
 
 // ─── Campaign CRUD ────────────────────────────────────────────────────────────
@@ -339,15 +340,24 @@ export const updateContact = async (req: Request, res: Response) => {
             return res.status(403).json({ message: 'You can only update your own contacts' });
         }
 
-        const updated = await prisma.mobilizationContact.update({
+        const resolvedCalledById =
+            data.calledById ||
+            (data.callStatus && data.callStatus !== 'PENDING' ? userId : null);
+
+        // Build payload imperatively to avoid Prisma scalar/relation union conflict
+        const payload: Record<string, unknown> = {};
+        if (data.callStatus  !== undefined) payload.callStatus  = data.callStatus;
+        if (data.notes       !== undefined) payload.notes       = data.notes;
+        if (data.isDuplicate !== undefined) payload.isDuplicate = data.isDuplicate;
+        if (data.callStatus && data.callStatus !== 'PENDING' && !contact.calledAt) {
+            payload.calledAt = new Date();
+        }
+        if (resolvedCalledById) payload.calledById = resolvedCalledById;
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const updated = await (prisma.mobilizationContact.update as any)({
             where: { id: contactId },
-            data: {
-                ...data,
-                calledAt: data.callStatus && data.callStatus !== 'NOT_CALLED' && !contact.calledAt
-                    ? new Date()
-                    : undefined,
-                calledById: data.calledById || (data.callStatus && data.callStatus !== 'NOT_CALLED' ? userId : undefined),
-            },
+            data: payload,
         });
 
         res.json({ message: 'Contact updated', contact: updated });

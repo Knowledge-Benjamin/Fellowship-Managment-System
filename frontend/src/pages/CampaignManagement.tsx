@@ -415,18 +415,14 @@ export default function CampaignManagement() {
                                                                     value={contact.callStatus}
                                                                     onChange={(e) => handleUpdateCallStatus(contact.id, e.target.value, contact.notes)}
                                                                     className={`text-xs font-bold rounded-full px-2.5 py-1 border transition-colors outline-none cursor-pointer ${
-                                                                        contact.callStatus === 'NOT_CALLED' ? 'bg-slate-100 text-slate-600 border-slate-200' :
-                                                                        contact.callStatus === 'CALLED' ? 'bg-amber-100 text-amber-700 border-amber-200' :
-                                                                        contact.callStatus === 'CONFIRMED' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
-                                                                        contact.callStatus === 'ATTENDED' ? 'bg-indigo-100 text-indigo-700 border-indigo-200' :
-                                                                        'bg-red-100 text-red-700 border-red-200'
+                                                                        contact.callStatus === 'PENDING'       ? 'bg-slate-100 text-slate-600 border-slate-200' :
+                                                                        contact.callStatus === 'CONFIRMED'     ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
+                                                                                                                'bg-red-100 text-red-700 border-red-200'
                                                                     }`}
                                                                 >
-                                                                    <option value="NOT_CALLED">NOT CALLED</option>
-                                                                    <option value="CALLED">CALLED</option>
+                                                                    <option value="PENDING">PENDING</option>
                                                                     <option value="CONFIRMED">CONFIRMED</option>
-                                                                    <option value="UNREACHABLE">UNREACHABLE</option>
-                                                                    <option value="ATTENDED">ATTENDED</option>
+                                                                    <option value="NOT_CONFIRMED">NOT CONFIRMED</option>
                                                                 </select>
                                                                 {contact.calledBy && (
                                                                     <span className="text-[10px] text-slate-400">by {contact.calledBy.fullName}</span>
@@ -434,15 +430,26 @@ export default function CampaignManagement() {
                                                             </div>
                                                         </td>
                                                         <td className="px-6 py-4 text-right">
-                                                            <button 
-                                                                className="text-indigo-600 hover:bg-indigo-50 p-1.5 rounded"
-                                                                onClick={() => {
-                                                                    const notes = prompt("Enter notes for " + contact.name, contact.notes || "");
-                                                                    if (notes !== null) handleUpdateCallStatus(contact.id, contact.callStatus, notes);
-                                                                }}
-                                                            >
-                                                                <FileText size={16} />
-                                                            </button>
+                                                            <div className="flex items-center justify-end gap-1">
+                                                                {contact.isDuplicate && (
+                                                                    <button
+                                                                        title="Mark as Not Duplicate"
+                                                                        className="text-amber-600 hover:bg-amber-50 p-1.5 rounded"
+                                                                        onClick={() => api.patch(`/campaigns/${selectedMobCampaign.id}/contacts/${contact.id}`, { isDuplicate: false }).then(() => loadMobCampaignDetail(selectedMobCampaign.id))}
+                                                                    >
+                                                                        <AlertTriangle size={15} />
+                                                                    </button>
+                                                                )}
+                                                                <button 
+                                                                    className="text-indigo-600 hover:bg-indigo-50 p-1.5 rounded"
+                                                                    onClick={() => {
+                                                                        const notes = prompt("Enter notes for " + contact.name, contact.notes || "");
+                                                                        if (notes !== null) handleUpdateCallStatus(contact.id, contact.callStatus, notes);
+                                                                    }}
+                                                                >
+                                                                    <FileText size={16} />
+                                                                </button>
+                                                            </div>
                                                         </td>
                                                     </tr>
                                                 ))

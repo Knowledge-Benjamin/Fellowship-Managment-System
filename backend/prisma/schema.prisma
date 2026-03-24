@@ -86,11 +86,9 @@ enum MobilizationStatus {
 }
 
 enum ContactCallStatus {
-  NOT_CALLED
-  CALLED
+  PENDING
   CONFIRMED
-  ATTENDED
-  UNREACHABLE
+  NOT_CONFIRMED
 }
 
 model Region {
@@ -956,7 +954,7 @@ model MobilizationContact {
   email        String?
   relationship String?
 
-  callStatus ContactCallStatus @default(NOT_CALLED)
+  callStatus ContactCallStatus @default(PENDING)
   calledById String?
   calledBy   Member?           @relation("ContactCaller", fields: [calledById], references: [id], onDelete: SetNull)
   calledAt   DateTime?

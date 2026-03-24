@@ -157,8 +157,38 @@ export const submitPledges = async (req: Request, res: Response) => {
             return res.status(400).json({ message: 'This event has already occurred' });
         }
 
-        // Prevent duplicate pledges for same email by this member for this event
+        // Protect from submission of already existing members
         const emails = pledges.map(p => p.email.toLowerCase());
+        const rawPhones = pledges.flatMap(p => [p.phone1, p.phone2]).filter(Boolean) as string[];
+
+        const existingMembersByEmail = await prisma.member.findMany({
+            where: { email: { in: emails } },
+            select: { email: true, fullName: true },
+        });
+
+        if (existingMembersByEmail.length > 0) {
+            const dupes = existingMembersByEmail.map(m => `${m.fullName} (${m.email})`).join(', ');
+            return res.status(400).json({
+                message: `The following people are already registered members: ${dupes}`,
+            });
+        }
+
+        if (rawPhones.length > 0) {
+            const existingMembersByPhone = await prisma.member.findMany({
+                where: { phoneNumber: { in: rawPhones } },
+                select: { fullName: true },
+            });
+
+            if (existingMembersByPhone.length > 0) {
+                 // De-duplicate names if multiple phones match the same user
+                 const uniqueNames = Array.from(new Set(existingMembersByPhone.map(m => m.fullName)));
+                 return res.status(400).json({
+                     message: `The following people are already registered members (matched by phone): ${uniqueNames.join(', ')}`,
+                 });
+            }
+        }
+
+        // Prevent duplicate pledges for same email by this member for this event
         const existing = await prisma.bringOnePledge.findMany({
             where: { eventId, inviterId, email: { in: emails } },
             select: { email: true },

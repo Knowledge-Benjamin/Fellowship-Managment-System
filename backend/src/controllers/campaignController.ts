@@ -27,6 +27,7 @@ const contactEntrySchema = z.object({
     phone: z.string().min(7, 'Phone is required').max(20),
     email: z.string().email().optional().or(z.literal('').transform(() => undefined)),
     relationship: z.string().max(50).optional(),
+    callStatus: z.enum(['PENDING', 'CONFIRMED', 'NOT_CONFIRMED']).optional(),
 });
 
 const submitContactsSchema = z.object({
@@ -278,6 +279,9 @@ export const submitContacts = async (req: Request, res: Response) => {
                 phone: c.phone,
                 email: c.email || null,
                 relationship: c.relationship || null,
+                callStatus: (c.callStatus || 'PENDING') as any,
+                calledById: c.callStatus && c.callStatus !== 'PENDING' ? userId : undefined,
+                calledAt: c.callStatus && c.callStatus !== 'PENDING' ? new Date() : undefined,
                 isDuplicate: duplicatePhones.has(c.phone) || (!!c.email && duplicateEmails.has(c.email)),
             })),
         });

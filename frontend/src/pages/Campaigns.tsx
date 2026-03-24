@@ -11,7 +11,7 @@ export default function Campaigns() {
     // State for the currently selected campaign to submit to
     const [activeCampaignId, setActiveCampaignId] = useState<string | null>(null);
     const [activeCampaignDetail, setActiveCampaignDetail] = useState<any | null>(null);
-    const [newContacts, setNewContacts] = useState([{ name: '', phone: '', email: '', relationship: '' }]);
+    const [newContacts, setNewContacts] = useState([{ name: '', phone: '', email: '', relationship: '', callStatus: 'PENDING' }]);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
@@ -47,7 +47,7 @@ export default function Campaigns() {
     };
 
     const handleAddRow = () => {
-        setNewContacts([...newContacts, { name: '', phone: '', email: '', relationship: '' }]);
+        setNewContacts([...newContacts, { name: '', phone: '', email: '', relationship: '', callStatus: 'PENDING' }]);
     };
 
     const handleRemoveRow = (index: number) => {
@@ -80,7 +80,7 @@ export default function Campaigns() {
             setIsSubmitting(true);
             await api.post(`/campaigns/${campaign.id}/contacts`, { contacts: validContacts });
             showToast('success', 'Contacts submitted successfully!');
-            setNewContacts([{ name: '', phone: '', email: '', relationship: '' }]);
+            setNewContacts([{ name: '', phone: '', email: '', relationship: '', callStatus: 'PENDING' }]);
             fetchCampaigns(); // refresh to show updated progress
             fetchCampaignDetail(campaign.id); // also refresh detail view
         } catch (error: any) {
@@ -290,6 +290,15 @@ export default function Campaigns() {
                                                     onChange={(e) => handleChange(index, 'relationship', e.target.value)}
                                                     className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#48A111] focus:ring-1 focus:ring-[#48A111] outline-none transition-all text-sm bg-white"
                                                 />
+                                                <select
+                                                    value={contact.callStatus}
+                                                    onChange={(e) => handleChange(index, 'callStatus', e.target.value)}
+                                                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#48A111] focus:ring-1 focus:ring-[#48A111] outline-none transition-all text-sm bg-white font-medium text-slate-700"
+                                                >
+                                                    <option value="PENDING">Status: Pending</option>
+                                                    <option value="CONFIRMED">Status: Confirmed</option>
+                                                    <option value="NOT_CONFIRMED">Status: Dropped Out</option>
+                                                </select>
                                             </div>
                                             <button 
                                                 type="button" 

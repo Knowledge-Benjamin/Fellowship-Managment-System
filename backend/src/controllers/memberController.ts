@@ -343,7 +343,8 @@ export const exportMembersToExcel = async (req: Request, res: Response) => {
         const allPeriods = await fetchAllAcademicPeriods();
 
         members.forEach((m, i) => {
-            const currentYear = computeCurrentYearFromPeriods(
+            const isAlumni = m.memberTags?.some((mt: any) => mt.tag?.name === 'ALUMNI');
+            const currentYear = isAlumni ? null : computeCurrentYearFromPeriods(
                 {
                     registrationDate: m.registrationDate || new Date(),
                     initialYearOfStudy: m.initialYearOfStudy,

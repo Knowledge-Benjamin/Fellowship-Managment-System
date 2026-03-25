@@ -91,12 +91,19 @@ export const getCampaigns = async (req: Request, res: Response) => {
         const wantsAdminView = String(req.query.adminView) === 'true';
         const applyAdminView = isManager && wantsAdminView;
 
+        const userId = req.user?.id;
+        if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
         const campaigns = await prisma.mobilizationCampaign.findMany({
             where: applyAdminView ? {} : { status: 'OPEN' },
             include: {
                 event: { select: { id: true, name: true, date: true, startTime: true, endTime: true, type: true } },
                 creator: { select: { id: true, fullName: true } },
-                _count: { select: { contacts: true } },
+                _count: {
+                    select: {
+                        contacts: applyAdminView ? true : { where: { submittedById: userId } }
+                    }
+                },
             },
             orderBy: { createdAt: 'desc' },
         });

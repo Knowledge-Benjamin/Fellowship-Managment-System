@@ -346,7 +346,8 @@ export const getEventReport = async (req: Request<{ eventId: string }>, res: Res
 
         // Map attendees to a lightweight format for frontend drill-downs (instant zero-latency clicks)
         const mappedAttendees = event.attendances.map((a: any) => {
-            const currentYear = computeCurrentYearFromPeriods(
+            const isAlumni = a.member?.memberTags?.some((mt: any) => mt.tag?.name === 'ALUMNI');
+            const currentYear = isAlumni ? null : computeCurrentYearFromPeriods(
                 {
                     registrationDate: a.member.createdAt,
                     initialYearOfStudy: a.member.initialYearOfStudy,
@@ -820,7 +821,8 @@ export const exportEventReportExcel = async (req: Request<{ eventId: string }>, 
         const allPeriods = await fetchAllAcademicPeriods();
 
         const mappedAttendees = event.attendances.map((a: any) => {
-            const currentYear = computeCurrentYearFromPeriods(
+            const isAlumni = a.member?.memberTags?.some((mt: any) => mt.tag?.name === 'ALUMNI');
+            const currentYear = isAlumni ? null : computeCurrentYearFromPeriods(
                 {
                     registrationDate: a.member.createdAt,
                     initialYearOfStudy: a.member.initialYearOfStudy,

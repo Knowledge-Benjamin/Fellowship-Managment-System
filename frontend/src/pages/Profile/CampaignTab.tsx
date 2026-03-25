@@ -305,15 +305,15 @@ export default function CampaignTab() {
                                                     <tr className="hover:bg-slate-50/50 transition-colors">
                                                         <td className="px-6 py-4 font-semibold text-slate-700">
                                                             {editingPledge?.id === pledge.id ? (
-                                                                <input className="w-full text-sm border border-slate-300 rounded-lg px-2 py-1 outline-none focus:border-[#48A111]" value={editingPledge.name} onChange={e => setEditingPledge({ ...editingPledge, name: e.target.value })} />
+                                                                <input className="w-full text-sm border border-slate-300 rounded-lg px-2 py-1 outline-none focus:border-[#48A111]" value={editingPledge!.name} onChange={e => setEditingPledge({ ...editingPledge!, name: e.target.value })} />
                                                             ) : pledge.name}
                                                         </td>
                                                         <td className="px-6 py-4 text-slate-500">
                                                             {editingPledge?.id === pledge.id ? (
                                                                 <div className="flex flex-col gap-1 min-w-[180px]">
-                                                                    <input className="w-full text-sm border border-slate-300 rounded-lg px-2 py-1 outline-none focus:border-[#48A111]" placeholder="Email" value={editingPledge.email} onChange={e => setEditingPledge({ ...editingPledge, email: e.target.value })} />
-                                                                    <input className="w-full text-sm border border-slate-300 rounded-lg px-2 py-1 outline-none focus:border-[#48A111]" placeholder="Phone 1" value={editingPledge.phone1} onChange={e => setEditingPledge({ ...editingPledge, phone1: e.target.value })} />
-                                                                    <input className="w-full text-sm border border-slate-300 rounded-lg px-2 py-1 outline-none focus:border-[#48A111]" placeholder="Phone 2" value={editingPledge.phone2} onChange={e => setEditingPledge({ ...editingPledge, phone2: e.target.value })} />
+                                                                    <input className="w-full text-sm border border-slate-300 rounded-lg px-2 py-1 outline-none focus:border-[#48A111]" placeholder="Email" value={editingPledge!.email} onChange={e => setEditingPledge({ ...editingPledge!, email: e.target.value })} />
+                                                                    <input className="w-full text-sm border border-slate-300 rounded-lg px-2 py-1 outline-none focus:border-[#48A111]" placeholder="Phone 1" value={editingPledge!.phone1} onChange={e => setEditingPledge({ ...editingPledge!, phone1: e.target.value })} />
+                                                                    <input className="w-full text-sm border border-slate-300 rounded-lg px-2 py-1 outline-none focus:border-[#48A111]" placeholder="Phone 2" value={editingPledge!.phone2} onChange={e => setEditingPledge({ ...editingPledge!, phone2: e.target.value })} />
                                                                 </div>
                                                             ) : pledge.email}
                                                         </td>

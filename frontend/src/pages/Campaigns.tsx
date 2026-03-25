@@ -382,26 +382,26 @@ export default function Campaigns() {
                                                 <input
                                                     className="text-sm border border-slate-300 rounded-lg px-2.5 py-1.5 outline-none focus:border-[#48A111]"
                                                     placeholder="Name"
-                                                    value={editingContact.name}
-                                                    onChange={e => setEditingContact({ ...editingContact, name: e.target.value })}
+                                                    value={editingContact!.name}
+                                                    onChange={e => setEditingContact({ ...editingContact!, name: e.target.value })}
                                                 />
                                                 <input
                                                     className="text-sm border border-slate-300 rounded-lg px-2.5 py-1.5 outline-none focus:border-[#48A111]"
                                                     placeholder="Phone"
-                                                    value={editingContact.phone}
-                                                    onChange={e => setEditingContact({ ...editingContact, phone: e.target.value })}
+                                                    value={editingContact!.phone}
+                                                    onChange={e => setEditingContact({ ...editingContact!, phone: e.target.value })}
                                                 />
                                                 <input
                                                     className="text-sm border border-slate-300 rounded-lg px-2.5 py-1.5 outline-none focus:border-[#48A111]"
                                                     placeholder="Email (optional)"
-                                                    value={editingContact.email}
-                                                    onChange={e => setEditingContact({ ...editingContact, email: e.target.value })}
+                                                    value={editingContact!.email}
+                                                    onChange={e => setEditingContact({ ...editingContact!, email: e.target.value })}
                                                 />
                                                 <input
                                                     className="text-sm border border-slate-300 rounded-lg px-2.5 py-1.5 outline-none focus:border-[#48A111]"
                                                     placeholder="Relationship (optional)"
-                                                    value={editingContact.relationship}
-                                                    onChange={e => setEditingContact({ ...editingContact, relationship: e.target.value })}
+                                                    value={editingContact!.relationship}
+                                                    onChange={e => setEditingContact({ ...editingContact!, relationship: e.target.value })}
                                                 />
                                                 <div className="flex gap-2 mt-1">
                                                     <button

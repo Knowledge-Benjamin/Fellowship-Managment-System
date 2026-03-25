@@ -65,7 +65,7 @@ export default function CampaignManagement() {
     const fetchMobCampaigns = async () => {
         try {
             setLoading(true);
-            const res = await api.get('/campaigns');
+            const res = await api.get('/campaigns?adminView=true');
             setMobCampaigns(res.data);
             if (!selectedMobCampaign && res.data.length > 0) {
                 loadMobCampaignDetail(res.data[0].id);
@@ -97,7 +97,7 @@ export default function CampaignManagement() {
 
     const loadMobCampaignDetail = async (id: string) => {
         try {
-            const res = await api.get(`/campaigns/${id}`);
+            const res = await api.get(`/campaigns/${id}?adminView=true`);
             setSelectedMobCampaign(res.data);
         } catch (error) {
             showToast('error', 'Failed to load campaign detail');

@@ -84,9 +84,11 @@ export const createCampaign = async (req: Request, res: Response) => {
 export const getCampaigns = async (req: Request, res: Response) => {
     try {
         const isManager = req.user?.role === 'FELLOWSHIP_MANAGER';
+        const wantsAdminView = String(req.query.adminView) === 'true';
+        const applyAdminView = isManager && wantsAdminView;
 
         const campaigns = await prisma.mobilizationCampaign.findMany({
-            where: isManager ? {} : { status: 'OPEN' },
+            where: applyAdminView ? {} : { status: 'OPEN' },
             include: {
                 event: { select: { id: true, name: true, date: true, startTime: true, endTime: true, type: true } },
                 creator: { select: { id: true, fullName: true } },
@@ -103,7 +105,7 @@ export const getCampaigns = async (req: Request, res: Response) => {
             return c;
         });
 
-        const finalCampaigns = isManager ? processedCampaigns : processedCampaigns.filter((c: any) => c.status === 'OPEN');
+        const finalCampaigns = applyAdminView ? processedCampaigns : processedCampaigns.filter((c: any) => c.status === 'OPEN');
 
         res.json(finalCampaigns);
     } catch (e) {
@@ -114,7 +116,7 @@ export const getCampaigns = async (req: Request, res: Response) => {
 
 /**
  * GET /api/campaigns/:id
- * Campaign detail: FM sees all contacts; member sees only their own.
+ * Campaign detail: FM sees all contacts (if adminView); member sees only their own.
  */
 export const getCampaignById = async (req: Request, res: Response) => {
     try {
@@ -123,6 +125,8 @@ export const getCampaignById = async (req: Request, res: Response) => {
 
         const id = req.params.id as string;
         const isManager = req.user?.role === 'FELLOWSHIP_MANAGER';
+        const wantsAdminView = String(req.query.adminView) === 'true';
+        const applyAdminView = isManager && wantsAdminView;
 
         const campaign = await prisma.mobilizationCampaign.findUnique({
             where: { id },
@@ -130,7 +134,7 @@ export const getCampaignById = async (req: Request, res: Response) => {
                 event: { select: { id: true, name: true, date: true, startTime: true, endTime: true, type: true } },
                 creator: { select: { id: true, fullName: true } },
                 contacts: {
-                    where: isManager ? {} : { submittedById: userId },
+                    where: applyAdminView ? {} : { submittedById: userId },
                     include: {
                         submittedBy: { select: { id: true, fullName: true, fellowshipNumber: true } },
                         calledBy: { select: { id: true, fullName: true } },

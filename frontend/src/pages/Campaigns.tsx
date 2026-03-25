@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
-import { Target, Users, Loader2, Calendar, Plus, Trash2, CheckCircle2, AlertCircle, AlertTriangle, Phone } from 'lucide-react';
+import { Target, Users, Loader2, Calendar, Plus, Trash2, CheckCircle2, AlertCircle, AlertTriangle, Phone, Pencil, X, Check } from 'lucide-react';
 import { useToast } from '../components/ToastProvider';
 
 export default function Campaigns() {
@@ -13,6 +13,7 @@ export default function Campaigns() {
     const [activeCampaignDetail, setActiveCampaignDetail] = useState<any | null>(null);
     const [newContacts, setNewContacts] = useState([{ name: '', phone: '', email: '', relationship: '', callStatus: 'PENDING' }]);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [editingContact, setEditingContact] = useState<{ id: string; name: string; phone: string; email: string; relationship: string } | null>(null);
 
     useEffect(() => {
         fetchCampaigns();
@@ -97,6 +98,23 @@ export default function Campaigns() {
             fetchCampaignDetail(campaignId);
         } catch (error: any) {
             showToast('error', error.response?.data?.message || 'Failed to update status');
+        }
+    };
+
+    const handleSaveContactEdit = async (campaignId: string) => {
+        if (!editingContact) return;
+        try {
+            await api.patch(`/campaigns/${campaignId}/contacts/${editingContact.id}`, {
+                name: editingContact.name,
+                phone: editingContact.phone,
+                email: editingContact.email,
+                relationship: editingContact.relationship,
+            });
+            showToast('success', 'Contact updated!');
+            setEditingContact(null);
+            fetchCampaignDetail(campaignId);
+        } catch (error: any) {
+            showToast('error', error.response?.data?.message || 'Failed to update contact');
         }
     };
 
@@ -358,40 +376,96 @@ export default function Campaigns() {
                             <div className="p-4 grid sm:grid-cols-2 gap-3">
                                 {activeCampaignDetail.contacts.map((c: any) => (
                                     <div key={c.id} className={`p-4 rounded-xl border flex flex-col gap-2 ${c.isDuplicate ? 'border-amber-200 bg-amber-50/50' : 'border-slate-100 bg-slate-50'}`}>
-                                        <div className="flex items-start justify-between gap-2">
-                                            <div>
-                                                <div className="font-bold text-slate-800 text-sm flex items-center gap-1.5">
-                                                    {c.name}
-                                                    {c.isDuplicate && (
-                                                        <span className="text-[10px] font-bold px-1.5 py-0.5 bg-amber-100 text-amber-700 border border-amber-200 rounded-full">DUPLICATE</span>
+                                        {editingContact?.id === c.id ? (
+                                            /* ── Inline Edit Form ── */
+                                            <div className="flex flex-col gap-2">
+                                                <input
+                                                    className="text-sm border border-slate-300 rounded-lg px-2.5 py-1.5 outline-none focus:border-[#48A111]"
+                                                    placeholder="Name"
+                                                    value={editingContact.name}
+                                                    onChange={e => setEditingContact({ ...editingContact, name: e.target.value })}
+                                                />
+                                                <input
+                                                    className="text-sm border border-slate-300 rounded-lg px-2.5 py-1.5 outline-none focus:border-[#48A111]"
+                                                    placeholder="Phone"
+                                                    value={editingContact.phone}
+                                                    onChange={e => setEditingContact({ ...editingContact, phone: e.target.value })}
+                                                />
+                                                <input
+                                                    className="text-sm border border-slate-300 rounded-lg px-2.5 py-1.5 outline-none focus:border-[#48A111]"
+                                                    placeholder="Email (optional)"
+                                                    value={editingContact.email}
+                                                    onChange={e => setEditingContact({ ...editingContact, email: e.target.value })}
+                                                />
+                                                <input
+                                                    className="text-sm border border-slate-300 rounded-lg px-2.5 py-1.5 outline-none focus:border-[#48A111]"
+                                                    placeholder="Relationship (optional)"
+                                                    value={editingContact.relationship}
+                                                    onChange={e => setEditingContact({ ...editingContact, relationship: e.target.value })}
+                                                />
+                                                <div className="flex gap-2 mt-1">
+                                                    <button
+                                                        onClick={() => handleSaveContactEdit(activeCampaign.id)}
+                                                        className="flex-1 flex items-center justify-center gap-1.5 text-xs font-bold bg-[#48A111] text-white px-3 py-1.5 rounded-lg hover:bg-[#3a8a0e] transition-colors"
+                                                    >
+                                                        <Check size={13} /> Save
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setEditingContact(null)}
+                                                        className="flex-1 flex items-center justify-center gap-1.5 text-xs font-bold bg-slate-200 text-slate-600 px-3 py-1.5 rounded-lg hover:bg-slate-300 transition-colors"
+                                                    >
+                                                        <X size={13} /> Cancel
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            /* ── View Mode ── */
+                                            <>
+                                                <div className="flex items-start justify-between gap-2">
+                                                    <div>
+                                                        <div className="font-bold text-slate-800 text-sm flex items-center gap-1.5">
+                                                            {c.name}
+                                                            {c.isDuplicate && (
+                                                                <span className="text-[10px] font-bold px-1.5 py-0.5 bg-amber-100 text-amber-700 border border-amber-200 rounded-full">DUPLICATE</span>
+                                                            )}
+                                                        </div>
+                                                        <div className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
+                                                            <Phone size={11} /> {c.phone}
+                                                            {c.email && <span className="ml-2 text-slate-400">{c.email}</span>}
+                                                        </div>
+                                                        {c.relationship && (
+                                                            <span className="text-[10px] text-slate-400 bg-slate-200/60 px-1.5 py-0.5 rounded mt-1 inline-block">{c.relationship}</span>
+                                                        )}
+                                                    </div>
+                                                    {activeCampaign.status === 'OPEN' && (
+                                                        <button
+                                                            onClick={() => setEditingContact({ id: c.id, name: c.name, phone: c.phone, email: c.email || '', relationship: c.relationship || '' })}
+                                                            className="p-1.5 text-slate-400 hover:text-[#48A111] hover:bg-[#e9f5e1] rounded-lg transition-colors shrink-0"
+                                                            title="Edit contact"
+                                                        >
+                                                            <Pencil size={13} />
+                                                        </button>
                                                     )}
                                                 </div>
-                                                <div className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
-                                                    <Phone size={11} /> {c.phone}
-                                                    {c.email && <span className="ml-2 text-slate-400">{c.email}</span>}
+                                                {/* Call status tracker */}
+                                                <div className="pt-2 border-t border-slate-100">
+                                                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Follow-up Status</label>
+                                                    <select
+                                                        value={c.callStatus}
+                                                        onChange={(e) => handleUpdateCallStatus(activeCampaign.id, c.id, e.target.value)}
+                                                        className={`w-full text-xs font-bold rounded-lg px-2.5 py-1.5 border transition-colors outline-none cursor-pointer ${
+                                                            c.callStatus === 'PENDING'       ? 'bg-slate-100 text-slate-600 border-slate-200' :
+                                                            c.callStatus === 'CONFIRMED'     ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
+                                                                                               'bg-red-100 text-red-700 border-red-200'
+                                                        }`}
+                                                    >
+                                                        <option value="PENDING">Pending</option>
+                                                        <option value="CONFIRMED">Confirmed Attending</option>
+                                                        <option value="NOT_CONFIRMED">Not Confirmed</option>
+                                                    </select>
                                                 </div>
-                                                {c.relationship && (
-                                                    <span className="text-[10px] text-slate-400 bg-slate-200/60 px-1.5 py-0.5 rounded mt-1 inline-block">{c.relationship}</span>
-                                                )}
-                                            </div>
-                                        </div>
-                                        {/* Call status tracker */}
-                                        <div className="pt-2 border-t border-slate-100">
-                                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Follow-up Status</label>
-                                            <select
-                                                value={c.callStatus}
-                                                onChange={(e) => handleUpdateCallStatus(activeCampaign.id, c.id, e.target.value)}
-                                                className={`w-full text-xs font-bold rounded-lg px-2.5 py-1.5 border transition-colors outline-none cursor-pointer ${
-                                                    c.callStatus === 'PENDING'       ? 'bg-slate-100 text-slate-600 border-slate-200' :
-                                                    c.callStatus === 'CONFIRMED'     ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
-                                                                                       'bg-red-100 text-red-700 border-red-200'
-                                                }`}
-                                            >
-                                                <option value="PENDING">Pending</option>
-                                                <option value="CONFIRMED">Confirmed Attending</option>
-                                                <option value="NOT_CONFIRMED">Not Confirmed</option>
-                                            </select>
-                                        </div>
+                                            </>
+                                        )}
                                     </div>
                                 ))}
                             </div>

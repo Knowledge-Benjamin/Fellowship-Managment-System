@@ -7,6 +7,7 @@ import {
     deleteBringOneCampaign,
     submitPledges,
     getMyPledges,
+    updatePledge,
     deletePledge,
     getEventPledges,
     exportEventPledges,
@@ -23,6 +24,7 @@ router.delete('/campaigns/:id', protect, authorize('FELLOWSHIP_MANAGER'), delete
 // Pledge management (any authenticated member)
 router.post('/pledges', protect, submitPledges);
 router.get('/my-pledges', protect, getMyPledges);
+router.patch('/pledges/:id', protect, updatePledge);
 router.delete('/pledges/:id', protect, deletePledge);
 
 // FM event dashboard

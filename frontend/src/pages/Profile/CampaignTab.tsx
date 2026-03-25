@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../api';
-import { Target, UserPlus, Loader2, CheckCircle2, Clock, Plus, Flag, Trash2, Calendar, AlertCircle } from 'lucide-react';
+import { Target, UserPlus, Loader2, CheckCircle2, Clock, Plus, Flag, Trash2, Calendar, AlertCircle, Pencil, X, Check } from 'lucide-react';
 import { useToast } from '../../components/ToastProvider';
 
 export default function CampaignTab() {
@@ -11,6 +11,7 @@ export default function CampaignTab() {
     const [events, setEvents] = useState<any[]>([]);
     const [selectedEventId, setSelectedEventId] = useState<string>('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [editingPledge, setEditingPledge] = useState<{ id: string; name: string; email: string; phone1: string; phone2: string } | null>(null);
 
     // Form state for new pledges
     const [newPledges, setNewPledges] = useState([{ name: '', email: '', phone1: '', phone2: '' }]);
@@ -96,6 +97,24 @@ export default function CampaignTab() {
             showToast('error', error.response?.data?.message || 'Failed to submit pledges');
         } finally {
             setIsSubmitting(false);
+        }
+    };
+
+    const handleSavePledgeEdit = async () => {
+        if (!editingPledge) return;
+        try {
+            await api.patch(`/bring-one/pledges/${editingPledge.id}`, {
+                name: editingPledge.name,
+                email: editingPledge.email,
+                phone1: editingPledge.phone1 || null,
+                phone2: editingPledge.phone2 || null,
+            });
+            showToast('success', 'Pledge updated!');
+            setEditingPledge(null);
+            const pledgeRes = await api.get('/bring-one/my-pledges');
+            setPledges(pledgeRes.data);
+        } catch (error: any) {
+            showToast('error', error.response?.data?.message || 'Failed to update pledge');
         }
     };
 
@@ -276,18 +295,43 @@ export default function CampaignTab() {
                                                 <th className="px-6 py-3">Contact Email</th>
                                                 <th className="px-6 py-3">Event Target</th>
                                                 <th className="px-6 py-3">Status</th>
-                                                <th className="px-6 py-3text-right">Submitted</th>
+                                                <th className="px-6 py-3 text-right">Submitted</th>
+                                                <th className="px-6 py-3"></th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-100 text-sm">
                                             {pledges.map((pledge) => (
-                                                <tr key={pledge.id} className="hover:bg-slate-50/50 transition-colors">
-                                                    <td className="px-6 py-4 font-semibold text-slate-700">{pledge.name}</td>
-                                                    <td className="px-6 py-4 text-slate-500">{pledge.email}</td>
-                                                    <td className="px-6 py-4 text-slate-600 font-medium">{pledge.event.name}</td>
-                                                    <td className="px-6 py-4">{getStatusBadge(pledge.status)}</td>
-                                                    <td className="px-6 py-4 text-slate-400 text-right">{new Date(pledge.createdAt).toLocaleDateString()}</td>
-                                                </tr>
+                                                <React.Fragment key={pledge.id}>
+                                                    <tr className="hover:bg-slate-50/50 transition-colors">
+                                                        <td className="px-6 py-4 font-semibold text-slate-700">
+                                                            {editingPledge?.id === pledge.id ? (
+                                                                <input className="w-full text-sm border border-slate-300 rounded-lg px-2 py-1 outline-none focus:border-[#48A111]" value={editingPledge.name} onChange={e => setEditingPledge({ ...editingPledge, name: e.target.value })} />
+                                                            ) : pledge.name}
+                                                        </td>
+                                                        <td className="px-6 py-4 text-slate-500">
+                                                            {editingPledge?.id === pledge.id ? (
+                                                                <div className="flex flex-col gap-1 min-w-[180px]">
+                                                                    <input className="w-full text-sm border border-slate-300 rounded-lg px-2 py-1 outline-none focus:border-[#48A111]" placeholder="Email" value={editingPledge.email} onChange={e => setEditingPledge({ ...editingPledge, email: e.target.value })} />
+                                                                    <input className="w-full text-sm border border-slate-300 rounded-lg px-2 py-1 outline-none focus:border-[#48A111]" placeholder="Phone 1" value={editingPledge.phone1} onChange={e => setEditingPledge({ ...editingPledge, phone1: e.target.value })} />
+                                                                    <input className="w-full text-sm border border-slate-300 rounded-lg px-2 py-1 outline-none focus:border-[#48A111]" placeholder="Phone 2" value={editingPledge.phone2} onChange={e => setEditingPledge({ ...editingPledge, phone2: e.target.value })} />
+                                                                </div>
+                                                            ) : pledge.email}
+                                                        </td>
+                                                        <td className="px-6 py-4 text-slate-600 font-medium">{pledge.event.name}</td>
+                                                        <td className="px-6 py-4">{getStatusBadge(pledge.status)}</td>
+                                                        <td className="px-6 py-4 text-slate-400 text-right">{new Date(pledge.createdAt).toLocaleDateString()}</td>
+                                                        <td className="px-6 py-4">
+                                                            {editingPledge?.id === pledge.id ? (
+                                                                <div className="flex gap-1.5">
+                                                                    <button onClick={handleSavePledgeEdit} className="p-1.5 bg-[#48A111] text-white rounded-lg hover:bg-[#3a8a0e] transition-colors" title="Save"><Check size={14} /></button>
+                                                                    <button onClick={() => setEditingPledge(null)} className="p-1.5 bg-slate-200 text-slate-600 rounded-lg hover:bg-slate-300 transition-colors" title="Cancel"><X size={14} /></button>
+                                                                </div>
+                                                            ) : pledge.status === 'PLEDGED' && new Date() < new Date(pledge.event.date) ? (
+                                                                <button onClick={() => setEditingPledge({ id: pledge.id, name: pledge.name, email: pledge.email, phone1: pledge.phone1 || '', phone2: pledge.phone2 || '' })} className="p-1.5 text-slate-400 hover:text-[#48A111] hover:bg-[#e9f5e1] rounded-lg transition-colors" title="Edit pledge"><Pencil size={14} /></button>
+                                                            ) : null}
+                                                        </td>
+                                                    </tr>
+                                                </React.Fragment>
                                             ))}
                                         </tbody>
                                     </table>

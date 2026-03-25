@@ -35,6 +35,10 @@ const submitContactsSchema = z.object({
 });
 
 const updateContactSchema = z.object({
+    name: z.string().min(1).max(100).optional(),
+    phone: z.string().min(7).max(20).optional(),
+    email: z.string().email().optional().or(z.literal('').transform(() => undefined)),
+    relationship: z.string().max(50).optional(),
     callStatus: z.enum(['PENDING', 'CONFIRMED', 'NOT_CONFIRMED']).optional(),
     notes: z.string().max(500).optional(),
     calledById: z.string().uuid().optional(),
@@ -340,8 +344,15 @@ export const updateContact = async (req: Request, res: Response) => {
 
         const data = updateContactSchema.parse(req.body);
 
-        const contact = await prisma.mobilizationContact.findUnique({ where: { id: contactId } });
+        const contact = await prisma.mobilizationContact.findUnique({ 
+            where: { id: contactId },
+            include: { campaign: { include: { event: true } } }
+        });
         if (!contact) return res.status(404).json({ message: 'Contact not found' });
+
+        if (getEventStatus(contact.campaign.event) === 'PAST') {
+            return res.status(400).json({ message: 'Cannot edit contacts for past events' });
+        }
 
         // Members can only update contacts they personally submitted
         if (!isManager && contact.submittedById !== userId) {
@@ -354,6 +365,10 @@ export const updateContact = async (req: Request, res: Response) => {
 
         // Build payload imperatively to avoid Prisma scalar/relation union conflict
         const payload: Record<string, unknown> = {};
+        if (data.name        !== undefined) payload.name        = data.name;
+        if (data.phone       !== undefined) payload.phone       = data.phone;
+        if (data.email       !== undefined) payload.email       = data.email;
+        if (data.relationship!== undefined) payload.relationship= data.relationship;
         if (data.callStatus  !== undefined) payload.callStatus  = data.callStatus;
         if (data.notes       !== undefined) payload.notes       = data.notes;
         if (data.isDuplicate !== undefined) payload.isDuplicate = data.isDuplicate;

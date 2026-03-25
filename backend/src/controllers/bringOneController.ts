@@ -30,6 +30,13 @@ const submitPledgesSchema = z.object({
     pledges: z.array(pledgeEntrySchema).min(1, 'At least one pledge is required').max(200),
 });
 
+const updatePledgeSchema = z.object({
+    name: z.string().min(1).max(100).optional(),
+    email: z.string().email().optional(),
+    phone1: z.string().max(20).optional().nullable(),
+    phone2: z.string().max(20).optional().nullable(),
+});
+
 // ─── Campaign Management (FM only) ───────────────────────────────────────────
 
 /**
@@ -275,6 +282,53 @@ export const deletePledge = async (req: Request, res: Response) => {
     } catch (e) {
         console.error('[BRING-ONE] Delete pledge error:', e);
         res.status(500).json({ message: 'Failed to delete pledge' });
+    }
+};
+
+/**
+ * PATCH /api/bring-one/pledges/:id
+ * Member updates their own pledge info if not matched & event not PAST.
+ */
+export const updatePledge = async (req: Request, res: Response) => {
+    try {
+        const inviterId = req.user?.id;
+        if (!inviterId) return res.status(401).json({ message: 'Unauthorized' });
+
+        const id = req.params.id as string;
+        const data = updatePledgeSchema.parse(req.body);
+
+        const pledge = await prisma.bringOnePledge.findUnique({ 
+            where: { id },
+            include: { event: true }
+        });
+
+        if (!pledge) return res.status(404).json({ message: 'Pledge not found' });
+        if (pledge.inviterId !== inviterId && req.user?.role !== 'FELLOWSHIP_MANAGER') {
+            return res.status(403).json({ message: 'Not allowed' });
+        }
+        if (pledge.status !== 'PLEDGED' && req.user?.role !== 'FELLOWSHIP_MANAGER') {
+            return res.status(400).json({ message: 'Cannot edit a pledge that has already been matched' });
+        }
+        if (getEventStatus(pledge.event) === 'PAST') {
+            return res.status(400).json({ message: 'Cannot edit pledges for past events' });
+        }
+
+        const payload: Record<string, unknown> = {};
+        if (data.name !== undefined) payload.name = data.name;
+        if (data.email !== undefined && data.email !== '') payload.email = data.email.toLowerCase();
+        if (data.phone1 !== undefined) payload.phone1 = data.phone1;
+        if (data.phone2 !== undefined) payload.phone2 = data.phone2;
+
+        const updated = await prisma.bringOnePledge.update({
+            where: { id },
+            data: payload,
+        });
+
+        res.json({ message: 'Pledge updated', pledge: updated });
+    } catch (e) {
+        if (e instanceof z.ZodError) return res.status(400).json({ message: 'Validation error', details: e.issues });
+        console.error('[BRING-ONE] Update pledge error:', e);
+        res.status(500).json({ message: 'Failed to update pledge' });
     }
 };
 

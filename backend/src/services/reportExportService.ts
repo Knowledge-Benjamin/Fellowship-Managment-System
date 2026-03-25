@@ -24,6 +24,8 @@ interface EventReportData {
         tagDistribution?: Record<string, number>;
         // Academic Statistics
         yearOfStudyBreakdown?: Record<string, number>;
+        makerereYearBreakdown?: Record<string, number>;
+        nonMakerereYearBreakdown?: Record<string, number>;
         collegeBreakdown?: Record<string, number>;
         courseBreakdown?: Record<string, number>;
         // Organizational Statistics
@@ -609,6 +611,58 @@ export const generateEventReportExcel = async (
         }
 
         academicSheet.columns = [{ width: 35 }, { width: 15 }];
+    }
+
+    // MAKERERE STUDENTS SHEET
+    if (data.stats.makerereYearBreakdown && Object.keys(data.stats.makerereYearBreakdown).length > 0) {
+        const makSheet = workbook.addWorksheet('Makerere Stats', {
+            properties: { tabColor: { argb: 'FF2563eb' } } // Blue 600
+        });
+
+        makSheet.mergeCells('A1:B1');
+        const makTitleCell = makSheet.getCell('A1');
+        makTitleCell.value = 'Makerere Students By Year';
+        makTitleCell.font = { size: 16, bold: true, color: { argb: 'FFFFFFFF' } };
+        makTitleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2563eb' } };
+        makTitleCell.alignment = { horizontal: 'center' };
+        makSheet.getRow(1).height = 30;
+        makSheet.addRow([]);
+
+        const makHeader = makSheet.addRow(['Year of Study', 'Count']);
+        makHeader.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        makHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF475569' } };
+        
+        Object.entries(data.stats.makerereYearBreakdown)
+            .sort((a, b) => a[0].localeCompare(b[0]))
+            .forEach(([year, count]) => makSheet.addRow([year, count]));
+
+        makSheet.columns = [{ width: 35 }, { width: 15 }];
+    }
+
+    // NON-MAKERERE STUDENTS SHEET
+    if (data.stats.nonMakerereYearBreakdown && Object.keys(data.stats.nonMakerereYearBreakdown).length > 0) {
+        const nonMakSheet = workbook.addWorksheet('Non-Makerere Stats', {
+            properties: { tabColor: { argb: 'FF0891b2' } } // Cyan 600
+        });
+
+        nonMakSheet.mergeCells('A1:B1');
+        const nonMakTitleCell = nonMakSheet.getCell('A1');
+        nonMakTitleCell.value = 'Non-Makerere Students By Year';
+        nonMakTitleCell.font = { size: 16, bold: true, color: { argb: 'FFFFFFFF' } };
+        nonMakTitleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0891b2' } };
+        nonMakTitleCell.alignment = { horizontal: 'center' };
+        nonMakSheet.getRow(1).height = 30;
+        nonMakSheet.addRow([]);
+
+        const nonMakHeader = nonMakSheet.addRow(['Year of Study', 'Count']);
+        nonMakHeader.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        nonMakHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF475569' } };
+        
+        Object.entries(data.stats.nonMakerereYearBreakdown)
+            .sort((a, b) => a[0].localeCompare(b[0]))
+            .forEach(([year, count]) => nonMakSheet.addRow([year, count]));
+
+        nonMakSheet.columns = [{ width: 35 }, { width: 15 }];
     }
 
     // ORGANIZATIONAL STATISTICS SHEET

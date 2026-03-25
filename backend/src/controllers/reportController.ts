@@ -10,6 +10,7 @@ import {
     generateCustomReportExcel,
 } from '../services/reportExportService';
 import { getUserReportScope, buildMemberScopeFilter, getScopeDisplayName } from '../utils/reportScopeHelper';
+import { fetchAllAcademicPeriods, computeCurrentYearFromPeriods } from '../utils/academicProgressionHelper';
 
 const cache = new NodeCache({ stdTTL: 300 }); // 5 minutes TTL
 
@@ -21,6 +22,9 @@ export const aggregateAttendanceStats = async (attendances: any[], guestAttendan
     const memberCount = attendances.length;
     const guestCount = guestAttendances?.length || 0;
     const totalAttendance = memberCount + guestCount;
+
+    // Fetch periods once for synchronous, N+1-free year calculation
+    const allPeriods = await fetchAllAcademicPeriods();
 
     // 2. Gender Breakdown
     const genderBreakdown = attendances.reduce(
@@ -76,23 +80,54 @@ export const aggregateAttendanceStats = async (attendances: any[], guestAttendan
     );
 
     // 8. Year of Study Breakdown
+    // We maintain the classic Year 1-5+ structure but compute the true current year.
+    // We also provide data to generate separate Excel sheets based on Makerere vs Non-Makerere.
     const yearOfStudyBreakdown: Record<string, number> = {
-        'Year 1': 0,
-        'Year 2': 0,
-        'Year 3': 0,
-        'Year 4': 0,
-        'Year 5+': 0,
-        'Unknown': 0
+        'Year 1': 0, 'Year 2': 0, 'Year 3': 0, 'Year 4': 0, 'Year 5+': 0, 'Unknown': 0
+    };
+
+    const makerereYearBreakdown: Record<string, number> = {
+        'Year 1': 0, 'Year 2': 0, 'Year 3': 0, 'Year 4': 0, 'Year 5+': 0, 'Unknown': 0
+    };
+
+    const nonMakerereYearBreakdown: Record<string, number> = {
+        'Year 1': 0, 'Year 2': 0, 'Year 3': 0, 'Year 4': 0, 'Year 5+': 0, 'Unknown': 0
     };
 
     attendances.forEach((att: any) => {
-        const year = att.member?.initialYearOfStudy;
-        if (!year) {
-            yearOfStudyBreakdown['Unknown']++;
-        } else if (year <= 4) {
-            yearOfStudyBreakdown[`Year ${year}`]++;
+        // Exclude Alumni entirely from year breakdowns
+        const hasAlumniTag = att.member?.memberTags?.some((mt: any) => mt.tag?.name === 'ALUMNI');
+        if (hasAlumniTag) return;
+
+        const currentYear = computeCurrentYearFromPeriods(
+            {
+                registrationDate: att.member?.createdAt,
+                initialYearOfStudy: att.member?.initialYearOfStudy,
+                initialSemester: att.member?.initialSemester
+            },
+            allPeriods,
+            new Date() // Use actual current time for year progressing calculation
+        );
+
+        let yearKey = 'Unknown';
+        if (currentYear && currentYear <= 4) {
+            yearKey = `Year ${currentYear}`;
+        } else if (currentYear && currentYear >= 5) {
+            yearKey = 'Year 5+';
+        }
+
+        yearOfStudyBreakdown[yearKey]++;
+
+        // Split into Makerere vs Non-Makerere
+        // Based on findings, use the OTHER_CAMPUS_STUDENT and OTHER classification tags rather than courseId
+        const isNonMakerere = att.member?.memberTags?.some(
+            (mt: any) => mt.tag?.name === 'OTHER_CAMPUS_STUDENT' || mt.tag?.name === 'OTHER'
+        );
+
+        if (isNonMakerere) {
+            nonMakerereYearBreakdown[yearKey]++;
         } else {
-            yearOfStudyBreakdown['Year 5+']++;
+            makerereYearBreakdown[yearKey]++;
         }
     });
 
@@ -166,7 +201,8 @@ export const aggregateAttendanceStats = async (attendances: any[], guestAttendan
     const memberTypeBreakdown = attendances.reduce(
         (acc: Record<string, number>, curr: any) => {
             const tagNames = (curr.member?.memberTags || []).map((mt: any) => mt.tag?.name);
-            const isMakerere = !!curr.member?.courseId; // enrolled in a tracked course
+            const isNonMakerere = tagNames.includes('OTHER_CAMPUS_STUDENT') || tagNames.includes('OTHER');
+            const isMakerere = !isNonMakerere;
             const isAlumni = tagNames.includes('ALUMNI');
             if (isAlumni) {
                 acc['Alumni'] = (acc['Alumni'] || 0) + 1;
@@ -193,6 +229,8 @@ export const aggregateAttendanceStats = async (attendances: any[], guestAttendan
         firstTimerIds,
         // Academic Statistics
         yearOfStudyBreakdown,
+        makerereYearBreakdown,
+        nonMakerereYearBreakdown,
         collegeBreakdown,
         courseBreakdown,
         // Organizational Statistics
@@ -304,23 +342,36 @@ export const getEventReport = async (req: Request<{ eventId: string }>, res: Res
             where: { isDeleted: false, ...memberFilter },
         });
 
+        const allPeriods = await fetchAllAcademicPeriods();
+
         // Map attendees to a lightweight format for frontend drill-downs (instant zero-latency clicks)
-        const mappedAttendees = event.attendances.map((a: any) => ({
-            id: a.member.id,
-            name: a.member.fullName,
-            gender: a.member.gender,
-            contactPhone: a.member.phoneNumber,
-            region: a.member.region?.name,
-            residence: a.member.residence?.name || a.member.hostelName,
-            college: a.member.courseRelation?.college?.name,
-            course: a.member.courseRelation?.name,
-            year: a.member.initialYearOfStudy,
-            families: a.member.familyMemberships.map((fm: any) => fm.family.name),
-            teams: a.member.ministryMemberships.map((mm: any) => mm.team.name),
-            tags: a.member.memberTags.map((mt: any) => mt.tag.name),
-            isFirstTimer: stats.firstTimerIds.includes(a.member.id),
-            isGuest: false,
-        }));
+        const mappedAttendees = event.attendances.map((a: any) => {
+            const currentYear = computeCurrentYearFromPeriods(
+                {
+                    registrationDate: a.member.createdAt,
+                    initialYearOfStudy: a.member.initialYearOfStudy,
+                    initialSemester: a.member.initialSemester
+                },
+                allPeriods
+            );
+
+            return {
+                id: a.member.id,
+                name: a.member.fullName,
+                gender: a.member.gender,
+                contactPhone: a.member.phoneNumber,
+                region: a.member.region?.name,
+                residence: a.member.residence?.name || a.member.hostelName,
+                college: a.member.courseRelation?.college?.name,
+                course: a.member.courseRelation?.name,
+                year: currentYear,
+                families: a.member.familyMemberships.map((fm: any) => fm.family.name),
+                teams: a.member.ministryMemberships.map((mm: any) => mm.team.name),
+                tags: a.member.memberTags.map((mt: any) => mt.tag.name),
+                isFirstTimer: stats.firstTimerIds.includes(a.member.id),
+                isGuest: false,
+            };
+        });
 
         const mappedGuests = event.guestAttendances.map((g: any) => ({
             id: `guest-${g.id}`,
@@ -329,21 +380,32 @@ export const getEventReport = async (req: Request<{ eventId: string }>, res: Res
             isGuest: true,
         }));
 
-        const mappedSalvations = event.salvations.map((s: any) => ({
-            id: `salvation-${s.id}`,
-            name: s.member?.fullName || s.guestName || 'Unknown',
-            gender: s.member?.gender,
-            contactPhone: s.member?.phoneNumber || s.guestPhone,
-            region: s.member?.region?.name || s.guestResidence,
-            college: s.member?.courseRelation?.college?.name,
-            course: s.member?.courseRelation?.name,
-            year: s.member?.initialYearOfStudy,
-            families: s.member?.familyMemberships?.map((fm: any) => fm.family.name) || [],
-            teams: s.member?.ministryMemberships?.map((mm: any) => mm.team.name) || [],
-            tags: s.member?.memberTags?.map((mt: any) => mt.tag.name) || [],
-            isGuest: !s.member,
-            purpose: s.decisionType,
-        }));
+        const mappedSalvations = event.salvations.map((s: any) => {
+            const currentYear = s.member ? computeCurrentYearFromPeriods(
+                {
+                    registrationDate: s.member.createdAt,
+                    initialYearOfStudy: s.member.initialYearOfStudy,
+                    initialSemester: s.member.initialSemester
+                },
+                allPeriods
+            ) : null;
+
+            return {
+                id: `salvation-${s.id}`,
+                name: s.member?.fullName || s.guestName || 'Unknown',
+                gender: s.member?.gender,
+                contactPhone: s.member?.phoneNumber || s.guestPhone,
+                region: s.member?.region?.name || s.guestResidence,
+                college: s.member?.courseRelation?.college?.name,
+                course: s.member?.courseRelation?.name,
+                year: currentYear,
+                families: s.member?.familyMemberships?.map((fm: any) => fm.family.name) || [],
+                teams: s.member?.ministryMemberships?.map((mm: any) => mm.team.name) || [],
+                tags: s.member?.memberTags?.map((mt: any) => mt.tag.name) || [],
+                isGuest: !s.member,
+                purpose: s.decisionType,
+            };
+        });
 
         res.json({
             event: {
@@ -755,19 +817,32 @@ export const exportEventReportExcel = async (req: Request<{ eventId: string }>, 
 
         const stats = await aggregateAttendanceStats(event.attendances, event.guestAttendances, event.salvations, event.date);
 
-        const mappedAttendees = event.attendances.map((a: any) => ({
-            name: a.member.fullName,
-            gender: a.member.gender,
-            contactPhone: a.member.contactPhone,
-            region: a.member.region?.name,
-            college: a.member.courseRelation?.college?.name,
-            course: a.member.courseRelation?.name,
-            year: a.member.initialYearOfStudy,
-            families: a.member.familyMemberships.map((fm: any) => fm.family.name),
-            teams: a.member.ministryMemberships.map((mm: any) => mm.team.name),
-            tags: a.member.memberTags.map((mt: any) => mt.tag.name),
-            isGuest: false,
-        }));
+        const allPeriods = await fetchAllAcademicPeriods();
+
+        const mappedAttendees = event.attendances.map((a: any) => {
+            const currentYear = computeCurrentYearFromPeriods(
+                {
+                    registrationDate: a.member.createdAt,
+                    initialYearOfStudy: a.member.initialYearOfStudy,
+                    initialSemester: a.member.initialSemester
+                },
+                allPeriods
+            );
+
+            return {
+                name: a.member.fullName,
+                gender: a.member.gender,
+                contactPhone: a.member.contactPhone,
+                region: a.member.region?.name,
+                college: a.member.courseRelation?.college?.name,
+                course: a.member.courseRelation?.name,
+                year: currentYear ?? undefined,
+                families: a.member.familyMemberships.map((fm: any) => fm.family.name),
+                teams: a.member.ministryMemberships.map((mm: any) => mm.team.name),
+                tags: a.member.memberTags.map((mt: any) => mt.tag.name),
+                isGuest: false,
+            };
+        });
 
         const mappedGuests = event.guestAttendances.map((g: any) => ({
             name: g.guestName,
@@ -1257,23 +1332,36 @@ export const getEventReportMembers = async (req: Request<{ eventId: string }>, r
             orderBy: { fullName: 'asc' },
         });
 
+        const allPeriods = await fetchAllAcademicPeriods();
+
         // Map to the same shape as event report attendees so DrilldownTable
         // renders without any structural frontend changes
-        const mapped = members.map((m: any) => ({
-            id: m.id,
-            name: m.fullName,
-            gender: m.gender,
-            contactPhone: m.phoneNumber,
-            region: m.region?.name ?? null,
-            college: m.courseRelation?.college?.name ?? null,
-            course: m.courseRelation?.name ?? null,
-            year: m.initialYearOfStudy ?? null,
-            families: m.familyMemberships.map((fm: any) => fm.family.name),
-            teams: m.ministryMemberships.map((mm: any) => mm.team.name),
-            tags: m.memberTags.map((mt: any) => mt.tag.name),
-            isGuest: false,
-            isFirstTimer: false,
-        }));
+        const mapped = members.map((m: any) => {
+            const currentYear = computeCurrentYearFromPeriods(
+                {
+                    registrationDate: m.createdAt,
+                    initialYearOfStudy: m.initialYearOfStudy,
+                    initialSemester: m.initialSemester
+                },
+                allPeriods
+            );
+
+            return {
+                id: m.id,
+                name: m.fullName,
+                gender: m.gender,
+                contactPhone: m.phoneNumber,
+                region: m.region?.name ?? null,
+                college: m.courseRelation?.college?.name ?? null,
+                course: m.courseRelation?.name ?? null,
+                year: currentYear,
+                families: m.familyMemberships.map((fm: any) => fm.family.name),
+                teams: m.ministryMemberships.map((mm: any) => mm.team.name),
+                tags: m.memberTags.map((mt: any) => mt.tag.name),
+                isGuest: false,
+                isFirstTimer: false,
+            };
+        });
 
         res.json({ members: mapped, total: mapped.length });
     } catch (error) {

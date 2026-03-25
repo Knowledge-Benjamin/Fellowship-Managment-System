@@ -106,3 +106,60 @@ export async function isMemberAlumni(member: {
 
     return currentYear > member.courseRelation.durationYears;
 }
+
+// ── Batch-safe helpers (avoids N+1 queries in report loops) ─────────────────
+
+export interface AcademicPeriodRow {
+    startDate: Date;
+    endDate: Date;
+}
+
+/**
+ * Fetch all academic periods once, ordered by startDate.
+ * Pass the result into computeCurrentYearFromPeriods for each member
+ * to avoid one DB query per attendee in report generation.
+ */
+export async function fetchAllAcademicPeriods(): Promise<AcademicPeriodRow[]> {
+    return prisma.academicPeriod.findMany({
+        select: { startDate: true, endDate: true },
+        orderBy: { startDate: 'asc' },
+    });
+}
+
+/**
+ * Pure (synchronous) computation of a member's current academic year
+ * given a pre-fetched list of all academic periods.
+ *
+ * Returns null when any required academic field is missing.
+ */
+export function computeCurrentYearFromPeriods(
+    member: {
+        registrationDate: Date | null;
+        initialYearOfStudy: number | null;
+        initialSemester: number | null;
+    },
+    allPeriods: AcademicPeriodRow[],
+    now: Date = new Date()
+): number | null {
+    if (
+        !member.registrationDate ||
+        !member.initialYearOfStudy ||
+        !member.initialSemester
+    ) {
+        return null;
+    }
+
+    const regDate = member.registrationDate;
+
+    // Count periods that started after registration AND have fully ended by now
+    const periodsElapsed = allPeriods.filter(
+        (p) => p.startDate >= regDate && p.endDate <= now
+    ).length;
+
+    const totalSemesters =
+        (member.initialYearOfStudy - 1) * 2 +
+        member.initialSemester +
+        periodsElapsed;
+
+    return Math.ceil(totalSemesters / 2);
+}

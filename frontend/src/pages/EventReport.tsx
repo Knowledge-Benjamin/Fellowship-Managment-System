@@ -36,6 +36,8 @@ interface EventReportData {
         salvationBreakdown?: Record<string, number>;
         tagDistribution?: Record<string, number>;
         yearOfStudyBreakdown?: Record<string, number>;
+        makerereYearBreakdown?: Record<string, number>;
+        nonMakerereYearBreakdown?: Record<string, number>;
         collegeBreakdown?: Record<string, number>;
         courseBreakdown?: Record<string, number>;
         familyBreakdown?: Record<string, number>;

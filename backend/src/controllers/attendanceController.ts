@@ -435,6 +435,7 @@ export const syncOfflineBatch = async (req: Request, res: Response) => {
         const event = await prisma.event.findUnique({ where: { id: eventId } });
 
         if (!event) return res.status(404).json({ error: 'Event not found' });
+        if (!event.isActive) return res.status(403).json({ error: 'Cannot sync attendance to a closed event' });
 
         // We skip time validations intentionally because these are offline scans
         // that could have happened hours ago.

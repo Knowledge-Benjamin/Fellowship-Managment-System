@@ -17,18 +17,19 @@ const createTokenSchema = z.object({
 
 const selfRegSubmitSchema = z.object({
     token: z.string().min(1),
-    fullName: z.string().min(2),
+    fullName: z.string().min(2).max(120),
     email: z.string().email(),
-    phoneNumber: z.string().min(7),
+    // Enforce a plausible phone number — at least 10 digits (with optional + prefix)
+    phoneNumber: z.string().regex(/^\+?\d{10,15}$/, { message: 'Phone number must be 10–15 digits (optionally prefixed with +)' }),
     gender: z.enum(['MALE', 'FEMALE']),
     isMakerereStudent: z.boolean().default(true),
     registrationMode: z.enum(['NEW_MEMBER', 'READMISSION']).default('NEW_MEMBER'),
     regionId: z.string().uuid().optional(),
     // Academic — resolved IDs or freetext
     collegeId: z.string().uuid().optional(),
-    collegeSuggestion: z.string().optional(),
+    collegeSuggestion: z.string().min(2).max(120).optional(),
     courseId: z.string().uuid().optional(),
-    courseSuggestion: z.string().optional(),
+    courseSuggestion: z.string().min(2).max(120).optional(),
     initialYearOfStudy: z.number().int().min(1).max(7).optional(),
     initialSemester: z.number().int().min(1).max(2).optional(),
     // Residence
@@ -39,6 +40,30 @@ const selfRegSubmitSchema = z.object({
     classificationTagName: z.enum(['ALUMNI', 'OTHER_CAMPUS_STUDENT', 'OTHER']).optional(),
 
     familyId: z.string().uuid().optional(),
+})
+.refine(data => !(data.isMakerereStudent && data.classificationTagName), {
+    message: "Makerere students cannot select a non-Makerere classification.",
+    path: ["classificationTagName"]
+})
+.refine(data => {
+    // Makerere students must provide academic context
+    if (!data.isMakerereStudent) return true;
+    const hasCourse = data.courseId || data.courseSuggestion;
+    const hasYear = data.initialYearOfStudy !== undefined;
+    const hasSemester = data.initialSemester !== undefined;
+    return hasCourse && hasYear && hasSemester;
+}, {
+    message: "Makerere students must provide their course, year of study, and semester.",
+    path: ["courseId"]
+})
+.refine(data => {
+    // A course suggestion must always be accompanied by a college (id or suggestion)
+    // to prevent orphaned courses with collegeId: null in the DB
+    if (!data.courseSuggestion) return true;
+    return !!(data.collegeId || data.collegeSuggestion);
+}, {
+    message: "Please also provide your college when suggesting a new course.",
+    path: ["collegeSuggestion"]
 });
 
 // ─── Token Management (FM only) ───────────────────────────────────────────────

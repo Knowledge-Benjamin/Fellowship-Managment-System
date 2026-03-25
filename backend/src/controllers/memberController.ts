@@ -3,7 +3,7 @@ import QRCode from 'qrcode';
 import { z } from 'zod';
 import prisma from '../prisma';
 import { formatRegionName } from '../utils/displayFormatters';
-import { getCurrentAcademicStatus, isMemberFinalist, isMemberAlumni } from '../utils/academicProgressionHelper';
+import { getCurrentAcademicStatus, isMemberFinalist, isMemberAlumni, fetchAllAcademicPeriods, computeCurrentYearFromPeriods } from '../utils/academicProgressionHelper';
 import { activeMemberFilter } from '../utils/queryHelpers';
 import { Prisma } from '@prisma/client';
 import { createMemberRecord } from '../services/memberService';
@@ -12,9 +12,10 @@ import { matchAndAdvanceDirectMemberPledge } from './bringOneController';
 import ExcelJS from 'exceljs';
 
 const createMemberSchema = z.object({
-    fullName: z.string().min(1),
+    fullName: z.string().min(2).max(120),
     email: z.string().email(),
-    phoneNumber: z.string(),
+    // Enforce a plausible phone — at least 10 digits, optional + prefix
+    phoneNumber: z.string().regex(/^\+?\d{10,15}$/, { message: 'Phone number must be 10–15 digits (optionally prefixed with +)' }),
     gender: z.enum(['MALE', 'FEMALE']),
     regionId: z.string().uuid('Invalid region ID'),
     classificationTagId: z.string().uuid().optional(),
@@ -26,6 +27,14 @@ const createMemberSchema = z.object({
     hostelName: z.string().optional(),
     registrationMode: z.enum(['NEW_MEMBER', 'LEGACY_IMPORT', 'TRANSFER', 'READMISSION']).optional(),
     assignFirstTimerTag: z.boolean().optional(),
+})
+.refine(data => {
+    // If a course is assigned, academic progress fields are required
+    if (!data.courseId) return true;
+    return data.initialYearOfStudy !== undefined && data.initialSemester !== undefined;
+}, {
+    message: "Year of study and semester are required when a course is assigned.",
+    path: ["initialYearOfStudy"],
 });
 
 // Create new member
@@ -331,7 +340,18 @@ export const exportMembersToExcel = async (req: Request, res: Response) => {
         sheet.views = [{ state: 'frozen', xSplit: 0, ySplit: 1 }];
         sheet.autoFilter = 'A1:L1';
 
+        const allPeriods = await fetchAllAcademicPeriods();
+
         members.forEach((m, i) => {
+            const currentYear = computeCurrentYearFromPeriods(
+                {
+                    registrationDate: m.registrationDate || new Date(),
+                    initialYearOfStudy: m.initialYearOfStudy,
+                    initialSemester: m.initialSemester
+                },
+                allPeriods
+            );
+
             const row = sheet.addRow([
                 m.fellowshipNumber,
                 m.fullName,
@@ -340,7 +360,7 @@ export const exportMembersToExcel = async (req: Request, res: Response) => {
                 m.phoneNumber,
                 m.region?.name ? formatRegionName(m.region.name) : '-',
                 m.courseRelation?.name || '-',
-                m.initialYearOfStudy || '-',
+                currentYear || '-',
                 m.initialSemester || '-',
                 m.memberTags.map((mt: any) => mt.tag.name.replace(/_/g, ' ')).join(', ') || '-',
                 m.familyMemberships.map((fm: any) => fm.family.name).join(', ') || '-',

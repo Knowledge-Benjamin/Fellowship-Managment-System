@@ -137,7 +137,7 @@ const Navbar = () => {
                         <div className="hidden lg:flex items-center gap-2">
                             {isAuthenticated ? (
                                 <>
-                                    {isManager && <NavLink to="/" icon={Home}>Register</NavLink>}
+                                    {isManager && <NavLink to="/internal-register" icon={UserPlus}>Register</NavLink>}
                                     {hasCheckInAccess && <NavLink to="/check-in" icon={QrCode}>Check-in</NavLink>}
 
                                     {isManager && (
@@ -270,7 +270,7 @@ const Navbar = () => {
                                 <>
                                     <div className="space-y-1">
                                         <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-2 mb-2">Main</p>
-                                        {isManager && <NavLink to="/" icon={Home} className="w-full">Register</NavLink>}
+                                        {isManager && <NavLink to="/internal-register" icon={UserPlus} className="w-full">Register</NavLink>}
                                         {hasCheckInAccess && <NavLink to="/check-in" icon={QrCode} className="w-full">Check-in</NavLink>}
                                         <NavLink to="/transport" icon={Bus} className="w-full">Transport</NavLink>
                                         <NavLink to="/profile" icon={User} className="w-full">Profile</NavLink>

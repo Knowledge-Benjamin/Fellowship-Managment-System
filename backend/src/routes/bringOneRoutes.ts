@@ -11,6 +11,7 @@ import {
     deletePledge,
     getEventPledges,
     exportEventPledges,
+    getBringOneReport,
 } from '../controllers/bringOneController';
 
 const router = Router();
@@ -18,6 +19,7 @@ const router = Router();
 // Campaign config (FM only)
 router.post('/campaigns', protect, authorize('FELLOWSHIP_MANAGER'), createBringOneCampaign);
 router.get('/campaigns', protect, getBringOneCampaigns);
+router.get('/campaigns/:id/report', protect, authorize('FELLOWSHIP_MANAGER'), getBringOneReport);
 router.patch('/campaigns/:id', protect, authorize('FELLOWSHIP_MANAGER'), updateBringOneCampaign);
 router.delete('/campaigns/:id', protect, authorize('FELLOWSHIP_MANAGER'), deleteBringOneCampaign);
 

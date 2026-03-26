@@ -10,6 +10,7 @@ import {
     updateContact,
     getCampaignContacts,
     exportCampaign,
+    getMobilizationReport,
 } from '../controllers/campaignController';
 
 const router = Router();
@@ -17,6 +18,7 @@ const router = Router();
 // Campaign management
 router.post('/', protect, authorize('FELLOWSHIP_MANAGER'), createCampaign);
 router.get('/', protect, getCampaigns);
+router.get('/:id/report', protect, authorize('FELLOWSHIP_MANAGER'), getMobilizationReport);
 router.get('/:id', protect, getCampaignById);
 router.patch('/:id', protect, authorize('FELLOWSHIP_MANAGER'), updateCampaign);
 router.delete('/:id', protect, authorize('FELLOWSHIP_MANAGER'), deleteCampaign);

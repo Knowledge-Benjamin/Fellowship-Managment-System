@@ -603,3 +603,133 @@ export async function matchAndAdvanceDirectMemberPledge(params: {
 
     return pledge;
 }
+
+/**
+ * GET /api/bring-one/campaigns/:id/report
+ * Returns the unified Campaign Report Data for a Bring One Campaign
+ */
+export const getBringOneReport = async (req: Request, res: Response) => {
+    try {
+        const isManager = req.user?.role === 'FELLOWSHIP_MANAGER';
+        if (!isManager) return res.status(403).json({ message: 'Forbidden' });
+
+        const id = req.params.id as string;
+
+        const campaign = await prisma.bringOneCampaign.findUnique({
+            where: { id },
+        });
+
+        if (!campaign) {
+            return res.status(404).json({ message: 'Campaign not found' });
+        }
+
+        const pledges = await prisma.bringOnePledge.findMany({
+            where: { campaignId: id },
+            include: {
+                inviter: {
+                    select: {
+                        id: true,
+                        fullName: true,
+                        region: { select: { name: true } },
+                        memberTags: { select: { tag: { select: { name: true } } } }
+                    }
+                }
+            }
+        });
+
+        const totalActiveMembers = await prisma.member.count({
+            where: { isDeleted: false }
+        });
+
+        // ── Aggregation Logic ── //
+        let pending = 0;
+        let confirmed = 0;
+        let notConfirmed = 0;
+        let duplicateCount = 0;
+
+        const submittersMap = new Map<string, any>();
+        const regionBreakdown: Record<string, number> = {};
+
+        pledges.forEach(p => {
+            // For Bring 1: "Confirmed" means they actually ATTENDED the event.
+            // Everything else (PLEDGED, MATCHED, JOINED) is still "Pending" the final outcome.
+            if (p.status === 'ATTENDED') confirmed++;
+            else pending++; 
+
+            if (p.isDuplicate) duplicateCount++;
+
+            const submitterId = p.inviter.id;
+            if (!submittersMap.has(submitterId)) {
+                const isLeader = p.inviter.memberTags.some((mt: any) => 
+                    ['REGIONAL_HEAD', 'FAMILY_HEAD', 'TEAM_LEADER'].includes(mt.tag.name)
+                );
+                
+                const regionName = p.inviter.region?.name || 'Unassigned';
+                
+                regionBreakdown[regionName] = (regionBreakdown[regionName] || 0) + 1;
+
+                submittersMap.set(submitterId, {
+                    memberId: submitterId,
+                    name: p.inviter.fullName,
+                    region: regionName,
+                    isLeader,
+                    contactsCount: 0
+                });
+            }
+            submittersMap.get(submitterId).contactsCount++;
+        });
+
+        const totalContactsSubmitted = pledges.length;
+        const membersSubmitted = submittersMap.size;
+        
+        let leadersSubmitted = 0;
+        submittersMap.forEach(s => {
+            if (s.isLeader) leadersSubmitted++;
+        });
+
+        const totalTarget = totalActiveMembers * campaign.minPledges;
+        
+        const averageContactsPerMember = membersSubmitted > 0 ? (totalContactsSubmitted / membersSubmitted) : 0;
+        
+        const reportData = {
+            campaign: {
+                id: campaign.id,
+                title: campaign.title,
+                type: 'BRING_ONE',
+                status: campaign.isActive ? 'OPEN' : 'CLOSED',
+                targetContactsPerMember: campaign.minPledges,
+                deadline: campaign.updatedAt.toISOString() 
+            },
+            stats: {
+                totalTarget,
+                membersSubmitted,
+                contactsSubmitted: totalContactsSubmitted,
+                leadersSubmitted,
+                averageContactsPerMember: Number(averageContactsPerMember.toFixed(1)),
+                statusBreakdown: { PENDING: pending, CONFIRMED: confirmed, NOT_CONFIRMED: notConfirmed },
+                regionBreakdown,
+                successPercentage: totalTarget > 0 ? (totalContactsSubmitted / totalTarget) * 100 : 0,
+                duplicatePercentage: totalContactsSubmitted > 0 ? (duplicateCount / totalContactsSubmitted) * 100 : 0,
+                confirmationPercentage: totalContactsSubmitted > 0 ? (confirmed / totalContactsSubmitted) * 100 : 0,
+                pendingPercentage: totalContactsSubmitted > 0 ? (pending / totalContactsSubmitted) * 100 : 0,
+                notConfirmedPercentage: totalContactsSubmitted > 0 ? (notConfirmed / totalContactsSubmitted) * 100 : 0,
+            },
+            drilldowns: {
+                submitters: Array.from(submittersMap.values()).sort((a, b) => b.contactsCount - a.contactsCount),
+                contacts: pledges.map(p => ({
+                    id: p.id,
+                    contactName: p.name,
+                    phone: p.phone1 || p.phone2 || p.email,
+                    submittedBy: p.inviter.fullName,
+                    status: p.status === 'ATTENDED' ? 'CONFIRMED' : 'PENDING',
+                    isDuplicate: p.isDuplicate
+                }))
+            }
+        };
+
+        res.json(reportData);
+    } catch (e) {
+        console.error('[BRING-ONE REPORT] Get Bring One Report Error:', e);
+        res.status(500).json({ message: 'Failed to generate bring-one report' });
+    }
+};

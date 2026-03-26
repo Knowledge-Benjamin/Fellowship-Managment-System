@@ -33,9 +33,9 @@ const SelfRegistration = lazy(() => import('./pages/SelfRegistration'));
 const RegistrationTokens = lazy(() => import('./pages/RegistrationTokens'));
 const PendingMembers = lazy(() => import('./pages/PendingMembers'));
 const EmailManagement = lazy(() => import('./pages/EmailManagement'));
-// Newly added Campaign routes
 const Campaigns = lazy(() => import('./pages/Campaigns'));
 const CampaignManagement = lazy(() => import('./pages/CampaignManagement'));
+const CampaignReport = lazy(() => import('./pages/CampaignReport'));
 import Sidebar from './components/Sidebar';
 
 // Roles that can view dispatched reports
@@ -218,6 +218,12 @@ function AppContent() {
               <Route path="/campaign-management" element={
                 <ProtectedRoute roles={['FELLOWSHIP_MANAGER']}>
                   <CampaignManagement />
+                </ProtectedRoute>
+              } />
+
+              <Route path="/campaign-management/:type/:id/report" element={
+                <ProtectedRoute roles={['FELLOWSHIP_MANAGER']}>
+                  <CampaignReport />
                 </ProtectedRoute>
               } />
 

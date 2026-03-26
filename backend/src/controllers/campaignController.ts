@@ -512,3 +512,136 @@ export const exportCampaign = async (req: Request, res: Response) => {
         res.status(500).json({ message: 'Failed to export campaign' });
     }
 };
+
+/**
+ * GET /api/campaigns/:id/report
+ * Returns the unified Campaign Report Data for a Mobilization Campaign
+ */
+export const getMobilizationReport = async (req: Request, res: Response) => {
+    try {
+        const isManager = req.user?.role === 'FELLOWSHIP_MANAGER';
+        if (!isManager) return res.status(403).json({ message: 'Forbidden' });
+
+        const id = req.params.id as string;
+        
+        const campaign = await prisma.mobilizationCampaign.findUnique({
+            where: { id },
+        });
+
+        if (!campaign) {
+            return res.status(404).json({ message: 'Campaign not found' });
+        }
+
+        // Fetch contacts with nested submitter info
+        const contacts = await prisma.mobilizationContact.findMany({
+            where: { campaignId: id },
+            include: {
+                submittedBy: {
+                    select: {
+                        id: true,
+                        fullName: true,
+                        region: { select: { name: true } },
+                        memberTags: { select: { tag: { select: { name: true } } } }
+                    }
+                }
+            }
+        });
+
+        const totalActiveMembers = await prisma.member.count({
+            where: { isDeleted: false }
+        });
+
+        // ── Aggregation Logic ── //
+        let pending = 0;
+        let confirmed = 0;
+        let notConfirmed = 0;
+        let duplicateCount = 0;
+
+        const submittersMap = new Map<string, any>();
+        const regionBreakdown: Record<string, number> = {};
+
+        contacts.forEach(c => {
+            if (c.callStatus === 'PENDING') pending++;
+            else if (c.callStatus === 'CONFIRMED') confirmed++;
+            else if (c.callStatus === 'NOT_CONFIRMED') notConfirmed++;
+
+            if (c.isDuplicate) duplicateCount++;
+
+            // Submitter Aggregation
+            const submitterId = c.submittedBy.id;
+            if (!submittersMap.has(submitterId)) {
+                const isLeader = c.submittedBy.memberTags.some((mt: any) => 
+                    ['REGIONAL_HEAD', 'FAMILY_HEAD', 'TEAM_LEADER'].includes(mt.tag.name)
+                );
+                
+                const regionName = c.submittedBy.region?.name || 'Unassigned';
+                
+                // Track region breakdown by distinct submitters
+                regionBreakdown[regionName] = (regionBreakdown[regionName] || 0) + 1;
+
+                submittersMap.set(submitterId, {
+                    memberId: submitterId,
+                    name: c.submittedBy.fullName,
+                    region: regionName,
+                    isLeader,
+                    contactsCount: 0
+                });
+            }
+            submittersMap.get(submitterId).contactsCount++;
+        });
+
+        const totalContactsSubmitted = contacts.length;
+        const membersSubmitted = submittersMap.size;
+        
+        let leadersSubmitted = 0;
+        submittersMap.forEach(s => {
+            if (s.isLeader) leadersSubmitted++;
+        });
+
+        const totalTarget = totalActiveMembers * campaign.maxContacts;
+        
+        const averageContactsPerMember = membersSubmitted > 0 ? (totalContactsSubmitted / membersSubmitted) : 0;
+        
+        // Formulate returning standardized object
+        const reportData = {
+            campaign: {
+                id: campaign.id,
+                title: campaign.title,
+                type: 'MOBILIZATION',
+                status: campaign.status,
+                targetContactsPerMember: campaign.maxContacts,
+                deadline: campaign.submissionDeadline.toISOString()
+            },
+            stats: {
+                totalTarget,
+                membersSubmitted,
+                contactsSubmitted: totalContactsSubmitted,
+                leadersSubmitted,
+                averageContactsPerMember: Number(averageContactsPerMember.toFixed(1)),
+                statusBreakdown: { PENDING: pending, CONFIRMED: confirmed, NOT_CONFIRMED: notConfirmed },
+                regionBreakdown,
+                successPercentage: totalTarget > 0 ? (totalContactsSubmitted / totalTarget) * 100 : 0,
+                duplicatePercentage: totalContactsSubmitted > 0 ? (duplicateCount / totalContactsSubmitted) * 100 : 0,
+                confirmationPercentage: totalContactsSubmitted > 0 ? (confirmed / totalContactsSubmitted) * 100 : 0,
+                pendingPercentage: totalContactsSubmitted > 0 ? (pending / totalContactsSubmitted) * 100 : 0,
+                notConfirmedPercentage: totalContactsSubmitted > 0 ? (notConfirmed / totalContactsSubmitted) * 100 : 0,
+            },
+            drilldowns: {
+                submitters: Array.from(submittersMap.values()).sort((a, b) => b.contactsCount - a.contactsCount),
+                contacts: contacts.map(c => ({
+                    id: c.id,
+                    contactName: c.name,
+                    phone: c.phone,
+                    submittedBy: c.submittedBy.fullName,
+                    status: c.callStatus,
+                    isDuplicate: c.isDuplicate
+                }))
+            }
+        };
+
+        res.json(reportData);
+    } catch (e) {
+        console.error('[CAMPAIGN REPORT] Get Mobilization Report Error:', e);
+        res.status(500).json({ message: 'Failed to generate mobilization report' });
+    }
+};

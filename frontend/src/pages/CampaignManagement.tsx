@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
-import { Target, Users, Loader2, Calendar, Plus, Flag, Download, FileSpreadsheet, Search, CheckCircle2, AlertCircle, Phone, FileText, Edit2, Trash2, AlertTriangle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Target, Users, Loader2, Calendar, Plus, Flag, Download, FileSpreadsheet, Search, CheckCircle2, AlertCircle, Phone, FileText, Edit2, Trash2, AlertTriangle, PieChart } from 'lucide-react';
 import { useToast } from '../components/ToastProvider';
 
 export default function CampaignManagement() {
+    const navigate = useNavigate();
     const { showToast } = useToast();
     const [activeTab, setActiveTab] = useState<'mobilization' | 'bring1'>('mobilization');
     const [loading, setLoading] = useState(true);
@@ -371,6 +373,12 @@ export default function CampaignManagement() {
                                         >
                                             <FileSpreadsheet size={18} /> Export
                                         </button>
+                                        <button 
+                                            onClick={() => navigate(`/campaign-management/mob/${selectedMobCampaign.id}/report`)}
+                                            className="flex items-center gap-2 px-4 py-2 bg-indigo-50 border border-indigo-200 hover:border-indigo-300 text-indigo-700 rounded-lg shadow-sm font-semibold transition-all"
+                                        >
+                                            <PieChart size={18} /> View Report
+                                        </button>
                                     </div>
                                 </div>
                                 <div className="overflow-x-auto">
@@ -489,13 +497,22 @@ export default function CampaignManagement() {
                                 ))}
                             </select>
                         </div>
-                        <button 
-                            onClick={handleExportBring1}
-                            disabled={!selectedB1EventId || b1EventPledges.length === 0}
-                            className="flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 hover:border-slate-300 text-slate-700 rounded-xl shadow-sm font-semibold transition-all disabled:opacity-50"
-                        >
-                            <FileSpreadsheet size={18} className="text-emerald-600" /> Export Event Pledges
-                        </button>
+                        <div className="flex gap-2">
+                            <button 
+                                onClick={handleExportBring1}
+                                disabled={!selectedB1EventId || b1EventPledges.length === 0}
+                                className="flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 hover:border-slate-300 text-slate-700 rounded-xl shadow-sm font-semibold transition-all disabled:opacity-50"
+                            >
+                                <FileSpreadsheet size={18} className="text-emerald-600" /> Export Event Pledges
+                            </button>
+                            <button 
+                                onClick={() => navigate(`/campaign-management/bring1/${b1GlobalCampaign?.id}/report`)}
+                                disabled={!b1GlobalCampaign}
+                                className="flex items-center gap-2 px-5 py-2.5 bg-indigo-50 border border-indigo-200 hover:border-indigo-300 text-indigo-700 rounded-xl shadow-sm font-semibold transition-all disabled:opacity-50"
+                            >
+                                <PieChart size={18} /> View Bring 1 Report
+                            </button>
+                        </div>
                     </div>
 
                     {/* Stats Overview */}

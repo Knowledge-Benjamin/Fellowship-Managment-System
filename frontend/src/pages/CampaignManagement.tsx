@@ -439,15 +439,13 @@ export default function CampaignManagement() {
                                                         </td>
                                                         <td className="px-6 py-4 text-right">
                                                             <div className="flex items-center justify-end gap-1">
-                                                                {contact.isDuplicate && (
-                                                                    <button
-                                                                        title="Mark as Not Duplicate"
-                                                                        className="text-amber-600 hover:bg-amber-50 p-1.5 rounded"
-                                                                        onClick={() => api.patch(`/campaigns/${selectedMobCampaign.id}/contacts/${contact.id}`, { isDuplicate: false }).then(() => loadMobCampaignDetail(selectedMobCampaign.id))}
-                                                                    >
-                                                                        <AlertTriangle size={15} />
-                                                                    </button>
-                                                                )}
+                                                                <button
+                                                                    title={contact.isDuplicate ? "Mark as Not Duplicate" : "Mark as Duplicate"}
+                                                                    className={`${contact.isDuplicate ? 'text-amber-600 hover:bg-amber-50' : 'text-slate-300 hover:text-amber-600 hover:bg-amber-50'} p-1.5 rounded transition-colors`}
+                                                                    onClick={() => api.patch(`/campaigns/${selectedMobCampaign.id}/contacts/${contact.id}`, { isDuplicate: !contact.isDuplicate }).then(() => loadMobCampaignDetail(selectedMobCampaign.id))}
+                                                                >
+                                                                    <AlertTriangle size={15} />
+                                                                </button>
                                                                 <button 
                                                                     className="text-indigo-600 hover:bg-indigo-50 p-1.5 rounded"
                                                                     onClick={() => {

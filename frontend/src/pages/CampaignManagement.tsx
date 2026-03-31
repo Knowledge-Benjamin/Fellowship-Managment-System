@@ -131,6 +131,27 @@ export default function CampaignManagement() {
         }
     };
 
+    const jumpToMobContact = (contactId: string) => {
+        if (!selectedMobCampaign || !selectedMobCampaign.contacts) return;
+        
+        const index = selectedMobCampaign.contacts.findIndex((c: any) => c.id === contactId);
+        if (index !== -1) {
+            const targetPage = Math.floor(index / PAGE_SIZE) + 1;
+            setMobCurrentPage(targetPage);
+            
+            // Allow state to update and DOM to re-render, then scroll
+            setTimeout(() => {
+                const el = document.getElementById(`contact-row-${contactId}`);
+                if (el) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    // Provide a visual highlight
+                    el.classList.add('bg-yellow-100', 'transition-all', 'duration-500');
+                    setTimeout(() => el.classList.remove('bg-yellow-100'), 3000);
+                }
+            }, 100);
+        }
+    };
+
     const handleUpdateMobCampaign = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
@@ -423,7 +444,7 @@ export default function CampaignManagement() {
                                                 <tr><td colSpan={5} className="p-8 text-center text-slate-400">No contacts submitted yet.</td></tr>
                                             ) : (
                                                 selectedMobCampaign.contacts?.slice((mobCurrentPage - 1) * PAGE_SIZE, mobCurrentPage * PAGE_SIZE).map((contact: any) => (
-                                                    <tr key={contact.id} className={`${contact.isDuplicate ? 'bg-amber-50/40' : 'hover:bg-slate-50/50'}`}>
+                                                    <tr id={`contact-row-${contact.id}`} key={contact.id} className={`${contact.isDuplicate ? 'bg-amber-50/40' : 'hover:bg-slate-50/50'}`}>
                                                         <td className="px-6 py-4">
                                                             <div className="font-bold text-slate-800">{contact.submittedBy?.fullName || 'Unknown'}</div>
                                                             <div className="text-xs text-slate-500">{contact.submittedBy?.fellowshipNumber || ''}</div>
@@ -432,12 +453,20 @@ export default function CampaignManagement() {
                                                             <div className="font-bold text-slate-800 flex items-center flex-wrap gap-1.5">
                                                                 {contact.name}
                                                                 {contact.isDuplicate && (
-                                                                    <span 
-                                                                        className="text-[10px] font-bold px-1.5 py-0.5 bg-amber-100 text-amber-700 border border-amber-200 rounded-full flex items-center gap-0.5"
-                                                                        title={contact.duplicateNames ? `Duplicate of: ${contact.duplicateNames}` : 'Duplicate detection'}
-                                                                    >
-                                                                        <AlertTriangle size={9} /> DUPLICATE
-                                                                    </span>
+                                                                    <div className="flex gap-1">
+                                                                        <span className="text-[10px] font-bold px-1.5 py-0.5 bg-amber-100 text-amber-700 border border-amber-200 rounded-full flex items-center gap-0.5">
+                                                                            <AlertTriangle size={9} /> DUPLICATE OF:
+                                                                        </span>
+                                                                        {contact.duplicateMatches?.map((match: any) => (
+                                                                            <button 
+                                                                                key={match.id}
+                                                                                onClick={() => jumpToMobContact(match.id)}
+                                                                                className="text-[10px] font-bold px-1.5 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-indigo-600 border border-slate-200 rounded-full flex items-center gap-0.5 transition-colors"
+                                                                            >
+                                                                                {match.name}
+                                                                            </button>
+                                                                        ))}
+                                                                    </div>
                                                                 )}
                                                             </div>
                                                             <div className="flex items-center gap-1 text-slate-500 text-xs mt-0.5">
@@ -945,6 +974,20 @@ export default function CampaignManagement() {
                         </form>
                     </div>
                 </div>
+            )}
+
+            {/* Chat Modal Layer */}
+            {chatEntity && (
+                <ContactChatModal 
+                    entityId={chatEntity.id}
+                    entityName={chatEntity.name}
+                    entityType={chatEntity.type}
+                    currentUserId={currentUserId}
+                    onClose={() => setChatEntity(null)} 
+                    onMessageSent={() => {
+                        // Optionally refresh the view to update message counters
+                    }}
+                />
             )}
         </div>
     );

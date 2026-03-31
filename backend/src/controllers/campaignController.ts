@@ -169,27 +169,32 @@ export const getCampaignById = async (req: Request, res: Response) => {
             return res.status(403).json({ message: 'Campaign is not yet available' });
         }
 
-        // Attach duplicate match strings for Admin View
+        // Attach duplicate matches for Admin View
         if (applyAdminView) {
-            const phoneMap = new Map<string, string[]>();
-            const emailMap = new Map<string, string[]>();
+            // Store objects instead of just strings
+            const phoneMap = new Map<string, { id: string, name: string }[]>();
+            const emailMap = new Map<string, { id: string, name: string }[]>();
 
             for (const contact of campaign.contacts) {
                 if (!phoneMap.has(contact.phone)) phoneMap.set(contact.phone, []);
-                phoneMap.get(contact.phone)!.push(contact.name);
+                phoneMap.get(contact.phone)!.push({ id: contact.id, name: contact.name });
 
                 if (contact.email) {
                     if (!emailMap.has(contact.email)) emailMap.set(contact.email, []);
-                    emailMap.get(contact.email)!.push(contact.name);
+                    emailMap.get(contact.email)!.push({ id: contact.id, name: contact.name });
                 }
             }
 
             campaign.contacts = campaign.contacts.map((contact: any) => {
                 if (contact.isDuplicate) {
-                    const samePhone = phoneMap.get(contact.phone)?.filter(n => n !== contact.name) || [];
-                    const sameEmail = contact.email ? (emailMap.get(contact.email)?.filter(n => n !== contact.name) || []) : [];
-                    const matches = Array.from(new Set([...samePhone, ...sameEmail]));
-                    contact.duplicateNames = matches.join(', ');
+                    const samePhone = phoneMap.get(contact.phone)?.filter(c => c.id !== contact.id) || [];
+                    const sameEmail = contact.email ? (emailMap.get(contact.email)?.filter(c => c.id !== contact.id) || []) : [];
+                    
+                    // Deduplicate the combined list
+                    const matchMap = new Map<string, { id: string, name: string }>();
+                    [...samePhone, ...sameEmail].forEach(c => matchMap.set(c.id, c));
+                    
+                    contact.duplicateMatches = Array.from(matchMap.values());
                 }
                 return contact;
             });

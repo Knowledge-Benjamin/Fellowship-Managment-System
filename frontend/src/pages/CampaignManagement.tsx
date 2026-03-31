@@ -979,13 +979,15 @@ export default function CampaignManagement() {
             {/* Chat Modal Layer */}
             {chatEntity && (
                 <ContactChatModal 
+                    isOpen={!!chatEntity}
                     entityId={chatEntity.id}
                     entityName={chatEntity.name}
-                    entityType={chatEntity.type}
+                    type={chatEntity.type}
                     currentUserId={currentUserId}
                     onClose={() => setChatEntity(null)} 
-                    onMessageSent={() => {
-                        // Optionally refresh the view to update message counters
+                    onMessagesRead={() => {
+                        if (activeTab === 'mobilization') loadMobCampaignDetail(selectedMobCampaign.id);
+                        if (activeTab === 'bring1') fetchBring1Pledges(selectedB1EventId);
                     }}
                 />
             )}

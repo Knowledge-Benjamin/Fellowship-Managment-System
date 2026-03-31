@@ -188,6 +188,9 @@ model Member {
   otps                 OTP[]
   passwordResetTokens  PasswordResetToken[]
 
+  // Campaign Message relations
+  campaignMessagesSent CampaignMessage[] @relation("MessageSender")
+
   // Profile edit requests
   profileEditRequests  ProfileEditRequest[] @relation("EditRequester")
   reviewedEditRequests ProfileEditRequest[] @relation("EditReviewer")
@@ -931,6 +934,8 @@ model BringOnePledge {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  messages CampaignMessage[]
+
   @@index([campaignId])
   @@index([inviterId])
   @@index([email])
@@ -982,9 +987,35 @@ model MobilizationContact {
   isDuplicate Boolean  @default(false)
   createdAt   DateTime @default(now())
 
+  messages CampaignMessage[]
+
   @@index([campaignId])
   @@index([submittedById])
   @@index([phone])
   @@index([callStatus])
+}
+
+model CampaignMessage {
+  id              String   @id @default(uuid())
+  
+  // Attached to a Mobilization Contact OR a Bring 1 Pledge
+  mobilizationId  String?
+  mobilization    MobilizationContact? @relation(fields: [mobilizationId], references: [id], onDelete: Cascade)
+  
+  bringOneId      String?
+  bringOne        BringOnePledge?      @relation(fields: [bringOneId], references: [id], onDelete: Cascade)
+  
+  // The sender is always a Member (either an FM or the Submitter)
+  senderId        String
+  sender          Member   @relation("MessageSender", fields: [senderId], references: [id])
+  
+  text            String   @db.Text
+  isRead          Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  @@index([mobilizationId])
+  @@index([bringOneId])
+  @@index([senderId])
+  @@index([isRead])
 }
 

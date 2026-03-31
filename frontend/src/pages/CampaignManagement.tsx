@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
 import { useNavigate } from 'react-router-dom';
-import { Target, Users, Loader2, Calendar, Plus, Flag, Download, FileSpreadsheet, Search, CheckCircle2, AlertCircle, Phone, FileText, Edit2, Trash2, AlertTriangle, PieChart } from 'lucide-react';
+import { Target, Users, Loader2, Calendar, Plus, Flag, Download, FileSpreadsheet, Search, CheckCircle2, AlertCircle, Phone, FileText, Edit2, Trash2, AlertTriangle, PieChart, MessageCircle } from 'lucide-react';
 import { useToast } from '../components/ToastProvider';
+import ContactChatModal from '../components/Campaigns/ContactChatModal';
 
 export default function CampaignManagement() {
     const navigate = useNavigate();
@@ -31,6 +32,24 @@ export default function CampaignManagement() {
     const [showCreateB1Modal, setShowCreateB1Modal] = useState(false);
     const [newB1Data, setNewB1Data] = useState({ title: '', description: '', minPledges: 1 });
     const [editB1Data, setEditB1Data] = useState<any | null>(null);
+
+    // Chat State
+    const [chatEntity, setChatEntity] = useState<{ id: string; name: string; type: 'BRING_ONE' | 'MOBILIZATION' } | null>(null);
+
+    // Retrieve userId from localStorage auth token or decoded token
+    // Actually, we can fetch it once or assume the backend validates it based on the token.
+    // The chat modal expects `currentUserId` so we should parse the JWT.
+    const getUserIdFromToken = () => {
+        const token = localStorage.getItem('token');
+        if (!token) return '';
+        try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            return payload.id;
+        } catch {
+            return '';
+        }
+    };
+    const currentUserId = getUserIdFromToken();
 
     useEffect(() => {
         fetchInitialData();
@@ -447,6 +466,16 @@ export default function CampaignManagement() {
                                                                     <AlertTriangle size={15} />
                                                                 </button>
                                                                 <button 
+                                                                    className="text-cyan-600 hover:bg-cyan-50 p-1.5 rounded relative text-left"
+                                                                    title="Open Micro-Chat"
+                                                                    onClick={() => setChatEntity({ id: contact.id, name: contact.name, type: 'MOBILIZATION' })}
+                                                                >
+                                                                    <MessageCircle size={16} />
+                                                                    {(contact as any)._count?.messages > 0 && (
+                                                                        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
+                                                                    )}
+                                                                </button>
+                                                                <button 
                                                                     className="text-indigo-600 hover:bg-indigo-50 p-1.5 rounded"
                                                                     onClick={() => {
                                                                         const notes = prompt("Enter notes for " + contact.name, contact.notes || "");
@@ -575,7 +604,19 @@ export default function CampaignManagement() {
                                                     </span>
                                                 </td>
                                                 <td className="px-6 py-4 text-slate-500 text-xs font-medium">
-                                                    {pledge.matchedBy ? `Matched: ${pledge.matchedBy}` : '-'}
+                                                    <div className="flex items-center justify-between">
+                                                        <span>{pledge.matchedBy ? `Matched: ${pledge.matchedBy}` : '-'}</span>
+                                                        <button 
+                                                            className="text-cyan-600 hover:bg-cyan-50 p-1.5 rounded relative ml-2"
+                                                            title="Open Micro-Chat"
+                                                            onClick={() => setChatEntity({ id: pledge.id, name: pledge.name, type: 'BRING_ONE' })}
+                                                        >
+                                                            <MessageCircle size={16} />
+                                                            {(pledge as any)._count?.messages > 0 && (
+                                                                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
+                                                            )}
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))

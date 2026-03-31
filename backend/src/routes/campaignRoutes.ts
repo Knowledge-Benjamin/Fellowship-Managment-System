@@ -11,6 +11,9 @@ import {
     getCampaignContacts,
     exportCampaign,
     getMobilizationReport,
+    getMobilizationMessages,
+    sendMobilizationMessage,
+    markMobilizationMessagesRead,
 } from '../controllers/campaignController';
 
 const router = Router();
@@ -27,6 +30,11 @@ router.delete('/:id', protect, authorize('FELLOWSHIP_MANAGER'), deleteCampaign);
 router.post('/:id/contacts', protect, submitContacts);
 router.get('/:id/contacts', protect, authorize('FELLOWSHIP_MANAGER'), getCampaignContacts);
 router.patch('/:id/contacts/:contactId', protect, updateContact); // Members update own contacts; FM updates any
+
+// Micro-Chats (Mobilization Contacts)
+router.get('/contacts/:id/messages', protect, getMobilizationMessages);
+router.post('/contacts/:id/messages', protect, sendMobilizationMessage);
+router.patch('/contacts/:id/messages/read', protect, markMobilizationMessagesRead);
 
 // Export
 router.get('/:id/export', protect, authorize('FELLOWSHIP_MANAGER'), exportCampaign);

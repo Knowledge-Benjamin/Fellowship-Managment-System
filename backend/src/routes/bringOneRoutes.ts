@@ -12,6 +12,9 @@ import {
     getEventPledges,
     exportEventPledges,
     getBringOneReport,
+    getBringOneMessages,
+    sendBringOneMessage,
+    markBringOneMessagesRead,
 } from '../controllers/bringOneController';
 
 const router = Router();
@@ -28,6 +31,11 @@ router.post('/pledges', protect, submitPledges);
 router.get('/my-pledges', protect, getMyPledges);
 router.patch('/pledges/:id', protect, updatePledge);
 router.delete('/pledges/:id', protect, deletePledge);
+
+// Micro-Chats (Pledged Contacts)
+router.get('/pledges/:id/messages', protect, getBringOneMessages);
+router.post('/pledges/:id/messages', protect, sendBringOneMessage);
+router.patch('/pledges/:id/messages/read', protect, markBringOneMessagesRead);
 
 // FM event dashboard
 router.get('/event/:eventId', protect, authorize('FELLOWSHIP_MANAGER'), getEventPledges);

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../api';
-import { Target, UserPlus, Loader2, CheckCircle2, Clock, Plus, Flag, Trash2, Calendar, AlertCircle, Pencil, X, Check } from 'lucide-react';
+import { Target, UserPlus, Loader2, CheckCircle2, Clock, Plus, Flag, Trash2, Calendar, AlertCircle, Pencil, X, Check, MessageCircle } from 'lucide-react';
 import { useToast } from '../../components/ToastProvider';
+import ContactChatModal from '../../components/Campaigns/ContactChatModal';
 
 export default function CampaignTab() {
     const { showToast } = useToast();
@@ -12,6 +13,21 @@ export default function CampaignTab() {
     const [selectedEventId, setSelectedEventId] = useState<string>('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [editingPledge, setEditingPledge] = useState<{ id: string; name: string; email: string; phone1: string; phone2: string } | null>(null);
+
+    // Chat State
+    const [chatEntity, setChatEntity] = useState<{ id: string; name: string } | null>(null);
+
+    const getUserIdFromToken = () => {
+        const token = localStorage.getItem('token');
+        if (!token) return '';
+        try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            return payload.id;
+        } catch {
+            return '';
+        }
+    };
+    const currentUserId = getUserIdFromToken();
 
     // Form state for new pledges
     const [newPledges, setNewPledges] = useState([{ name: '', email: '', phone1: '', phone2: '' }]);
@@ -321,14 +337,26 @@ export default function CampaignTab() {
                                                         <td className="px-6 py-4">{getStatusBadge(pledge.status)}</td>
                                                         <td className="px-6 py-4 text-slate-400 text-right">{new Date(pledge.createdAt).toLocaleDateString()}</td>
                                                         <td className="px-6 py-4">
-                                                            {editingPledge?.id === pledge.id ? (
-                                                                <div className="flex gap-1.5">
-                                                                    <button onClick={handleSavePledgeEdit} className="p-1.5 bg-[#48A111] text-white rounded-lg hover:bg-[#3a8a0e] transition-colors" title="Save"><Check size={14} /></button>
-                                                                    <button onClick={() => setEditingPledge(null)} className="p-1.5 bg-slate-200 text-slate-600 rounded-lg hover:bg-slate-300 transition-colors" title="Cancel"><X size={14} /></button>
-                                                                </div>
-                                                            ) : pledge.status === 'PLEDGED' && new Date() < new Date(pledge.event.date) ? (
-                                                                <button onClick={() => setEditingPledge({ id: pledge.id, name: pledge.name, email: pledge.email, phone1: pledge.phone1 || '', phone2: pledge.phone2 || '' })} className="p-1.5 text-slate-400 hover:text-[#48A111] hover:bg-[#e9f5e1] rounded-lg transition-colors" title="Edit pledge"><Pencil size={14} /></button>
-                                                            ) : null}
+                                                            <div className="flex gap-2 items-center">
+                                                                <button
+                                                                    onClick={() => setChatEntity({ id: pledge.id, name: pledge.name })}
+                                                                    className="p-1.5 text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors relative"
+                                                                    title="Chat with Admin"
+                                                                >
+                                                                    <MessageCircle size={16} />
+                                                                    {pledge._count?.messages > 0 && (
+                                                                        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
+                                                                    )}
+                                                                </button>
+                                                                {editingPledge?.id === pledge.id ? (
+                                                                    <div className="flex gap-1.5">
+                                                                        <button onClick={handleSavePledgeEdit} className="p-1.5 bg-[#48A111] text-white rounded-lg hover:bg-[#3a8a0e] transition-colors" title="Save"><Check size={14} /></button>
+                                                                        <button onClick={() => setEditingPledge(null)} className="p-1.5 bg-slate-200 text-slate-600 rounded-lg hover:bg-slate-300 transition-colors" title="Cancel"><X size={14} /></button>
+                                                                    </div>
+                                                                ) : pledge.status === 'PLEDGED' && new Date() < new Date(pledge.event.date) ? (
+                                                                    <button onClick={() => setEditingPledge({ id: pledge.id, name: pledge.name, email: pledge.email, phone1: pledge.phone1 || '', phone2: pledge.phone2 || '' })} className="p-1.5 text-slate-400 hover:text-[#48A111] hover:bg-[#e9f5e1] rounded-lg transition-colors" title="Edit pledge"><Pencil size={15} /></button>
+                                                                ) : null}
+                                                            </div>
                                                         </td>
                                                     </tr>
                                                 </React.Fragment>
@@ -341,6 +369,21 @@ export default function CampaignTab() {
                     </div>
                 )}
             </div>
+
+            {/* Chat Modal */}
+            {chatEntity && (
+                <ContactChatModal
+                    isOpen={!!chatEntity}
+                    onClose={() => setChatEntity(null)}
+                    entityId={chatEntity.id}
+                    entityName={chatEntity.name}
+                    type="BRING_ONE"
+                    currentUserId={currentUserId}
+                    onMessagesRead={() => {
+                        api.get('/bring-one/my-pledges').then((res) => setPledges(res.data));
+                    }}
+                />
+            )}
         </div>
     );
 }

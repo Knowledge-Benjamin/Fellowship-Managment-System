@@ -410,6 +410,8 @@ export const getCampaignContacts = async (req: Request, res: Response) => {
         const campaign = await prisma.mobilizationCampaign.findUnique({ where: { id } });
         if (!campaign) return res.status(404).json({ message: 'Campaign not found' });
 
+        const userId = req.user?.id;
+
         const contacts = await prisma.mobilizationContact.findMany({
             where: {
                 campaignId: id,
@@ -418,6 +420,13 @@ export const getCampaignContacts = async (req: Request, res: Response) => {
             include: {
                 submittedBy: { select: { id: true, fullName: true, fellowshipNumber: true, region: { select: { name: true } } } },
                 calledBy: { select: { id: true, fullName: true } },
+                _count: {
+                    select: {
+                        messages: {
+                            where: { isRead: false, senderId: { not: userId } }
+                        }
+                    }
+                }
             },
             orderBy: [{ callStatus: 'asc' }, { createdAt: 'asc' }],
         });
@@ -643,5 +652,103 @@ export const getMobilizationReport = async (req: Request, res: Response) => {
     } catch (e) {
         console.error('[CAMPAIGN REPORT] Get Mobilization Report Error:', e);
         res.status(500).json({ message: 'Failed to generate mobilization report' });
+    }
+};
+
+// ─── Campaign Micro-Chats (Mobilization Contacts) ──────────────────────────────────
+
+/**
+ * GET /api/campaigns/contacts/:id/messages
+ * Fetches the entire conversation history for a specific Mobilization contact.
+ */
+export const getMobilizationMessages = async (req: Request, res: Response) => {
+    try {
+        const userId = req.user?.id;
+        const isManager = req.user?.role === 'FELLOWSHIP_MANAGER';
+        if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+        const contactId = req.params.id as string;
+        const contact = await prisma.mobilizationContact.findUnique({ where: { id: contactId } });
+        if (!contact) return res.status(404).json({ message: 'Contact not found' });
+
+        if (!isManager && contact.submittedById !== userId) {
+            return res.status(403).json({ message: 'Not allowed to view this chat' });
+        }
+
+        const messages = await prisma.campaignMessage.findMany({
+            where: { mobilizationId: contactId },
+            include: { sender: { select: { id: true, fullName: true, role: true } } },
+            orderBy: { createdAt: 'asc' },
+        });
+
+        res.json(messages);
+    } catch (e) {
+        console.error('[CAMPAIGN] getMessages error:', e);
+        res.status(500).json({ message: 'Failed to fetch messages' });
+    }
+};
+
+/**
+ * POST /api/campaigns/contacts/:id/messages
+ * Submits a new message to the contact's chat thread.
+ */
+export const sendMobilizationMessage = async (req: Request, res: Response) => {
+    try {
+        const userId = req.user?.id;
+        const isManager = req.user?.role === 'FELLOWSHIP_MANAGER';
+        if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+        const contactId = req.params.id as string;
+        const { text } = req.body;
+        
+        if (!text || typeof text !== 'string') return res.status(400).json({ message: 'Text is required' });
+
+        const contact = await prisma.mobilizationContact.findUnique({ where: { id: contactId } });
+        if (!contact) return res.status(404).json({ message: 'Contact not found' });
+
+        if (!isManager && contact.submittedById !== userId) {
+            return res.status(403).json({ message: 'Not allowed to chat on this contact' });
+        }
+
+        const message = await prisma.campaignMessage.create({
+            data: {
+                mobilizationId: contactId,
+                senderId: userId,
+                text,
+            },
+            include: { sender: { select: { id: true, fullName: true, role: true } } },
+        });
+
+        res.status(201).json(message);
+    } catch (e) {
+        console.error('[CAMPAIGN] sendMessage error:', e);
+        res.status(500).json({ message: 'Failed to send message' });
+    }
+};
+
+/**
+ * PATCH /api/campaigns/contacts/:id/messages/read
+ * Marks all messages in the thread NOT sent by the current user as read.
+ */
+export const markMobilizationMessagesRead = async (req: Request, res: Response) => {
+    try {
+        const userId = req.user?.id;
+        if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+        const contactId = req.params.id as string;
+
+        await prisma.campaignMessage.updateMany({
+            where: {
+                mobilizationId: contactId,
+                senderId: { not: userId },
+                isRead: false,
+            },
+            data: { isRead: true },
+        });
+
+        res.json({ message: 'Messages marked as read' });
+    } catch (e) {
+        console.error('[CAMPAIGN] markAsRead error:', e);
+        res.status(500).json({ message: 'Failed to mark messages as read' });
     }
 };

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
-import { Target, Users, Loader2, Calendar, Plus, Trash2, CheckCircle2, AlertCircle, AlertTriangle, Phone, Pencil, X, Check } from 'lucide-react';
+import { Target, Users, Loader2, Calendar, Plus, Trash2, CheckCircle2, AlertCircle, AlertTriangle, Phone, Pencil, X, Check, MessageCircle } from 'lucide-react';
 import { useToast } from '../components/ToastProvider';
+import ContactChatModal from '../components/Campaigns/ContactChatModal';
 
 export default function Campaigns() {
     const { showToast } = useToast();
@@ -14,6 +15,21 @@ export default function Campaigns() {
     const [newContacts, setNewContacts] = useState([{ name: '', phone: '', email: '', relationship: '', callStatus: 'PENDING' }]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [editingContact, setEditingContact] = useState<{ id: string; name: string; phone: string; email: string; relationship: string } | null>(null);
+
+    // Chat State
+    const [chatEntity, setChatEntity] = useState<{ id: string; name: string } | null>(null);
+
+    const getUserIdFromToken = () => {
+        const token = localStorage.getItem('token');
+        if (!token) return '';
+        try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            return payload.id;
+        } catch {
+            return '';
+        }
+    };
+    const currentUserId = getUserIdFromToken();
 
     useEffect(() => {
         fetchCampaigns();
@@ -437,15 +453,27 @@ export default function Campaigns() {
                                                             <span className="text-[10px] text-slate-400 bg-slate-200/60 px-1.5 py-0.5 rounded mt-1 inline-block">{c.relationship}</span>
                                                         )}
                                                     </div>
-                                                    {activeCampaign.status === 'OPEN' && (
+                                                    <div className="flex flex-col gap-2 shrink-0">
                                                         <button
-                                                            onClick={() => setEditingContact({ id: c.id, name: c.name, phone: c.phone, email: c.email || '', relationship: c.relationship || '' })}
-                                                            className="p-1.5 text-slate-400 hover:text-[#48A111] hover:bg-[#e9f5e1] rounded-lg transition-colors shrink-0"
-                                                            title="Edit contact"
+                                                            onClick={() => setChatEntity({ id: c.id, name: c.name })}
+                                                            className="p-1.5 text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors relative"
+                                                            title="Chat with Admin"
                                                         >
-                                                            <Pencil size={13} />
+                                                            <MessageCircle size={16} />
+                                                            {c._count?.messages > 0 && (
+                                                                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
+                                                            )}
                                                         </button>
-                                                    )}
+                                                        {activeCampaign.status === 'OPEN' && (
+                                                            <button
+                                                                onClick={() => setEditingContact({ id: c.id, name: c.name, phone: c.phone, email: c.email || '', relationship: c.relationship || '' })}
+                                                                className="p-1.5 text-slate-400 hover:text-[#48A111] hover:bg-[#e9f5e1] rounded-lg transition-colors"
+                                                                title="Edit contact"
+                                                            >
+                                                                <Pencil size={15} />
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                 </div>
                                                 {/* Call status tracker */}
                                                 <div className="pt-2 border-t border-slate-100">
@@ -470,6 +498,21 @@ export default function Campaigns() {
                                 ))}
                             </div>
                         </div>
+                    )}
+
+                    {/* Chat Modal */}
+                    {chatEntity && (
+                        <ContactChatModal
+                            isOpen={!!chatEntity}
+                            onClose={() => setChatEntity(null)}
+                            entityId={chatEntity.id}
+                            entityName={chatEntity.name}
+                            type="MOBILIZATION"
+                            currentUserId={currentUserId}
+                            onMessagesRead={() => {
+                                if (activeCampaignId) fetchCampaignDetail(activeCampaignId);
+                            }}
+                        />
                     )}
 
                 </div>

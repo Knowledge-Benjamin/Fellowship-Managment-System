@@ -248,6 +248,13 @@ export const getMyPledges = async (req: Request, res: Response) => {
             include: {
                 event: { select: { id: true, name: true, date: true } },
                 campaign: { select: { id: true, title: true, minPledges: true } },
+                _count: {
+                    select: {
+                        messages: {
+                            where: { isRead: false, senderId: { not: inviterId } }
+                        }
+                    }
+                }
             },
             orderBy: [{ eventId: 'asc' }, { createdAt: 'desc' }],
         });
@@ -346,11 +353,20 @@ export const getEventPledges = async (req: Request, res: Response) => {
         });
         if (!event) return res.status(404).json({ message: 'Event not found' });
 
+        const userId = req.user?.id;
+
         const pledges = await prisma.bringOnePledge.findMany({
             where: { eventId },
             include: {
                 inviter: { select: { id: true, fullName: true, fellowshipNumber: true, region: { select: { name: true } } } },
                 campaign: { select: { id: true, title: true, minPledges: true } },
+                _count: {
+                    select: {
+                        messages: {
+                            where: { isRead: false, senderId: { not: userId } }
+                        }
+                    }
+                }
             },
             orderBy: [{ status: 'asc' }, { inviterId: 'asc' }, { createdAt: 'asc' }],
         });
@@ -731,5 +747,103 @@ export const getBringOneReport = async (req: Request, res: Response) => {
     } catch (e) {
         console.error('[BRING-ONE REPORT] Get Bring One Report Error:', e);
         res.status(500).json({ message: 'Failed to generate bring-one report' });
+    }
+};
+
+// ─── Campaign Micro-Chats (Pledged Contacts) ──────────────────────────────────
+
+/**
+ * GET /api/bring-one/pledges/:id/messages
+ * Fetches the entire conversation history for a specific Bring 1 pledge.
+ */
+export const getBringOneMessages = async (req: Request, res: Response) => {
+    try {
+        const userId = req.user?.id;
+        const isManager = req.user?.role === 'FELLOWSHIP_MANAGER';
+        if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+        const pledgeId = req.params.id as string;
+        const pledge = await prisma.bringOnePledge.findUnique({ where: { id: pledgeId } });
+        if (!pledge) return res.status(404).json({ message: 'Pledge not found' });
+
+        if (!isManager && pledge.inviterId !== userId) {
+            return res.status(403).json({ message: 'Not allowed to view this chat' });
+        }
+
+        const messages = await prisma.campaignMessage.findMany({
+            where: { bringOneId: pledgeId },
+            include: { sender: { select: { id: true, fullName: true, role: true } } },
+            orderBy: { createdAt: 'asc' },
+        });
+
+        res.json(messages);
+    } catch (e) {
+        console.error('[BRING-ONE] getMessages error:', e);
+        res.status(500).json({ message: 'Failed to fetch messages' });
+    }
+};
+
+/**
+ * POST /api/bring-one/pledges/:id/messages
+ * Submits a new message to the pledge's chat thread.
+ */
+export const sendBringOneMessage = async (req: Request, res: Response) => {
+    try {
+        const userId = req.user?.id;
+        const isManager = req.user?.role === 'FELLOWSHIP_MANAGER';
+        if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+        const pledgeId = req.params.id as string;
+        const { text } = req.body;
+        
+        if (!text || typeof text !== 'string') return res.status(400).json({ message: 'Text is required' });
+
+        const pledge = await prisma.bringOnePledge.findUnique({ where: { id: pledgeId } });
+        if (!pledge) return res.status(404).json({ message: 'Pledge not found' });
+
+        if (!isManager && pledge.inviterId !== userId) {
+            return res.status(403).json({ message: 'Not allowed to chat on this pledge' });
+        }
+
+        const message = await prisma.campaignMessage.create({
+            data: {
+                bringOneId: pledgeId,
+                senderId: userId,
+                text,
+            },
+            include: { sender: { select: { id: true, fullName: true, role: true } } },
+        });
+
+        res.status(201).json(message);
+    } catch (e) {
+        console.error('[BRING-ONE] sendMessage error:', e);
+        res.status(500).json({ message: 'Failed to send message' });
+    }
+};
+
+/**
+ * PATCH /api/bring-one/pledges/:id/messages/read
+ * Marks all messages in the thread NOT sent by the current user as read.
+ */
+export const markBringOneMessagesRead = async (req: Request, res: Response) => {
+    try {
+        const userId = req.user?.id;
+        if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+        const pledgeId = req.params.id as string;
+
+        await prisma.campaignMessage.updateMany({
+            where: {
+                bringOneId: pledgeId,
+                senderId: { not: userId },
+                isRead: false,
+            },
+            data: { isRead: true },
+        });
+
+        res.json({ message: 'Messages marked as read' });
+    } catch (e) {
+        console.error('[BRING-ONE] markAsRead error:', e);
+        res.status(500).json({ message: 'Failed to mark messages as read' });
     }
 };

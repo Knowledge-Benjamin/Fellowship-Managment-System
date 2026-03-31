@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import api from '../api';
 import QRCode from 'react-qr-code';
 import { useToast } from '../components/ToastProvider';
@@ -694,9 +694,18 @@ const Registration = () => {
                                     <span className="text-red-500">*</span>
                                 </label>
                                 <div className="flex gap-4">
-                                    <button
+                                <button
                                         type="button"
-                                        onClick={() => setFormData({ ...formData, isMakerereStudent: true })}
+                                        onClick={() => setFormData(prev => ({
+                                            ...prev,
+                                            isMakerereStudent: true,
+                                            // Clear non-Makerere specific fields
+                                            classificationTagId: '',
+                                            // Clear location fields so they start fresh for Makerere context
+                                            regionId: '',
+                                            residenceId: '',
+                                            hostelName: '',
+                                        }))}
                                         className={`flex-1 px-4 py-2.5 rounded-lg transition-all cursor-pointer ${formData.isMakerereStudent
                                             ? 'text-white font-bold shadow-lg'
                                             : 'bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium'
@@ -707,7 +716,19 @@ const Registration = () => {
                                     </button>
                                     <button
                                         type="button"
-                                        onClick={() => setFormData({ ...formData, isMakerereStudent: false })}
+                                        onClick={() => setFormData(prev => ({
+                                            ...prev,
+                                            isMakerereStudent: false,
+                                            // Clear Makerere-specific fields
+                                            regionId: '',
+                                            collegeId: '',
+                                            courseId: '',
+                                            initialYearOfStudy: 1,
+                                            initialSemester: 1,
+                                            residenceId: '',
+                                            hostelName: '',
+                                            familyId: '',
+                                        }))}
                                         className={`flex-1 px-4 py-2.5 rounded-lg transition-all cursor-pointer ${!formData.isMakerereStudent
                                             ? 'text-white font-bold shadow-lg'
                                             : 'bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium'

@@ -8,12 +8,14 @@ const createCampaignSchema = z.object({
     title: z.string().min(1, 'Title is required').max(150),
     description: z.string().max(500).optional(),
     minPledges: z.number().int().min(1).default(1),
+    manualTarget: z.number().int().min(1).nullable().optional(),
 });
 
 const updateCampaignSchema = z.object({
     title: z.string().min(1).max(150).optional(),
     description: z.string().max(500).optional(),
     minPledges: z.number().int().min(1).optional(),
+    manualTarget: z.number().int().min(1).nullable().optional(),
     isActive: z.boolean().optional(),
 });
 
@@ -427,50 +429,73 @@ export const exportEventPledges = async (req: Request, res: Response) => {
         const pledges = await prisma.bringOnePledge.findMany({
             where: { eventId },
             include: {
-                inviter: { select: { fullName: true, fellowshipNumber: true } },
+                inviter: { select: { fullName: true, fellowshipNumber: true, region: { select: { name: true } } } },
                 campaign: { select: { title: true } },
             },
             orderBy: [{ status: 'asc' }, { inviterId: 'asc' }],
         });
 
         const workbook = new ExcelJS.Workbook();
-        const sheet = workbook.addWorksheet('Bring 1 Pledges', {
-            properties: { tabColor: { argb: 'FF14b8a6' } },
-        });
-
-        const headerRow = sheet.addRow([
-            'Campaign', 'Inviter', 'Fellowship #', 'Pledged Name', 'Email',
-            'Phone 1', 'Phone 2', 'Status', 'Matched By', 'Duplicate?', 'Submitted At',
-        ]);
-        headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-        headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF14b8a6' } };
-        headerRow.height = 25;
-        headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
-        sheet.views = [{ state: 'frozen', xSplit: 0, ySplit: 1 }];
-
-        pledges.forEach((p, i) => {
-            const row = sheet.addRow([
-                p.campaign.title,
-                p.inviter.fullName,
-                p.inviter.fellowshipNumber,
-                p.name,
-                p.email,
-                p.phone1 || '-',
-                p.phone2 || '-',
-                p.status,
-                p.matchedBy || '-',
-                p.isDuplicate ? 'Yes' : 'No',
-                new Date(p.createdAt).toISOString().split('T')[0],
-            ]);
-            if (i % 2 === 0) {
-                row.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+        
+        // Group by Region
+        const regionMap = new Map<string, any[]>();
+        pledges.forEach(p => {
+            const regionName = p.inviter?.region?.name || 'Unassigned';
+            if (!regionMap.has(regionName)) {
+                regionMap.set(regionName, []);
             }
+            regionMap.get(regionName)!.push(p);
         });
 
-        sheet.columns = [
-            { width: 20 }, { width: 28 }, { width: 15 }, { width: 28 }, { width: 30 },
-            { width: 18 }, { width: 18 }, { width: 18 }, { width: 12 }, { width: 12 }, { width: 14 },
-        ];
+        const createSheet = (name: string, data: any[]) => {
+            const sheetName = name.replace(/[^a-zA-Z0-9 ]/g, "").substring(0, 31);
+            const sheet = workbook.addWorksheet(sheetName, {
+                properties: { tabColor: { argb: 'FF14b8a6' } },
+            });
+
+            const headerRow = sheet.addRow([
+                'Campaign', 'Inviter', 'Fellowship #', 'Region', 'Pledged Name', 'Email',
+                'Phone 1', 'Phone 2', 'Status', 'Matched By', 'Duplicate?', 'Submitted At',
+            ]);
+            headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF14b8a6' } };
+            headerRow.height = 25;
+            headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
+            sheet.views = [{ state: 'frozen', xSplit: 0, ySplit: 1 }];
+
+            data.forEach((p, i) => {
+                const row = sheet.addRow([
+                    p.campaign.title,
+                    p.inviter?.fullName || 'Unknown',
+                    p.inviter?.fellowshipNumber || '-',
+                    p.inviter?.region?.name || 'Unassigned',
+                    p.name,
+                    p.email || '-',
+                    p.phone1 || '-',
+                    p.phone2 || '-',
+                    p.status,
+                    p.matchedBy || '-',
+                    p.isDuplicate ? 'Yes' : 'No',
+                    new Date(p.createdAt).toISOString().split('T')[0],
+                ]);
+                if (i % 2 === 0) row.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+            });
+
+            sheet.columns = [
+                { width: 20 }, { width: 28 }, { width: 15 }, { width: 20 }, { width: 28 }, { width: 30 },
+                { width: 18 }, { width: 18 }, { width: 18 }, { width: 12 }, { width: 12 }, { width: 14 },
+            ];
+        };
+
+        // Create a sheet for each region
+        Array.from(regionMap.keys()).sort().forEach(regionName => {
+            createSheet(regionName, regionMap.get(regionName)!);
+        });
+
+        // Ensure at least one sheet exists if empty
+        if (pledges.length === 0) {
+            workbook.addWorksheet('No Pledges');
+        }
 
         const eventDate = new Date(event.date).toISOString().split('T')[0];
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');

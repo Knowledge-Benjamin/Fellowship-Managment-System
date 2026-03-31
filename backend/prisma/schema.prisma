@@ -895,6 +895,7 @@ model BringOneCampaign {
   title       String             // e.g. "Bring 1 Campaign", "Bring 2 Initiative"
   description String?
   minPledges  Int                @default(1) // configurable: 1, 2, 5, etc.
+  manualTarget Int?
   isActive    Boolean            @default(false) // only one should be active at a time
   createdBy   String
   creator     Member             @relation(fields: [createdBy], references: [id])
@@ -954,6 +955,7 @@ model MobilizationCampaign {
   submissionDeadline DateTime
   status             MobilizationStatus @default(DRAFT)
   maxContacts        Int                @default(20)
+  manualTarget       Int?
   createdBy          String
   creator            Member             @relation(fields: [createdBy], references: [id])
   createdAt          DateTime           @default(now())

@@ -24,6 +24,11 @@ export default function CampaignManagement() {
     const [b1Stats, setB1Stats] = useState<any>(null);
     const [selectedB1EventId, setSelectedB1EventId] = useState<string>('');
 
+    // Pagination States
+    const [mobCurrentPage, setMobCurrentPage] = useState(1);
+    const [b1CurrentPage, setB1CurrentPage] = useState(1);
+    const PAGE_SIZE = 15;
+
     // Form States
     const [showCreateMobModal, setShowCreateMobModal] = useState(false);
     const [newMobData, setNewMobData] = useState({ eventId: '', title: '', description: '', submissionDeadline: '', maxContacts: 20 });
@@ -120,6 +125,7 @@ export default function CampaignManagement() {
         try {
             const res = await api.get(`/campaigns/${id}?adminView=true`);
             setSelectedMobCampaign(res.data);
+            setMobCurrentPage(1); // Reset pagination on new campaign load
         } catch (error) {
             showToast('error', 'Failed to load campaign detail');
         }
@@ -190,6 +196,7 @@ export default function CampaignManagement() {
             const res = await api.get(`/bring-one/event/${eventId}`);
             setB1EventPledges(res.data.pledges);
             setB1Stats(res.data.stats);
+            setB1CurrentPage(1); // Reset pagination on new event
         } catch (error) {
             console.error(error);
         } finally {
@@ -415,17 +422,20 @@ export default function CampaignManagement() {
                                             {selectedMobCampaign.contacts?.length === 0 ? (
                                                 <tr><td colSpan={5} className="p-8 text-center text-slate-400">No contacts submitted yet.</td></tr>
                                             ) : (
-                                                selectedMobCampaign.contacts?.map((contact: any) => (
+                                                selectedMobCampaign.contacts?.slice((mobCurrentPage - 1) * PAGE_SIZE, mobCurrentPage * PAGE_SIZE).map((contact: any) => (
                                                     <tr key={contact.id} className={`${contact.isDuplicate ? 'bg-amber-50/40' : 'hover:bg-slate-50/50'}`}>
                                                         <td className="px-6 py-4">
                                                             <div className="font-bold text-slate-800">{contact.submittedBy?.fullName || 'Unknown'}</div>
                                                             <div className="text-xs text-slate-500">{contact.submittedBy?.fellowshipNumber || ''}</div>
                                                         </td>
                                                         <td className="px-6 py-4">
-                                                            <div className="font-bold text-slate-800 flex items-center gap-1.5">
+                                                            <div className="font-bold text-slate-800 flex items-center flex-wrap gap-1.5">
                                                                 {contact.name}
                                                                 {contact.isDuplicate && (
-                                                                    <span className="text-[10px] font-bold px-1.5 py-0.5 bg-amber-100 text-amber-700 border border-amber-200 rounded-full flex items-center gap-0.5">
+                                                                    <span 
+                                                                        className="text-[10px] font-bold px-1.5 py-0.5 bg-amber-100 text-amber-700 border border-amber-200 rounded-full flex items-center gap-0.5"
+                                                                        title={contact.duplicateNames ? `Duplicate of: ${contact.duplicateNames}` : 'Duplicate detection'}
+                                                                    >
                                                                         <AlertTriangle size={9} /> DUPLICATE
                                                                     </span>
                                                                 )}
@@ -492,6 +502,17 @@ export default function CampaignManagement() {
                                         </tbody>
                                     </table>
                                 </div>
+                                {selectedMobCampaign.contacts?.length > PAGE_SIZE && (
+                                    <div className="flex justify-between items-center px-6 py-4 border-t border-slate-100 bg-slate-50">
+                                        <span className="text-sm text-slate-500 font-medium">
+                                            Showing {(mobCurrentPage - 1) * PAGE_SIZE + 1} to {Math.min(mobCurrentPage * PAGE_SIZE, selectedMobCampaign.contacts.length)} of {selectedMobCampaign.contacts.length}
+                                        </span>
+                                        <div className="flex gap-2">
+                                            <button disabled={mobCurrentPage === 1} onClick={() => setMobCurrentPage(p => p - 1)} className="px-3 py-1.5 bg-white border border-slate-200 font-bold text-slate-600 rounded-lg hover:bg-slate-50 disabled:opacity-50 transition-colors">Prev</button>
+                                            <button disabled={mobCurrentPage * PAGE_SIZE >= selectedMobCampaign.contacts.length} onClick={() => setMobCurrentPage(p => p + 1)} className="px-3 py-1.5 bg-white border border-slate-200 font-bold text-slate-600 rounded-lg hover:bg-slate-50 disabled:opacity-50 transition-colors">Next</button>
+                                        </div>
+                                    </div>
+                                )}
                             </>
                         ) : (
                             <div className="p-20 text-center flex flex-col items-center">
@@ -581,7 +602,7 @@ export default function CampaignManagement() {
                                     {b1EventPledges.length === 0 ? (
                                         <tr><td colSpan={5} className="p-8 text-center text-slate-400">No pledges for this event.</td></tr>
                                     ) : (
-                                        b1EventPledges.map(pledge => (
+                                        b1EventPledges.slice((b1CurrentPage - 1) * PAGE_SIZE, b1CurrentPage * PAGE_SIZE).map(pledge => (
                                             <tr key={pledge.id} className="hover:bg-slate-50/50">
                                                 <td className="px-6 py-4">
                                                     <div className="font-bold text-slate-800">{pledge.inviter?.fullName || 'Unknown'}</div>
@@ -624,6 +645,17 @@ export default function CampaignManagement() {
                                 </tbody>
                             </table>
                         </div>
+                        {b1EventPledges.length > PAGE_SIZE && (
+                            <div className="flex justify-between items-center px-6 py-4 border-t border-slate-100 bg-slate-50">
+                                <span className="text-sm text-slate-500 font-medium">
+                                    Showing {(b1CurrentPage - 1) * PAGE_SIZE + 1} to {Math.min(b1CurrentPage * PAGE_SIZE, b1EventPledges.length)} of {b1EventPledges.length}
+                                </span>
+                                <div className="flex gap-2">
+                                    <button disabled={b1CurrentPage === 1} onClick={() => setB1CurrentPage(p => p - 1)} className="px-3 py-1.5 bg-white border border-slate-200 font-bold text-slate-600 rounded-lg hover:bg-slate-50 disabled:opacity-50 transition-colors">Prev</button>
+                                    <button disabled={b1CurrentPage * PAGE_SIZE >= b1EventPledges.length} onClick={() => setB1CurrentPage(p => p + 1)} className="px-3 py-1.5 bg-white border border-slate-200 font-bold text-slate-600 rounded-lg hover:bg-slate-50 disabled:opacity-50 transition-colors">Next</button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
@@ -675,6 +707,17 @@ export default function CampaignManagement() {
                                     />
                                 </div>
                                 <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-1">Manual Override Target</label>
+                                    <input 
+                                        type="number" min="1" placeholder="Auto-calculated if empty"
+                                        onChange={e => {
+                                            const val = e.target.value;
+                                            setNewMobData(prev => ({ ...prev, manualTarget: val ? parseInt(val) : '' as any }));
+                                        }}
+                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-indigo-500"
+                                    />
+                                </div>
+                                <div className="col-span-2">
                                     <label className="block text-sm font-bold text-slate-700 mb-1">Submission Deadline</label>
                                     <input 
                                         required type="date"
@@ -729,6 +772,19 @@ export default function CampaignManagement() {
                                     className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-[#48A111]"
                                 />
                                 <p className="text-xs text-slate-500 mt-1">Target number of pledges each member should bring.</p>
+                            </div>
+                            
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-1">Manual Override Target</label>
+                                <input 
+                                    type="number" min="1" placeholder="Auto-calculated if empty"
+                                    onChange={e => {
+                                        const val = e.target.value;
+                                        setNewB1Data(prev => ({ ...prev, manualTarget: val ? parseInt(val) : '' as any }));
+                                    }}
+                                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-[#48A111]"
+                                />
+                                <p className="text-xs text-slate-500 mt-1">Overrides the automatic Target formula.</p>
                             </div>
                             
                             <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl flex gap-3 text-amber-800 text-sm mt-4">
@@ -791,6 +847,15 @@ export default function CampaignManagement() {
                                         className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:border-indigo-600 transition-colors"
                                     />
                                 </div>
+                                <div className="col-span-2">
+                                    <label className="block text-sm font-bold text-slate-700 mb-1">Manual Override Target</label>
+                                    <input 
+                                        type="number" min="1" placeholder="Auto-calculated if empty"
+                                        value={editMobData.manualTarget || ''}
+                                        onChange={e => setEditMobData({...editMobData, manualTarget: e.target.value ? parseInt(e.target.value) : null})}
+                                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:border-indigo-600 transition-colors"
+                                    />
+                                </div>
                             </div>
                             
                             <div className="pt-4 flex justify-end gap-3">
@@ -841,14 +906,25 @@ export default function CampaignManagement() {
                                     className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:border-[#48A111] transition-colors min-h-[80px]"
                                 />
                             </div>
-                            <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-1">Minimum Pledges per Member</label>
-                                <input 
-                                    type="number" required min="1"
-                                    value={editB1Data.minPledges}
-                                    onChange={e => setEditB1Data({...editB1Data, minPledges: e.target.value})}
-                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:border-[#48A111] transition-colors"
-                                />
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-1">Min Pledges/Member</label>
+                                    <input 
+                                        type="number" required min="1"
+                                        value={editB1Data.minPledges}
+                                        onChange={e => setEditB1Data({...editB1Data, minPledges: e.target.value})}
+                                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:border-[#48A111] transition-colors"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-1">Override Target</label>
+                                    <input 
+                                        type="number" min="1" placeholder="Auto-calculated"
+                                        value={editB1Data.manualTarget || ''}
+                                        onChange={e => setEditB1Data({...editB1Data, manualTarget: e.target.value ? parseInt(e.target.value) : null})}
+                                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:border-[#48A111] transition-colors"
+                                    />
+                                </div>
                             </div>
                             
                             <div className="pt-4 flex justify-end gap-3">

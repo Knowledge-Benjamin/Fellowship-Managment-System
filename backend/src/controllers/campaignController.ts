@@ -12,6 +12,7 @@ const createCampaignSchema = z.object({
     description: z.string().max(500).optional(),
     submissionDeadline: z.string().datetime('Invalid deadline format'),
     maxContacts: z.number().int().min(1).default(20),
+    manualTarget: z.number().int().min(1).nullable().optional(),
 });
 
 const updateCampaignSchema = z.object({
@@ -20,6 +21,7 @@ const updateCampaignSchema = z.object({
     submissionDeadline: z.string().datetime().optional(),
     status: z.enum(['DRAFT', 'OPEN', 'CLOSED', 'ARCHIVED']).optional(),
     maxContacts: z.number().int().min(1).optional(),
+    manualTarget: z.number().int().min(1).nullable().optional(),
 });
 
 const contactEntrySchema = z.object({
@@ -68,6 +70,7 @@ export const createCampaign = async (req: Request, res: Response) => {
                 description: data.description,
                 submissionDeadline: new Date(data.submissionDeadline),
                 maxContacts: data.maxContacts,
+                manualTarget: data.manualTarget,
                 createdBy: userId,
                 status: 'OPEN', // Force new campaigns to start open
             },
@@ -164,6 +167,32 @@ export const getCampaignById = async (req: Request, res: Response) => {
 
         if (!isManager && campaign.status === 'DRAFT') {
             return res.status(403).json({ message: 'Campaign is not yet available' });
+        }
+
+        // Attach duplicate match strings for Admin View
+        if (applyAdminView) {
+            const phoneMap = new Map<string, string[]>();
+            const emailMap = new Map<string, string[]>();
+
+            for (const contact of campaign.contacts) {
+                if (!phoneMap.has(contact.phone)) phoneMap.set(contact.phone, []);
+                phoneMap.get(contact.phone)!.push(contact.name);
+
+                if (contact.email) {
+                    if (!emailMap.has(contact.email)) emailMap.set(contact.email, []);
+                    emailMap.get(contact.email)!.push(contact.name);
+                }
+            }
+
+            campaign.contacts = campaign.contacts.map((contact: any) => {
+                if (contact.isDuplicate) {
+                    const samePhone = phoneMap.get(contact.phone)?.filter(n => n !== contact.name) || [];
+                    const sameEmail = contact.email ? (emailMap.get(contact.email)?.filter(n => n !== contact.name) || []) : [];
+                    const matches = Array.from(new Set([...samePhone, ...sameEmail]));
+                    contact.duplicateNames = matches.join(', ');
+                }
+                return contact;
+            });
         }
 
         // Submission count for the current member (for progress bar)
@@ -465,51 +494,74 @@ export const exportCampaign = async (req: Request, res: Response) => {
         const contacts = await prisma.mobilizationContact.findMany({
             where: { campaignId: id },
             include: {
-                submittedBy: { select: { fullName: true, fellowshipNumber: true } },
+                submittedBy: { select: { fullName: true, fellowshipNumber: true, region: { select: { name: true } } } },
                 calledBy: { select: { fullName: true } },
             },
             orderBy: [{ submittedById: 'asc' }, { name: 'asc' }],
         });
 
         const workbook = new ExcelJS.Workbook();
-        const sheet = workbook.addWorksheet('Mobilization Contacts', {
-            properties: { tabColor: { argb: 'FF6366f1' } },
-        });
-
-        const headerRow = sheet.addRow([
-            'Submitted By', 'Fellowship #', 'Contact Name', 'Phone', 'Email',
-            'Relationship', 'Call Status', 'Called By', 'Called At', 'Notes', 'Duplicate?',
-        ]);
-        headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-        headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF6366f1' } };
-        headerRow.height = 25;
-        headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
-        sheet.views = [{ state: 'frozen', xSplit: 0, ySplit: 1 }];
-
-        contacts.forEach((c, i) => {
-            const row = sheet.addRow([
-                c.submittedBy.fullName,
-                c.submittedBy.fellowshipNumber,
-                c.name,
-                c.phone,
-                c.email || '-',
-                c.relationship || '-',
-                c.callStatus.replace(/_/g, ' '),
-                c.calledBy?.fullName || '-',
-                c.calledAt ? c.calledAt.toISOString().split('T')[0] : '-',
-                c.notes || '-',
-                c.isDuplicate ? 'Yes' : 'No',
-            ]);
-            if (i % 2 === 0) {
-                row.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+        
+        // Group by Region
+        const regionMap = new Map<string, any[]>();
+        contacts.forEach(c => {
+            const regionName = c.submittedBy?.region?.name || 'Unassigned';
+            if (!regionMap.has(regionName)) {
+                regionMap.set(regionName, []);
             }
+            regionMap.get(regionName)!.push(c);
         });
 
-        sheet.columns = [
-            { width: 28 }, { width: 15 }, { width: 28 }, { width: 18 },
-            { width: 28 }, { width: 18 }, { width: 16 }, { width: 25 },
-            { width: 14 }, { width: 30 }, { width: 12 },
-        ];
+        const createSheet = (name: string, data: any[]) => {
+            const sheetName = name.replace(/[^a-zA-Z0-9 ]/g, "").substring(0, 31);
+            const sheet = workbook.addWorksheet(sheetName, {
+                properties: { tabColor: { argb: 'FF6366f1' } },
+            });
+
+            const headerRow = sheet.addRow([
+                'Submitted By', 'Fellowship #', 'Region', 'Contact Name', 'Phone', 'Email',
+                'Relationship', 'Call Status', 'Called By', 'Called At', 'Notes', 'Duplicate?',
+            ]);
+            headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF6366f1' } };
+            headerRow.height = 25;
+            headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
+            sheet.views = [{ state: 'frozen', xSplit: 0, ySplit: 1 }];
+
+            data.forEach((c, i) => {
+                const row = sheet.addRow([
+                    c.submittedBy?.fullName || 'Unknown',
+                    c.submittedBy?.fellowshipNumber || '-',
+                    c.submittedBy?.region?.name || 'Unassigned',
+                    c.name,
+                    c.phone,
+                    c.email || '-',
+                    c.relationship || '-',
+                    c.callStatus.replace(/_/g, ' '),
+                    c.calledBy?.fullName || '-',
+                    c.calledAt ? c.calledAt.toISOString().split('T')[0] : '-',
+                    c.notes || '-',
+                    c.isDuplicate ? 'Yes' : 'No',
+                ]);
+                if (i % 2 === 0) row.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+            });
+
+            sheet.columns = [
+                { width: 28 }, { width: 15 }, { width: 20 }, { width: 28 }, { width: 18 },
+                { width: 28 }, { width: 18 }, { width: 16 }, { width: 25 },
+                { width: 14 }, { width: 30 }, { width: 12 },
+            ];
+        };
+
+        // Create a sheet for each region
+        Array.from(regionMap.keys()).sort().forEach(regionName => {
+            createSheet(regionName, regionMap.get(regionName)!);
+        });
+
+        // Ensure at least one sheet exists if empty
+        if (contacts.length === 0) {
+            workbook.addWorksheet('No Contacts');
+        }
 
         const safeTitle = campaign.title.replace(/[^a-z0-9]/gi, '_').substring(0, 30);
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');

@@ -26,14 +26,16 @@ const transporter = nodemailer.createTransport({
     family: 4, // Force IPv4
 } as nodemailer.TransportOptions);
 
-// Verify SMTP transporter configuration
-transporter.verify((error: Error | null) => {
-    if (error) {
-        console.error('[EMAIL SERVICE] SMTP Configuration error:', error);
-    } else {
-        console.log('[EMAIL SERVICE] SMTP fallback ready');
-    }
-});
+// Verify SMTP transporter configuration only if SendGrid is missing
+if (!process.env.SENDGRID_API_KEY) {
+    transporter.verify((error: Error | null) => {
+        if (error) {
+            console.error('[EMAIL SERVICE] SMTP Configuration error:', error.message);
+        } else {
+            console.log('[EMAIL SERVICE] SMTP fallback ready');
+        }
+    });
+}
 
 /**
  * Send email using SendGrid (primary) with SMTP fallback

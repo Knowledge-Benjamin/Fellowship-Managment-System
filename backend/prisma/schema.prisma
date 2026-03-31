@@ -184,8 +184,9 @@ model Member {
   publishedReports      EventReport[]      @relation("PublishedReports")
 
   // Security relations
-  loginAttempts LoginAttempt[]
-  otps          OTP[]
+  loginAttempts        LoginAttempt[]
+  otps                 OTP[]
+  passwordResetTokens  PasswordResetToken[]
 
   // Profile edit requests
   profileEditRequests  ProfileEditRequest[] @relation("EditRequester")
@@ -651,6 +652,24 @@ model OTP {
   member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
 
   @@index([memberId])
+  @@index([expiresAt])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  memberId  String
+  // SHA-256 hash of the actual token — never store plaintext
+  tokenHash String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  // Track the IP that requested the reset (for audit)
+  ipAddress String?
+
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([memberId])
+  @@index([tokenHash])
   @@index([expiresAt])
 }
 

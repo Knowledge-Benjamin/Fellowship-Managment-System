@@ -4,10 +4,11 @@ import { z } from 'zod';
 import prisma from '../prisma';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import { asyncHandler } from '../utils/asyncHandler';
 import { isPrivilegedAccount, isAccountLocked, getRemainingLockoutTime } from '../utils/securityHelper';
 import { createOTP, verifyOTP as verifyOTPCode } from '../services/otpService';
-import { sendOTPEmail, sendAccountLockedEmail, sendPasswordChangedEmail } from '../services/emailService';
+import { sendOTPEmail, sendAccountLockedEmail, sendPasswordChangedEmail, sendPasswordResetEmail } from '../services/emailService';
 
 // Input validation schemas
 const loginSchema = z.object({
@@ -630,3 +631,132 @@ export const changePassword = asyncHandler(async (req: Request, res: Response) =
     res.json({ message: 'Password updated successfully' });
 });
 
+// Zod schemas for password reset
+const forgotPasswordSchema = z.object({
+    email: z.string().email('Invalid email format'),
+});
+
+const resetPasswordSchema = z.object({
+    token: z.string().min(1, 'Reset token is required'),
+    newPassword: z.string().min(8, 'New password must be at least 8 characters'),
+});
+
+/**
+ * Forgot Password - Send Reset Link
+ */
+export const forgotPassword = asyncHandler(async (req: Request, res: Response) => {
+    const result = forgotPasswordSchema.safeParse(req.body);
+    if (!result.success) {
+        res.status(400);
+        throw new Error(result.error.issues[0].message);
+    }
+
+    const { email } = result.data;
+    
+    // Use findFirst over findUnique when including soft-delete filters
+    const user = await prisma.member.findFirst({
+        where: { email, ...activeMemberFilter },
+    });
+
+    // We ALWAYS show the same success message even if the email doesn't exist to prevent email enumeration attacks
+    if (!user) {
+        // Dummy timing to prevent timing attacks
+        await bcrypt.hash('dummy', 10);
+        res.json({ message: 'If an account exists with that email, a password reset link has been sent.' });
+        return;
+    }
+
+    // Generate a secure random token
+    // 32 bytes = 256 bits, converted to hex
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    
+    // Hash token for database storage (prevent compromised DB from exposing tokens)
+    const tokenHash = crypto.createHash('sha256').update(resetToken).digest('hex');
+
+    // Token expires in 15 minutes
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+    // Add token to database
+    await prisma.passwordResetToken.create({
+        data: {
+            memberId: user.id,
+            tokenHash,
+            expiresAt,
+            ipAddress: req.ip || 'unknown'
+        }
+    });
+
+    // Send the email with the raw token (front-end URL)
+    await sendPasswordResetEmail(user.email, user.fullName, resetToken);
+
+    res.json({ message: 'If an account exists with that email, a password reset link has been sent.' });
+});
+
+/**
+ * Reset Password - Consume Token and set new password
+ */
+export const resetPassword = asyncHandler(async (req: Request, res: Response) => {
+    const result = resetPasswordSchema.safeParse(req.body);
+    if (!result.success) {
+        res.status(400);
+        throw new Error(result.error.issues[0].message);
+    }
+
+    const { token, newPassword } = result.data;
+
+    // Hash the incoming token to look it up in the database
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+
+    // Find valid token
+    const resetRecord = await prisma.passwordResetToken.findUnique({
+        where: { tokenHash },
+        include: { member: true }
+    });
+
+    if (!resetRecord) {
+        res.status(400);
+        throw new Error('Invalid or expired password reset link');
+    }
+
+    if (resetRecord.used) {
+        res.status(400);
+        throw new Error('This password reset link has already been used');
+    }
+
+    if (resetRecord.expiresAt < new Date()) {
+        res.status(400);
+        throw new Error('This password reset link has expired');
+    }
+
+    if (resetRecord.member.isDeleted) {
+        res.status(400);
+        throw new Error('Account inactive');
+    }
+
+    // Hash the new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Run transaction to mark token used AND update password atomically
+    await prisma.$transaction([
+        prisma.member.update({
+            where: { id: resetRecord.memberId },
+            data: { 
+                password: hashedPassword,
+                // If they had a forced reset, this satisfies it
+                forcePasswordChange: false,
+                // Standard security practice: clear old sessions/lockouts
+                failedLoginAttempts: 0,
+                lockedUntil: null
+            }
+        }),
+        prisma.passwordResetToken.update({
+            where: { id: resetRecord.id },
+            data: { used: true }
+        })
+    ]);
+
+    // Notify user to confirm the change
+    await sendPasswordChangedEmail(resetRecord.member.email, resetRecord.member.fullName);
+
+    res.json({ message: 'Password has been successfully reset. You may now log in.' });
+});

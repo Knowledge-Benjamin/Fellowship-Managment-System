@@ -14,6 +14,7 @@ const TagManagement = lazy(() => import('./pages/TagManagement'));
 const MemberManagement = lazy(() => import('./pages/MemberManagement'));
 const Login = lazy(() => import('./pages/Login'));
 const ForcePasswordChange = lazy(() => import('./pages/ForcePasswordChange'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword'));
 const Profile = lazy(() => import('./pages/Profile'));
 const CourseManagement = lazy(() => import('./pages/CourseManagement'));
 const ResidenceManagement = lazy(() => import('./pages/ResidenceManagement'));
@@ -79,6 +80,7 @@ function AppContent() {
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route path="/force-change-password" element={<ForcePasswordChange />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
 
               {/* Public self-registration (no auth required) */}
               <Route path="/register" element={<SelfRegistration />} />

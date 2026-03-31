@@ -1,5 +1,5 @@
 import express from 'express';
-import { login, verifyOTP, resendOTP, getMe, forceChangePassword, changePassword } from '../controllers/authController';
+import { login, verifyOTP, resendOTP, getMe, forceChangePassword, changePassword, forgotPassword, resetPassword } from '../controllers/authController';
 import { loginRateLimiter, otpRateLimiter, resendOTPRateLimiter } from '../middleware/rateLimiters';
 import { protect } from '../middleware/authMiddleware';
 
@@ -18,6 +18,8 @@ router.post('/resend-otp', resendOTPRateLimiter, resendOTP);
 router.get('/me', protect, getMe);
 
 // Password Management
+router.post('/forgot-password', forgotPassword);
+router.post('/reset-password', resetPassword);
 router.post('/force-change-password', forceChangePassword);
 router.post('/change-password', protect, changePassword);
 

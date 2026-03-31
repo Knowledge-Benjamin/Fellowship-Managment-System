@@ -33,6 +33,12 @@ const Login = () => {
     const [isSuccess, setIsSuccess] = useState(false);
     const [isShaking, setIsShaking] = useState(false);
 
+    // Forgot Password State
+    const [showForgotModal, setShowForgotModal] = useState(false);
+    const [forgotEmail, setForgotEmail] = useState('');
+    const [forgotLoading, setForgotLoading] = useState(false);
+    const [forgotStatus, setForgotStatus] = useState<{type: 'success' | 'error', msg: string} | null>(null);
+
     // Audio context for sound effects
     const playErrorSound = () => {
         try {
@@ -243,6 +249,25 @@ const Login = () => {
         setError('');
     };
 
+    // Handle Forgot Password submission
+    const handleForgotPassword = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setForgotLoading(true);
+        setForgotStatus(null);
+        
+        try {
+            const res = await api.post('/auth/forgot-password', { email: forgotEmail });
+            setForgotStatus({ type: 'success', msg: res.data.message });
+        } catch (err: any) {
+            setForgotStatus({ 
+                type: 'error', 
+                msg: err.response?.data?.message || 'Failed to send reset email. Please try again.' 
+            });
+        } finally {
+            setForgotLoading(false);
+        }
+    };
+
     if (showOTPScreen) {
         return (
             <div className="h-dvh overflow-hidden flex items-center justify-center px-3 sm:px-4 bg-slate-100">
@@ -368,6 +393,16 @@ const Login = () => {
                                 placeholder="Enter your password"
                             />
                         </div>
+                        <div className="flex justify-end mt-2">
+                            <button
+                                type="button"
+                                onClick={() => setShowForgotModal(true)}
+                                className="text-sm font-medium hover:underline transition-all"
+                                style={{ color: '#48A111' }}
+                            >
+                                Forgot Password?
+                            </button>
+                        </div>
                     </div>
 
                     <button
@@ -392,6 +427,67 @@ const Login = () => {
                     </button>
                 </form>
             </div>
+
+            {/* Forgot Password Modal */}
+            {showForgotModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 relative animate-scale-up">
+                        <div className="mb-5">
+                            <h2 className="text-xl font-bold text-slate-900">Reset Password</h2>
+                            <p className="text-sm text-slate-500 mt-1">Enter your email address and we'll send you a link to reset your password.</p>
+                        </div>
+                        
+                        {forgotStatus && (
+                            <div className={`p-4 rounded-xl mb-5 text-sm ${
+                                forgotStatus.type === 'success' 
+                                    ? 'bg-green-50 border border-green-200 text-green-700' 
+                                    : 'bg-red-50 border border-red-100 text-red-700'
+                            }`}>
+                                {forgotStatus.msg}
+                            </div>
+                        )}
+
+                        <form onSubmit={handleForgotPassword}>
+                            <label className="block text-slate-700 mb-2 text-sm font-medium">Email Address</label>
+                            <input
+                                type="email"
+                                required
+                                value={forgotEmail}
+                                onChange={(e) => setForgotEmail(e.target.value)}
+                                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#48A111]/20 focus:border-[#48A111] transition-all"
+                                placeholder="Enter your email"
+                                disabled={forgotLoading || forgotStatus?.type === 'success'}
+                            />
+
+                            <div className="mt-6 flex gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setShowForgotModal(false);
+                                        setForgotStatus(null);
+                                        setForgotEmail('');
+                                    }}
+                                    className="flex-1 py-2.5 rounded-xl font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors"
+                                >
+                                    Close
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={forgotLoading || forgotStatus?.type === 'success' || !forgotEmail}
+                                    className="flex-1 py-2.5 rounded-xl font-medium text-white transition-all disabled:opacity-50 flex items-center justify-center"
+                                    style={{ backgroundColor: '#48A111' }}
+                                >
+                                    {forgotLoading ? (
+                                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                    ) : (
+                                        'Send Reset Link'
+                                    )}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

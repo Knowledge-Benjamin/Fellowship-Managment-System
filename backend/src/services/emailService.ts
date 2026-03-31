@@ -1101,3 +1101,76 @@ Fellowship Management System
     // No transaction passed, use direct sendEmail
     return await sendEmail(email, subject, html, text);
 };
+
+export const sendPasswordResetEmail = async (
+    email: string,
+    fullName: string,
+    resetToken: string
+): Promise<void> => {
+    const settings = getSettings();
+    const resetUrl = `${settings.frontendUrl}/reset-password?token=${resetToken}`;
+
+    const subject = '🔐 Password Reset Request';
+    const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                .header { background: linear-gradient(135deg, #14b8a6 0%, #0891b2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+                .content { background: #f8fafc; padding: 30px; border-radius: 0 0 10px 10px; }
+                .btn { display: inline-block; background: #48A111; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; margin: 20px 0; }
+                .warning { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0; border-radius: 4px; font-size: 14px; }
+                .footer { text-align: center; padding: 20px; color: #64748b; font-size: 12px; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1 style="margin: 0;">🔐 Password Reset</h1>
+                </div>
+                <div class="content">
+                    <p>Hello <strong>${fullName}</strong>,</p>
+                    <p>We received a request to reset the password for your Fellowship Manager account.</p>
+                    
+                    <div style="text-align: center;">
+                        <a href="${resetUrl}" class="btn">Reset My Password</a>
+                    </div>
+                    
+                    <p style="font-size: 14px; color: #64748b; text-align: center; word-break: break-all;">
+                        Or copy this link:<br>
+                        <a href="${resetUrl}" style="color: #0891b2;">${resetUrl}</a>
+                    </p>
+
+                    <div class="warning">
+                        <strong>⚠️ Security Notice:</strong> This link will expire in 15 minutes. If you did not request a password reset, you can safely ignore this email &mdash; your password will not be changed.
+                    </div>
+                    
+                    <p style="margin-top: 30px;">Best regards,<br><strong>Fellowship Management Team</strong></p>
+                </div>
+                <div class="footer">
+                    <p>This is an automated message. Please do not reply to this email.</p>
+                    <p>&copy; ${new Date().getFullYear()} Fellowship Manager. All rights reserved.</p>
+                </div>
+            </div>
+        </body>
+        </html>
+    `;
+
+    const text = `
+Hello ${fullName},
+
+We received a request to reset the password for your Fellowship Manager account.
+
+Reset your password here:
+${resetUrl}
+
+This link will expire in 15 minutes. If you did not request a password reset, you can safely ignore this email.
+
+Best regards,
+Fellowship Management Team
+    `.trim();
+
+    await sendEmail(email, subject, html, text);
+};

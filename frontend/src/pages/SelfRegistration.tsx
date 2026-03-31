@@ -632,7 +632,7 @@ const SelfRegistration = () => {
                     )}
                     {formData.regionId && formData.isMakerereStudent && !isCentral && !isNonResident && (
                         <div className="space-y-1.5">
-                            <label className="text-sm font-semibold text-slate-700">Hostel Name <span className="text-red-500">*</span></label>
+                            <label className="text-sm font-semibold text-slate-700">Hostel / Hall <span className="text-red-500">*</span></label>
                             <input type="text" className="input transition-smooth" placeholder="e.g. Olympia, Dream Land"
                                 value={formData.hostelName} required onChange={e => setFormData(p => ({ ...p, hostelName: e.target.value }))} />
                         </div>

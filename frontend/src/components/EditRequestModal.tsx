@@ -55,7 +55,7 @@ const FIELD_LABELS: Record<string, string> = {
     initialYearOfStudy: 'Year of Study',
     initialSemester: 'Semester',
     residenceId: 'Hall / Residence',
-    hostelName: 'Hostel Name',
+    hostelName: 'Hostel / Hall',
 };
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -483,7 +483,7 @@ const EditRequestModal: React.FC<EditRequestModalProps> = ({
 
                                     {showHostelField && (
                                         <div className="space-y-1.5 max-w-sm">
-                                            <label className="text-sm font-semibold text-slate-700">Hostel Name</label>
+                                            <label className="text-sm font-semibold text-slate-700">Hostel / Hall</label>
                                             <input
                                                 type="text"
                                                 className="input transition-smooth"

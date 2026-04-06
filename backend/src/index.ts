@@ -40,6 +40,7 @@ import transferRoutes from './routes/transferRoutes';
 import familyTransferRoutes from './routes/familyTransferRoutes';
 import bringOneRoutes from './routes/bringOneRoutes';
 import campaignRoutes from './routes/campaignRoutes';
+import systemRoutes from './routes/systemRoutes';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -61,6 +62,11 @@ const limiter = rateLimit({
 app.use(limiter);
 
 app.use(express.json());
+
+// ── System Admin Routes (Control Plane) ─────────────────────────────────────
+// These MUST be registered BEFORE tenantMiddleware so they route to the
+// Management DB, not a campus DB. No X-Campus-Domain header is required.
+app.use('/api/system', systemRoutes);
 
 // ── Tenant Database Injection ────────────────────────────────────────────────
 // Resolves the correct Neon PrismaClient for each campus and attaches it to

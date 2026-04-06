@@ -1,0 +1,56 @@
+// ─── Control Plane / Management Database Schema ─────────────────────────────
+// This schema is SEPARATE from the main campus schema.prisma.
+// It is the "directory" that maps subdomain → Neon database URL + campus config.
+//
+// Generator uses a custom output directory so both clients can coexist.
+
+generator managementClient {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/management-client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("MANAGEMENT_DATABASE_URL")
+}
+
+// ─── Campus Registry ────────────────────────────────────────────────────────
+model Campus {
+  id          String   @id @default(cuid())
+  name        String                          // "Makerere University Campus"
+  subdomain   String   @unique                // "makerere" → makerere.domain.com
+  databaseUrl String                          // Full Neon connection string for this tenant's DB
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Customisation config stored as JSON:
+  // {
+  //   "terminology": {
+  //     "Region":         "Region",
+  //     "FamilyGroup":    "Family",
+  //     "MinistryTeam":   "Ministry Team",
+  //     "FellowshipManager": "Fellowship Manager"
+  //   },
+  //   "primaryColor": "#4F46E5",
+  //   "logoUrl": "https://..."
+  // }
+  config Json @default("{}")
+
+  @@map("campuses")
+}
+
+// ─── System Admin Accounts ───────────────────────────────────────────────────
+// Super-admins who can provision/deactivate campuses.
+// These users exist ONLY in the management DB — they have no presence in any
+// individual campus database.
+model SystemAdmin {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  fullName     String
+  createdAt    DateTime @default(now())
+  lastLoginAt  DateTime?
+
+  @@map("system_admins")
+}

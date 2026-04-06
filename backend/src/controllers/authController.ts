@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
 import { activeMemberFilter } from '../utils/queryHelpers';
 import { z } from 'zod';
-import prisma from '../prisma';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
@@ -9,6 +8,7 @@ import { asyncHandler } from '../utils/asyncHandler';
 import { isPrivilegedAccount, isAccountLocked, getRemainingLockoutTime } from '../utils/securityHelper';
 import { createOTP, verifyOTP as verifyOTPCode } from '../services/otpService';
 import { sendOTPEmail, sendAccountLockedEmail, sendPasswordChangedEmail, sendPasswordResetEmail } from '../services/emailService';
+import { PrismaClient } from "@prisma/client";
 
 // Input validation schemas
 const loginSchema = z.object({
@@ -55,6 +55,7 @@ const generateTempToken = (id: string) => {
  * - Privileged accounts: Get temporary token, OTP sent to email
  */
 export const login = asyncHandler(async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     console.log('[LOGIN] Request received:', { email: req.body.email, ip: req.ip });
 
     // Validate input
@@ -299,6 +300,7 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
  * Step 2: Verify OTP (for privileged accounts only)
  */
 export const verifyOTP = asyncHandler(async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     console.log('[VERIFY OTP] Request received');
 
     // Validate input
@@ -409,6 +411,7 @@ export const verifyOTP = asyncHandler(async (req: Request, res: Response) => {
  * Resend OTP
  */
 export const resendOTP = asyncHandler(async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     console.log('[RESEND OTP] Request received');
 
     // Validate input
@@ -469,6 +472,7 @@ export const resendOTP = asyncHandler(async (req: Request, res: Response) => {
  * Used by the frontend refreshUser() to sync tags/profile without re-login.
  */
 export const getMe = asyncHandler(async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     const userId = req.user?.id;
     if (!userId) {
         res.status(401);
@@ -520,6 +524,7 @@ export const getMe = asyncHandler(async (req: Request, res: Response) => {
  * Requires standard email/old password combination to prevent direct API jumps, then applies the new password.
  */
 export const forceChangePassword = asyncHandler(async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     const result = forceChangePasswordSchema.safeParse(req.body);
     if (!result.success) {
         res.status(400);
@@ -590,6 +595,7 @@ export const forceChangePassword = asyncHandler(async (req: Request, res: Respon
  * Change Password (Authenticated Profile endpoint)
  */
 export const changePassword = asyncHandler(async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     const userId = req.user?.id;
     if (!userId) {
         res.status(401);
@@ -645,6 +651,7 @@ const resetPasswordSchema = z.object({
  * Forgot Password - Send Reset Link
  */
 export const forgotPassword = asyncHandler(async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     const result = forgotPasswordSchema.safeParse(req.body);
     if (!result.success) {
         res.status(400);
@@ -696,6 +703,7 @@ export const forgotPassword = asyncHandler(async (req: Request, res: Response) =
  * Reset Password - Consume Token and set new password
  */
 export const resetPassword = asyncHandler(async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     const result = resetPasswordSchema.safeParse(req.body);
     if (!result.success) {
         res.status(400);

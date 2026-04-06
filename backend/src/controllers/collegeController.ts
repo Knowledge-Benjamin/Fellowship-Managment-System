@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
-import prisma from '../prisma';
 import cache from '../utils/cache';
+import { PrismaClient } from "@prisma/client";
 
 // Validation schemas
 const createCollegeSchema = z.object({
@@ -13,6 +13,7 @@ const updateCollegeSchema = createCollegeSchema.partial();
 
 // Get all colleges
 export const getColleges = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const cacheKey = 'colleges_all';
         const cached = cache.get(cacheKey);
@@ -37,6 +38,7 @@ export const getColleges = async (req: Request, res: Response) => {
 
 // Create a new college
 export const createCollege = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const validatedData = createCollegeSchema.parse(req.body);
 
@@ -69,6 +71,7 @@ export const createCollege = async (req: Request, res: Response) => {
 
 // Update a college
 export const updateCollege = async (req: Request<{ id: string }>, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { id } = req.params;
         const validatedData = updateCollegeSchema.parse(req.body);
@@ -91,6 +94,7 @@ export const updateCollege = async (req: Request<{ id: string }>, res: Response)
 
 // Delete a college
 export const deleteCollege = async (req: Request<{ id: string }>, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { id } = req.params;
 

@@ -1,9 +1,9 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
-import prisma from '../prisma';
 import { getNowInEAT, getEventTimeInEAT } from '../utils/timezone';
 import { activeMemberFilter } from '../utils/queryHelpers';
 import { advancePledgeToAttended } from './bringOneController';
+import { PrismaClient } from "@prisma/client";
 
 // Validation schemas
 const checkInSchema = z.object({
@@ -31,6 +31,7 @@ const offlineSyncSchema = z.array(z.object({
 }));
 
 export const checkIn = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         // Validate input
         const validatedData = checkInSchema.parse(req.body);
@@ -122,7 +123,7 @@ export const checkIn = async (req: Request, res: Response) => {
             console.log(`[FIRST-TIMER] Tag removed for member ${member.fullName} after first attendance at event ${event.name}`);
             
             // Execute Bring 1 auto-advance to ATTENDED
-            advancePledgeToAttended(member.id).catch(err => 
+            advancePledgeToAttended(prisma, member.id).catch(err => 
                 console.error('[BRING-ONE] Auto-advance to ATTENDED failed:', err)
             );
         }
@@ -152,6 +153,7 @@ export const checkIn = async (req: Request, res: Response) => {
 
 // Guest check-in (no QR code required)
 export const guestCheckIn = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         // Validate input
         const validatedData = guestCheckInSchema.parse(req.body);
@@ -204,6 +206,7 @@ export const guestCheckIn = async (req: Request, res: Response) => {
 
 // Get event attendance
 export const getEventAttendance = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { eventId } = req.params;
 
@@ -261,6 +264,7 @@ export const getEventAttendance = async (req: Request, res: Response) => {
 
 // Get all members with check-in status for manual check-in (Managers only)
 export const getMembersForCheckIn = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { eventId } = req.params;
         const { search, regionId, gender, status, page = '1', limit = '50' } = req.query;
@@ -392,6 +396,7 @@ export const getMembersForCheckIn = async (req: Request, res: Response) => {
  * Fetches lightweight, active member roster for IndexedDB caching
  */
 export const getOfflineRoster = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { eventId } = req.params;
         if (!eventId || typeof eventId !== 'string') return res.status(400).json({ error: 'Invalid event ID' });
@@ -425,6 +430,7 @@ export const getOfflineRoster = async (req: Request, res: Response) => {
  * Accepts an array of offline check-ins and sinks them idempotently.
  */
 export const syncOfflineBatch = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const records = offlineSyncSchema.parse(req.body);
 
@@ -476,7 +482,7 @@ export const syncOfflineBatch = async (req: Request, res: Response) => {
                     });
                     
                     // Execute Bring 1 auto-advance to ATTENDED
-                    advancePledgeToAttended(record.memberId).catch(err => 
+                    advancePledgeToAttended(prisma, record.memberId).catch(err => 
                         console.error('[BRING-ONE] Auto-advance to ATTENDED failed for offline sync:', err)
                     );
                 }

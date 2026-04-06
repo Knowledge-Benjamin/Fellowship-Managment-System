@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
-import prisma from '../prisma';
 import { EmailStatus } from '@prisma/client';
+import { PrismaClient } from "@prisma/client";
 
 // ─── In-memory settings (initialized from env, runtime-editable) ───────────────
 interface EmailSettings {
@@ -15,7 +15,8 @@ let emailSettings: EmailSettings = {
     frontendUrl: process.env.FRONTEND_URL || '',
 };
 
-export const getEmailSettings = (_req: Request, res: Response) => {
+export const getEmailSettings = (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     res.json({
         ...emailSettings,
         sendgridConfigured: !!process.env.SENDGRID_API_KEY,
@@ -25,6 +26,7 @@ export const getEmailSettings = (_req: Request, res: Response) => {
 };
 
 export const updateEmailSettings = (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     const { fromName, replyTo, frontendUrl } = req.body;
     if (fromName !== undefined) emailSettings.fromName = String(fromName).trim();
     if (replyTo !== undefined) emailSettings.replyTo = String(replyTo).trim();
@@ -38,6 +40,7 @@ export const getSettings = () => emailSettings;
 // ─── Queue / Stats ─────────────────────────────────────────────────────────────
 
 export const getEmailQueue = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { status, search, page = '1', limit = '20' } = req.query;
         const parsedPage = Math.max(1, parseInt(String(page), 10) || 1);
@@ -84,7 +87,8 @@ export const getEmailQueue = async (req: Request, res: Response) => {
     }
 };
 
-export const getEmailStats = async (_req: Request, res: Response) => {
+export const getEmailStats = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const [pending, processing, completed, failed] = await Promise.all([
             prisma.emailQueue.count({ where: { status: EmailStatus.PENDING } }),
@@ -100,6 +104,7 @@ export const getEmailStats = async (_req: Request, res: Response) => {
 };
 
 export const previewEmail = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const id = req.params.id as string;
         const email = await prisma.emailQueue.findUnique({
@@ -114,6 +119,7 @@ export const previewEmail = async (req: Request, res: Response) => {
 };
 
 export const retryEmail = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const id = req.params.id as string;
         const email = await prisma.emailQueue.findUnique({ where: { id } });
@@ -135,6 +141,7 @@ export const retryEmail = async (req: Request, res: Response) => {
 };
 
 export const deleteEmail = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const id = req.params.id as string;
         const email = await prisma.emailQueue.findUnique({ where: { id } });
@@ -153,6 +160,7 @@ export const deleteEmail = async (req: Request, res: Response) => {
 // ─── Compose ───────────────────────────────────────────────────────────────────
 
 export const composeEmail = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const {
             subject,
@@ -245,7 +253,8 @@ export const composeEmail = async (req: Request, res: Response) => {
 
 // ─── Recipients helper ────────────────────────────────────────────────────────
 
-export const getRecipientOptions = async (_req: Request, res: Response) => {
+export const getRecipientOptions = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const [regions, tags] = await Promise.all([
             prisma.region.findMany({ select: { id: true, name: true }, orderBy: { name: 'asc' } }),

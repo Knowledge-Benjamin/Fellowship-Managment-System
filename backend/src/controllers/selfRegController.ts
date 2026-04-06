@@ -1,11 +1,11 @@
 import { Request, Response } from 'express';
 import crypto from 'crypto';
 import { z } from 'zod';
-import prisma from '../prisma';
 import { createMemberRecord } from '../services/memberService';
 import { scheduleWelcomeEmail } from '../services/emailService';
 import { matchAndAdvancePledge, advancePledgeToJoined } from './bringOneController';
 import cache from '../utils/cache';
+import { PrismaClient } from "@prisma/client";
 
 // ─── Schemas ──────────────────────────────────────────────────────────────────
 
@@ -73,6 +73,7 @@ const selfRegSubmitSchema = z.object({
  * Create a new registration token
  */
 export const createToken = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const data = createTokenSchema.parse(req.body);
         const memberId = (req as any).user?.id;
@@ -104,7 +105,8 @@ export const createToken = async (req: Request, res: Response) => {
  * GET /api/reg-tokens
  * List all tokens with pending count
  */
-export const listTokens = async (_req: Request, res: Response) => {
+export const listTokens = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const tokens = await prisma.registrationToken.findMany({
             orderBy: { createdAt: 'desc' },
@@ -113,7 +115,7 @@ export const listTokens = async (_req: Request, res: Response) => {
             },
         });
 
-        const baseUrl = process.env.FRONTEND_URL || _req.get('origin') || 'http://localhost:5173';
+        const baseUrl = process.env.FRONTEND_URL || req.get('origin') || 'http://localhost:5173';
         const result = tokens.map(t => ({
             ...t,
             url: `${baseUrl}/register?token=${t.token}`,
@@ -132,6 +134,7 @@ export const listTokens = async (_req: Request, res: Response) => {
  * Revoke (deactivate) a token
  */
 export const revokeToken = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const id = req.params.id as string;
         const token = await prisma.registrationToken.update({
@@ -152,6 +155,7 @@ export const revokeToken = async (req: Request, res: Response) => {
  * Validate a token before showing the registration form
  */
 export const validateToken = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     const { token } = req.query as { token?: string };
 
     if (!token) return res.status(400).json({ valid: false, reason: 'Token is required' });
@@ -173,6 +177,7 @@ export const validateToken = async (req: Request, res: Response) => {
  * Public endpoint to fetch families securely using registration token
  */
 export const getPublicFamiliesForRegion = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const regionId = req.params.regionId as string;
         const { token } = req.query as { token?: string };
@@ -231,6 +236,7 @@ export const getPublicFamiliesForRegion = async (req: Request, res: Response) =>
  * Submit a self-registration (public, no auth)
  */
 export const submitSelfReg = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const data = selfRegSubmitSchema.parse(req.body);
         const ipAddress = (Array.isArray(req.ip) ? req.ip[0] : req.ip) ?? req.socket?.remoteAddress ?? 'unknown';
@@ -303,7 +309,7 @@ export const submitSelfReg = async (req: Request, res: Response) => {
         }, { timeout: 15000 });
 
         // Execute Bring 1 automatic pledge match (runs in background without failing the request)
-        matchAndAdvancePledge({
+        matchAndAdvancePledge(prisma, {
             email: data.email,
             phone: data.phoneNumber,
             pendingMemberId: pending.id,
@@ -325,7 +331,8 @@ export const submitSelfReg = async (req: Request, res: Response) => {
 /**
  * GET /api/pending-members
  */
-export const listPendingMembers = async (_req: Request, res: Response) => {
+export const listPendingMembers = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const pending = await prisma.pendingMember.findMany({
             where: { status: 'PENDING' },
@@ -344,6 +351,7 @@ export const listPendingMembers = async (_req: Request, res: Response) => {
  * FM edits fields on a pending submission before approval
  */
 export const updatePendingMember = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const id = req.params.id as string;
         const {
@@ -386,6 +394,7 @@ export const updatePendingMember = async (req: Request, res: Response) => {
  * Approve a pending member — creates a real Member record
  */
 export const approvePendingMember = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const id = req.params.id as string;
         const reviewerId = String((req as any).user?.id ?? '');
@@ -485,7 +494,7 @@ export const approvePendingMember = async (req: Request, res: Response) => {
         await scheduleWelcomeEmail(member.email, member.fullName, fellowshipNumber, temporaryPassword || '', member.qrCode, editedByFM);
 
         // Execute Bring 1 auto-advance to JOINED
-        advancePledgeToJoined(pending.id, member.id)
+        advancePledgeToJoined(prisma, pending.id, member.id)
             .catch(err => console.error('[BRING-ONE] Auto-advance to JOINED failed:', err));
 
         res.json({
@@ -507,6 +516,7 @@ export const approvePendingMember = async (req: Request, res: Response) => {
  * Reject a pending member with an optional note
  */
 export const rejectPendingMember = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const id = req.params.id as string;
         const { reviewNote } = req.body;
@@ -544,7 +554,8 @@ export const rejectPendingMember = async (req: Request, res: Response) => {
  * GET /api/pending-members/stats
  * Summary counts for the FM dashboard badge
  */
-export const getPendingStats = async (_req: Request, res: Response) => {
+export const getPendingStats = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const [pending, approvedToday, rejectedToday] = await Promise.all([
             prisma.pendingMember.count({ where: { status: 'PENDING' } }),

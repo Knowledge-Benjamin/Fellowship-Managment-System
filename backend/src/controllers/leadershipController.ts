@@ -1,10 +1,11 @@
 import { Request, Response } from 'express';
-import prisma from '../prisma';
 import { formatRegionName } from '../utils/displayFormatters';
 import { activeMemberFilter } from '../utils/queryHelpers';
+import { PrismaClient } from "@prisma/client";
 
 // Get organizational structure  
 export const getOrgStructure = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const userId = req.user?.id;
         const userRole = req.user?.role;
@@ -118,6 +119,7 @@ export const getOrgStructure = async (req: Request, res: Response) => {
 
 // Assign regional head (replaces existing head automatically)
 export const assignRegionalHead = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { regionId, memberId } = req.body;
         const assignerId = req.user?.id;
@@ -239,6 +241,7 @@ export const assignRegionalHead = async (req: Request, res: Response) => {
 
 // Remove regional head
 export const removeRegionalHead = async (req: Request<{ regionId: string }>, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { regionId } = req.params;
         const removerId = req.user?.id;
@@ -297,6 +300,7 @@ export const removeRegionalHead = async (req: Request<{ regionId: string }>, res
 
 // Get leadership stats
 export const getLeadershipStats = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const [
             regionalHeadsCount,

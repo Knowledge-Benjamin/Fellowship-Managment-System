@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
-import prisma from '../prisma';
 import { z } from 'zod';
+import { PrismaClient } from "@prisma/client";
 
 // Validation Schemas
 const createSalvationSchema = z.object({
@@ -33,6 +33,7 @@ const updateSalvationSchema = z.object({
  * POST /api/salvations
  */
 export const createSalvation = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const validatedData = createSalvationSchema.parse(req.body);
         const userId = (req as any).user?.id;
@@ -75,6 +76,7 @@ export const createSalvation = async (req: Request, res: Response) => {
  * GET /api/salvations?eventId=&status=&startDate=&endDate=
  */
 export const getAllSalvations = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { eventId, status, startDate, endDate, decisionType } = req.query;
 
@@ -142,6 +144,7 @@ export const getAllSalvations = async (req: Request, res: Response) => {
  * GET /api/salvations/:id
  */
 export const getSalvationById = async (req: Request<{ id: string }>, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { id } = req.params;
 
@@ -192,6 +195,7 @@ export const getSalvationById = async (req: Request<{ id: string }>, res: Respon
  * PUT /api/salvations/:id
  */
 export const updateSalvation = async (req: Request<{ id: string }>, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { id } = req.params;
         const validatedData = updateSalvationSchema.parse(req.body);
@@ -240,6 +244,7 @@ export const updateSalvation = async (req: Request<{ id: string }>, res: Respons
  * DELETE /api/salvations/:id
  */
 export const deleteSalvation = async (req: Request<{ id: string }>, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { id } = req.params;
 
@@ -259,6 +264,7 @@ export const deleteSalvation = async (req: Request<{ id: string }>, res: Respons
  * GET /api/salvations/stats
  */
 export const getSalvationStats = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { startDate, endDate } = req.query;
 

@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
-import prisma from '../prisma';
 import { formatResidencesForDisplay, formatResidenceForDisplay, formatRegionName } from '../utils/displayFormatters';
+import { PrismaClient } from "@prisma/client";
 
 // Validation schemas
 const createResidenceSchema = z.object({
@@ -14,6 +14,7 @@ const updateResidenceSchema = createResidenceSchema.partial();
 
 // Get all residences
 export const getResidences = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const residences = await prisma.residence.findMany({
             include: {
@@ -42,6 +43,7 @@ export const getResidences = async (req: Request, res: Response) => {
 
 // Create a new residence
 export const createResidence = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const validatedData = createResidenceSchema.parse(req.body);
 
@@ -77,6 +79,7 @@ export const createResidence = async (req: Request, res: Response) => {
 
 // Update a residence
 export const updateResidence = async (req: Request<{ id: string }>, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { id } = req.params;
         const validatedData = updateResidenceSchema.parse(req.body);
@@ -101,6 +104,7 @@ export const updateResidence = async (req: Request<{ id: string }>, res: Respons
 
 // Delete a residence
 export const deleteResidence = async (req: Request<{ id: string }>, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { id } = req.params;
 

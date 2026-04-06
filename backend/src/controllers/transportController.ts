@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
-import prisma from '../prisma';
+import { PrismaClient } from "@prisma/client";
 
 // Validation schemas
 const bookTransportSchema = z.object({
@@ -10,6 +10,7 @@ const bookTransportSchema = z.object({
 });
 
 export const bookTransport = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         // Validate input
         const validatedData = bookTransportSchema.parse(req.body);
@@ -88,6 +89,7 @@ export const bookTransport = async (req: Request, res: Response) => {
 };
 
 export const getTransportList = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { eventId } = req.params;
 

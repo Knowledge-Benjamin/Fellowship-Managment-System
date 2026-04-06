@@ -1,6 +1,5 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
-import prisma from '../prisma';
 import { getEventStatus } from '../utils/timezone';
 import NodeCache from 'node-cache';
 import {
@@ -11,13 +10,14 @@ import {
 } from '../services/reportExportService';
 import { getUserReportScope, buildMemberScopeFilter, getScopeDisplayName } from '../utils/reportScopeHelper';
 import { fetchAllAcademicPeriods, computeCurrentYearFromPeriods } from '../utils/academicProgressionHelper';
+import { PrismaClient } from "@prisma/client";
 
 const cache = new NodeCache({ stdTTL: 300 }); // 5 minutes TTL
 
 
 // ── Shared Aggregation Helper ────────────────────────────────────────────────
 
-export const aggregateAttendanceStats = async (attendances: any[], guestAttendances: any[], salvations: any[], eventDate: Date) => {
+export const aggregateAttendanceStats = async (prisma: PrismaClient, attendances: any[], guestAttendances: any[], salvations: any[], eventDate: Date) => {
     // 1. Total Attendance
     const memberCount = attendances.length;
     const guestCount = guestAttendances?.length || 0;
@@ -248,6 +248,7 @@ export const aggregateAttendanceStats = async (attendances: any[], guestAttendan
 
 
 export const getEventReport = async (req: Request<{ eventId: string }>, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { eventId } = req.params;
         const userId = req.user?.id;
@@ -334,7 +335,7 @@ export const getEventReport = async (req: Request<{ eventId: string }>, res: Res
             return res.status(404).json({ error: 'Event not found' });
         }
 
-        const stats = await aggregateAttendanceStats(event.attendances, event.guestAttendances, event.salvations, event.date);
+        const stats = await aggregateAttendanceStats(prisma, event.attendances, event.guestAttendances, event.salvations, event.date);
 
         // Total active members within the viewer's scope (all, region, family, or team)
         // This is the fellowship headcount — distinct from memberCount (those who checked in)
@@ -433,6 +434,7 @@ export const getEventReport = async (req: Request<{ eventId: string }>, res: Res
 };
 
 export const getComparativeReport = async (req: Request<{ eventId: string }>, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { eventId } = req.params;
 
@@ -476,6 +478,7 @@ export const getComparativeReport = async (req: Request<{ eventId: string }>, re
 };
 
 export const getDashboardStats = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const userId = req.user?.id;
 
@@ -547,6 +550,7 @@ export const getDashboardStats = async (req: Request, res: Response) => {
 };
 
 export const getCustomReport = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { startDate, endDate, type } = req.query;
         const userId = req.user?.id;
@@ -631,7 +635,7 @@ export const getCustomReport = async (req: Request, res: Response) => {
 
         // Use the oldest event's date for first-timer historical fallback if needed
         const oldestDate = events.length > 0 ? events[0].date : new Date();
-        const baseStats = await aggregateAttendanceStats(allAttendances, allGuestAttendances, allSalvations, oldestDate);
+        const baseStats = await aggregateAttendanceStats(prisma, allAttendances, allGuestAttendances, allSalvations, oldestDate);
 
         // Add custom report specific stats
         const totalEvents = events.length;
@@ -673,6 +677,7 @@ export const getCustomReport = async (req: Request, res: Response) => {
  * GET /reports/:eventId/export/pdf
  */
 export const exportEventReportPDF = async (req: Request<{ eventId: string }>, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { eventId } = req.params;
         const userId = req.user?.id;
@@ -729,7 +734,7 @@ export const exportEventReportPDF = async (req: Request<{ eventId: string }>, re
             return res.status(404).json({ error: 'Event not found' });
         }
 
-        const stats = await aggregateAttendanceStats(event.attendances, event.guestAttendances, event.salvations, event.date);
+        const stats = await aggregateAttendanceStats(prisma, event.attendances, event.guestAttendances, event.salvations, event.date);
 
         const guestDetails = event.guestAttendances.map((g: any) => ({
             name: g.guestName,
@@ -760,6 +765,7 @@ export const exportEventReportPDF = async (req: Request<{ eventId: string }>, re
  * GET /reports/:eventId/export/excel
  */
 export const exportEventReportExcel = async (req: Request<{ eventId: string }>, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { eventId } = req.params;
         const userId = req.user?.id;
@@ -816,7 +822,7 @@ export const exportEventReportExcel = async (req: Request<{ eventId: string }>, 
             return res.status(404).json({ error: 'Event not found' });
         }
 
-        const stats = await aggregateAttendanceStats(event.attendances, event.guestAttendances, event.salvations, event.date);
+        const stats = await aggregateAttendanceStats(prisma, event.attendances, event.guestAttendances, event.salvations, event.date);
 
         const allPeriods = await fetchAllAcademicPeriods();
 
@@ -881,6 +887,7 @@ export const exportEventReportExcel = async (req: Request<{ eventId: string }>, 
  * GET /reports/custom/export/pdf
  */
 export const exportCustomReportPDF = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { startDate, endDate, type, regionId } = req.query;
         const userId = req.user?.id;
@@ -1012,6 +1019,7 @@ export const exportCustomReportPDF = async (req: Request, res: Response) => {
  * GET /reports/custom/export/excel
  */
 export const exportCustomReportExcel = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { startDate, endDate, type, regionId } = req.query;
         const userId = req.user?.id;
@@ -1144,6 +1152,7 @@ export const exportCustomReportExcel = async (req: Request, res: Response) => {
 
 // Publish event report (Fellowship Managers only)
 export const publishEventReport = async (req: Request<{ eventId: string }>, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { eventId } = req.params;
         const userId = req.user?.id;
@@ -1197,6 +1206,7 @@ export const publishEventReport = async (req: Request<{ eventId: string }>, res:
 
 // Unpublish event report (Fellowship Managers only)
 export const unpublishEventReport = async (req: Request<{ eventId: string }>, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { eventId } = req.params;
 
@@ -1221,6 +1231,7 @@ export const unpublishEventReport = async (req: Request<{ eventId: string }>, re
 
 //Get event report publication status
 export const getReportStatus = async (req: Request<{ eventId: string }>, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { eventId } = req.params;
 
@@ -1249,6 +1260,7 @@ export const getReportStatus = async (req: Request<{ eventId: string }>, res: Re
 
 // Get all published event reports (for leaders — read-only list)
 export const getPublishedReports = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const reports = await prisma.eventReport.findMany({
             where: { isPublished: true },
@@ -1286,6 +1298,7 @@ export const getPublishedReports = async (req: Request, res: Response) => {
 // The eventId in the URL exists only for route consistency — it does NOT
 // control which members are returned; the JWT role/assignments do.
 export const getEventReportMembers = async (req: Request<{ eventId: string }>, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const userId = req.user?.id;
         const userRole = req.user?.role;

@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
-import prisma from '../prisma';
+import { PrismaClient } from "@prisma/client";
 
 // Validation schemas
 const createTagSchema = z.object({
@@ -22,6 +22,7 @@ const bulkTagSchema = z.object({
 
 // Get all tags with member counts
 export const getAllTags = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const tags = await prisma.tag.findMany({
             include: {
@@ -60,6 +61,7 @@ export const getAllTags = async (req: Request, res: Response) => {
 
 // Create a new custom tag
 export const createTag = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const validatedData = createTagSchema.parse(req.body);
 
@@ -95,6 +97,7 @@ export const createTag = async (req: Request, res: Response) => {
 
 // Delete a custom tag
 export const deleteTag = async (req: Request<{ id: string }>, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { id } = req.params;
 
@@ -123,6 +126,7 @@ export const deleteTag = async (req: Request<{ id: string }>, res: Response) => 
 
 // Toggle showOnRegistration for a tag
 export const updateTagRegistrationVisibility = async (req: Request<{ id: string }>, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { id } = req.params;
         const { showOnRegistration } = req.body;
@@ -153,6 +157,7 @@ export const updateTagRegistrationVisibility = async (req: Request<{ id: string 
 
 // Get all members with a specific tag
 export const getMembersWithTag = async (req: Request<{ id: string }>, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { id } = req.params;
 
@@ -208,6 +213,7 @@ export const getMembersWithTag = async (req: Request<{ id: string }>, res: Respo
 
 // Assign tag to a member
 export const assignTagToMember = async (req: Request<{ id: string }>, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { id: memberId } = req.params;
         const validatedData = assignTagSchema.parse(req.body);
@@ -275,6 +281,7 @@ export const assignTagToMember = async (req: Request<{ id: string }>, res: Respo
 
 // Remove tag from a member
 export const removeTagFromMember = async (req: Request<{ id: string; tagId: string }>, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { id: memberId, tagId } = req.params;
         const { notes } = req.body;
@@ -310,6 +317,7 @@ export const removeTagFromMember = async (req: Request<{ id: string; tagId: stri
 
 // Bulk assign tags to multiple members
 export const bulkAssignTags = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const validatedData = bulkTagSchema.parse(req.body);
 
@@ -365,6 +373,7 @@ export const bulkAssignTags = async (req: Request, res: Response) => {
 
 // Bulk remove tags from multiple members
 export const bulkRemoveTags = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const validatedData = bulkTagSchema.parse(req.body);
 
@@ -397,6 +406,7 @@ export const bulkRemoveTags = async (req: Request, res: Response) => {
 
 // Get tag history for a member
 export const getMemberTagHistory = async (req: Request<{ id: string }>, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { id } = req.params;
 

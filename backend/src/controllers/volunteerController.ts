@@ -1,8 +1,9 @@
 import { Request, Response } from 'express';
-import prisma from '../prisma';
+import { PrismaClient } from "@prisma/client";
 
 // Assign a volunteer to an event
 export const assignVolunteer = async (req: Request<{ eventId: string }>, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { eventId } = req.params;
         const { memberId } = req.body;
@@ -131,6 +132,7 @@ export const assignVolunteer = async (req: Request<{ eventId: string }>, res: Re
 
 // Remove a volunteer from an event
 export const removeVolunteer = async (req: Request<{ eventId: string; memberId: string }>, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { eventId, memberId } = req.params;
 
@@ -178,6 +180,7 @@ export const removeVolunteer = async (req: Request<{ eventId: string; memberId: 
 
 // List volunteers for an event
 export const getEventVolunteers = async (req: Request<{ eventId: string }>, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { eventId } = req.params;
 
@@ -208,6 +211,7 @@ export const getEventVolunteers = async (req: Request<{ eventId: string }>, res:
 
 // Check if current user has permission for an event
 export const checkPermission = async (req: Request<{ eventId: string }>, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { eventId } = req.params;
         const userId = (req as any).user.id;

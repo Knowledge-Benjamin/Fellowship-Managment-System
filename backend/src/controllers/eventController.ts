@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
-import prisma from '../prisma';
 import { getEventStatus } from '../utils/timezone';
+import { PrismaClient } from "@prisma/client";
 
 // Validation schemas
 const createEventSchema = z.object({
@@ -49,6 +49,7 @@ const generateRecurringDates = (startDate: Date, rule: string, count: number): D
 
 // Create a new event or recurring events
 export const createEvent = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         // Validate input
         const validatedData = createEventSchema.parse(req.body);
@@ -125,6 +126,7 @@ export const createEvent = async (req: Request, res: Response) => {
 
 // Get all events with optional filters
 export const getEvents = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { isActive, type, upcoming } = req.query;
 
@@ -171,6 +173,7 @@ export const getEvents = async (req: Request, res: Response) => {
 
 // Get active events (currently running) - supports multiple concurrent events
 export const getActiveEvents = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         // ── Lazy auto-deactivation ──────────────────────────────────────────
         // Find all isActive events and silently deactivate any that are now PAST.
@@ -221,6 +224,7 @@ export const getActiveEvents = async (req: Request, res: Response) => {
 
 // Get single event by ID
 export const getEventById = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { id } = req.params;
 
@@ -263,6 +267,7 @@ export const getEventById = async (req: Request, res: Response) => {
 
 // Update event
 export const updateEvent = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { id } = req.params;
 
@@ -303,6 +308,7 @@ export const updateEvent = async (req: Request, res: Response) => {
 
 // Delete event
 export const deleteEvent = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { id } = req.params;
 
@@ -323,6 +329,7 @@ export const deleteEvent = async (req: Request, res: Response) => {
 
 // Toggle event active status
 export const toggleEventActive = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { id } = req.params;
 
@@ -353,6 +360,7 @@ export const toggleEventActive = async (req: Request, res: Response) => {
 
 // Toggle guest check-in for event
 export const toggleGuestCheckin = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { id } = req.params;
 

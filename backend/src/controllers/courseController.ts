@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
-import prisma from '../prisma';
 import { z } from 'zod';
 import cache from '../utils/cache';
+import { PrismaClient } from "@prisma/client";
 
 const createCourseSchema = z.object({
     name: z.string().min(1, 'Course name is required'),
@@ -18,6 +18,7 @@ const updateCourseSchema = z.object({
 });
 
 export const getAllCourses = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { collegeId } = req.query;
 
@@ -55,6 +56,7 @@ export const getAllCourses = async (req: Request, res: Response) => {
 };
 
 export const createCourse = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const validatedData = createCourseSchema.parse(req.body);
 
@@ -97,6 +99,7 @@ export const createCourse = async (req: Request, res: Response) => {
 };
 
 export const updateCourse = async (req: Request<{ id: string }>, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { id } = req.params;
         const validatedData = updateCourseSchema.parse(req.body);
@@ -140,6 +143,7 @@ export const updateCourse = async (req: Request<{ id: string }>, res: Response) 
 };
 
 export const deleteCourse = async (req: Request<{ id: string }>, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { id } = req.params;
 

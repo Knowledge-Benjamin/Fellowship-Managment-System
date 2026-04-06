@@ -1,11 +1,11 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
-import prisma from '../prisma';
 import { formatRegionName } from '../utils/displayFormatters';
 import {
     sendProfileEditRequestNotification,
     sendProfileEditDecisionNotification,
 } from '../services/emailService';
+import { PrismaClient } from "@prisma/client";
 
 // ── Validation Schemas ──────────────────────────────────────────────────────
 
@@ -51,7 +51,7 @@ const reviewRequestSchema = z.object({
 
 // ── Helper: snapshot current field values ───────────────────────────────────
 
-async function getMemberProfile(memberId: string) {
+async function getMemberProfile(prisma: PrismaClient, memberId: string) {
     return prisma.member.findUnique({
         where: { id: memberId },
         select: {
@@ -95,11 +95,12 @@ async function getMemberProfile(memberId: string) {
 // ── GET /members/me ─────────────────────────────────────────────────────────
 
 export const getMyProfile = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const userId = req.user?.id;
         if (!userId) return res.status(401).json({ message: 'Unauthorized' });
 
-        const member = await getMemberProfile(userId);
+        const member = await getMemberProfile(prisma, userId);
         if (!member || (member as any).isDeleted) {
             return res.status(404).json({ message: 'Member not found' });
         }
@@ -160,6 +161,7 @@ export const getMyProfile = async (req: Request, res: Response) => {
 // ── POST /members/me/edit-request ───────────────────────────────────────────
 
 export const submitEditRequest = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const userId = req.user?.id;
         if (!userId) return res.status(401).json({ message: 'Unauthorized' });
@@ -177,7 +179,7 @@ export const submitEditRequest = async (req: Request, res: Response) => {
         }
 
         // Fetch current member to capture old values
-        const member = await getMemberProfile(userId);
+        const member = await getMemberProfile(prisma, userId);
         if (!member) return res.status(404).json({ message: 'Member not found' });
 
         // Build a flat snapshot for old-value lookup
@@ -262,6 +264,7 @@ export const submitEditRequest = async (req: Request, res: Response) => {
 // Fellowship Manager: view all pending requests.
 
 export const getEditRequests = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const userId = req.user?.id;
         const userRole = req.user?.role;
@@ -338,6 +341,7 @@ export const getEditRequests = async (req: Request, res: Response) => {
 // Approve or reject an edit request.
 
 export const reviewEditRequest = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { id } = req.params;
         const reviewerId = req.user?.id;
@@ -503,6 +507,7 @@ export const reviewEditRequest = async (req: Request, res: Response) => {
 // Fellowship Manager direct self-edit (no approval required).
 
 export const updateMyProfile = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const userId = req.user?.id;
         const userRole = req.user?.role;
@@ -559,6 +564,7 @@ const fmMemberUpdateSchema = z.object({
 });
 
 export const updateMemberById = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { id } = req.params;
         const actorRole = req.user?.role;

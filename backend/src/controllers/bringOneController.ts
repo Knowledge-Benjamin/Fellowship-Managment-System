@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
-import prisma from '../prisma';
 import ExcelJS from 'exceljs';
 import { getEventStatus } from '../utils/timezone';
+import { PrismaClient } from "@prisma/client";
 
 const createCampaignSchema = z.object({
     title: z.string().min(1, 'Title is required').max(150),
@@ -47,6 +47,7 @@ const updatePledgeSchema = z.object({
  * Only one should be active at a time — this does NOT auto-deactivate others.
  */
 export const createBringOneCampaign = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const createdBy = req.user?.id;
         if (!createdBy) return res.status(401).json({ message: 'Unauthorized' });
@@ -70,6 +71,7 @@ export const createBringOneCampaign = async (req: Request, res: Response) => {
  * All: members see active campaign, FM sees all.
  */
 export const getBringOneCampaigns = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const isManager = req.user?.role === 'FELLOWSHIP_MANAGER';
 
@@ -95,6 +97,7 @@ export const getBringOneCampaigns = async (req: Request, res: Response) => {
  * When setting isActive=true, deactivates all others first.
  */
 export const updateBringOneCampaign = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const id = req.params.id as string;
         const data = updateCampaignSchema.parse(req.body);
@@ -124,6 +127,7 @@ export const updateBringOneCampaign = async (req: Request, res: Response) => {
  * FM deletes a campaign and all its pledges cascade.
  */
 export const deleteBringOneCampaign = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const id = req.params.id as string;
 
@@ -146,6 +150,7 @@ export const deleteBringOneCampaign = async (req: Request, res: Response) => {
  * Member submits their pledge list for a specific event.
  */
 export const submitPledges = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const inviterId = req.user?.id;
         if (!inviterId) return res.status(401).json({ message: 'Unauthorized' });
@@ -237,6 +242,7 @@ export const submitPledges = async (req: Request, res: Response) => {
  * Member views their own pledges (optionally filtered by event).
  */
 export const getMyPledges = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const inviterId = req.user?.id;
         if (!inviterId) return res.status(401).json({ message: 'Unauthorized' });
@@ -273,6 +279,7 @@ export const getMyPledges = async (req: Request, res: Response) => {
  * Member deletes a pledge that hasn't been matched yet.
  */
 export const deletePledge = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const inviterId = req.user?.id;
         if (!inviterId) return res.status(401).json({ message: 'Unauthorized' });
@@ -299,6 +306,7 @@ export const deletePledge = async (req: Request, res: Response) => {
  * Member updates their own pledge info if not matched & event not PAST.
  */
 export const updatePledge = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const inviterId = req.user?.id;
         if (!inviterId) return res.status(401).json({ message: 'Unauthorized' });
@@ -346,6 +354,7 @@ export const updatePledge = async (req: Request, res: Response) => {
  * FM: full pledge list + effectiveness stats for a specific event.
  */
 export const getEventPledges = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const eventId = req.params.eventId as string;
 
@@ -420,6 +429,7 @@ export const getEventPledges = async (req: Request, res: Response) => {
  * FM exports all pledges for an event as Excel.
  */
 export const exportEventPledges = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const eventId = req.params.eventId as string;
 
@@ -521,11 +531,14 @@ export const exportEventPledges = async (req: Request, res: Response) => {
  * Email is primary; phone1/phone2 are fallbacks.
  * Called immediately after PendingMember creation.
  */
-export async function matchAndAdvancePledge(params: {
-    email: string;
-    phone: string;
-    pendingMemberId: string;
-}) {
+export async function matchAndAdvancePledge(
+    prisma: PrismaClient,
+    params: {
+        email: string;
+        phone: string;
+        pendingMemberId: string;
+    }
+) {
     const { email, phone, pendingMemberId } = params;
 
     // Step 1: email (primary — definitive)
@@ -579,7 +592,7 @@ export async function matchAndAdvancePledge(params: {
 }
 
 /** Called when FM approves a PendingMember and a full Member is created. */
-export async function advancePledgeToJoined(pendingMemberId: string, memberId: string) {
+export async function advancePledgeToJoined(prisma: PrismaClient, pendingMemberId: string, memberId: string) {
     await prisma.bringOnePledge.updateMany({
         where: { pendingMemberId, status: 'PENDING_APPROVAL' },
         data: { status: 'JOINED', memberId },
@@ -587,7 +600,7 @@ export async function advancePledgeToJoined(pendingMemberId: string, memberId: s
 }
 
 /** Called from attendanceController when isFirstTimer check-in occurs. */
-export async function advancePledgeToAttended(memberId: string) {
+export async function advancePledgeToAttended(prisma: PrismaClient, memberId: string) {
     await prisma.bringOnePledge.updateMany({
         where: { memberId, status: 'JOINED' },
         data: { status: 'ATTENDED' },
@@ -598,11 +611,14 @@ export async function advancePledgeToAttended(memberId: string) {
  * Matches a DIRECTLY created member (e.g. via FM internal registration)
  * Skips the PENDING_APPROVAL state and goes straight to JOINED.
  */
-export async function matchAndAdvanceDirectMemberPledge(params: {
-    email: string;
-    phone: string;
-    memberId: string;
-}) {
+export async function matchAndAdvanceDirectMemberPledge(
+    prisma: PrismaClient,
+    params: {
+        email: string;
+        phone: string;
+        memberId: string;
+    }
+) {
     const { email, phone, memberId } = params;
 
     let pledge = await prisma.bringOnePledge.findFirst({
@@ -656,6 +672,7 @@ export async function matchAndAdvanceDirectMemberPledge(params: {
  * Returns the unified Campaign Report Data for a Bring One Campaign
  */
 export const getBringOneReport = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const isManager = req.user?.role === 'FELLOWSHIP_MANAGER';
         if (!isManager) return res.status(403).json({ message: 'Forbidden' });
@@ -789,6 +806,7 @@ export const getBringOneReport = async (req: Request, res: Response) => {
  * Fetches the entire conversation history for a specific Bring 1 pledge.
  */
 export const getBringOneMessages = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const userId = req.user?.id;
         const isManager = req.user?.role === 'FELLOWSHIP_MANAGER';
@@ -820,6 +838,7 @@ export const getBringOneMessages = async (req: Request, res: Response) => {
  * Submits a new message to the pledge's chat thread.
  */
 export const sendBringOneMessage = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const userId = req.user?.id;
         const isManager = req.user?.role === 'FELLOWSHIP_MANAGER';
@@ -858,6 +877,7 @@ export const sendBringOneMessage = async (req: Request, res: Response) => {
  * Marks all messages in the thread NOT sent by the current user as read.
  */
 export const markBringOneMessagesRead = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const userId = req.user?.id;
         if (!userId) return res.status(401).json({ message: 'Unauthorized' });

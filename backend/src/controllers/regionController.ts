@@ -2,9 +2,9 @@ import { Request, Response } from 'express';
 import { activeMemberFilter } from '../utils/queryHelpers';
 
 import { z } from 'zod';
-import prisma from '../prisma';
 import cache from '../utils/cache';
 import { formatRegionsForDisplay, formatRegionForDisplay } from '../utils/displayFormatters';
+import { PrismaClient } from "@prisma/client";
 
 // Validation schemas
 const createRegionSchema = z.object({
@@ -13,6 +13,7 @@ const createRegionSchema = z.object({
 
 // Get all regions
 export const getRegions = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const cacheKey = 'regions_all';
         const cached = cache.get(cacheKey);
@@ -51,6 +52,7 @@ export const getRegions = async (req: Request, res: Response) => {
 
 // Create new region (manager only)
 export const createRegion = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         // Validate input
         const validatedData = createRegionSchema.parse(req.body);
@@ -100,6 +102,7 @@ export const createRegion = async (req: Request, res: Response) => {
 
 // Delete region (manager only)
 export const deleteRegion = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { id } = req.params;
 
@@ -141,6 +144,7 @@ export const deleteRegion = async (req: Request, res: Response) => {
 
 // Get region for current Regional Head
 export const getMyRegion = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const userId = req.user?.id;
 

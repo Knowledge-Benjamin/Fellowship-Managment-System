@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
-import prisma from '../prisma';
+import { PrismaClient } from "@prisma/client";
 
 // Validation schemas
 const createTeamSchema = z.object({
@@ -27,6 +27,7 @@ const generateTagNames = (teamName: string) => {
 
 // Create ministry team (Fellowship Manager only)
 export const createTeam = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const validatedData = createTeamSchema.parse(req.body);
         const userId = req.user?.id;
@@ -103,6 +104,7 @@ export const createTeam = async (req: Request, res: Response) => {
 
 // Get all ministry teams
 export const getAllTeams = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const teams = await prisma.ministryTeam.findMany({
             where: { isActive: true },
@@ -141,6 +143,7 @@ export const getAllTeams = async (req: Request, res: Response) => {
 
 // Get team by ID with full details
 export const getTeamById = async (req: Request<{ id: string }>, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { id } = req.params;
 
@@ -221,6 +224,7 @@ export const getTeamById = async (req: Request<{ id: string }>, res: Response) =
 
 // Update team
 export const updateTeam = async (req: Request<{ id: string }>, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { id } = req.params;
         const validatedData = updateTeamSchema.parse(req.body);
@@ -316,6 +320,7 @@ export const updateTeam = async (req: Request<{ id: string }>, res: Response) =>
 
 // Delete team (soft delete - deactivates team and tags)
 export const deleteTeam = async (req: Request<{ id: string }>, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { id } = req.params;
 
@@ -363,6 +368,7 @@ export const deleteTeam = async (req: Request<{ id: string }>, res: Response) =>
 
 // Add member to team
 export const addTeamMember = async (req: Request<{ id: string }>, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { id } = req.params;
         const { memberId, role, notes } = req.body;
@@ -438,6 +444,7 @@ export const addTeamMember = async (req: Request<{ id: string }>, res: Response)
 
 // Remove member from team
 export const removeTeamMember = async (req: Request<{ id: string; memberId: string }>, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { id, memberId } = req.params;
         const removerId = req.user?.id;
@@ -501,6 +508,7 @@ export const removeTeamMember = async (req: Request<{ id: string; memberId: stri
 
 // Assign team leader
 export const assignTeamLeader = async (req: Request<{ id: string }>, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { id } = req.params;
         const { memberId } = req.body;
@@ -589,6 +597,7 @@ export const assignTeamLeader = async (req: Request<{ id: string }>, res: Respon
 
 // Remove team leader
 export const removeTeamLeader = async (req: Request<{ id: string }>, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { id } = req.params;
         const removerId = req.user?.id;
@@ -648,6 +657,7 @@ export const removeTeamLeader = async (req: Request<{ id: string }>, res: Respon
 
 // Get team where current user is team leader
 export const getMyTeam = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const userId = req.user?.id;
 
@@ -764,6 +774,7 @@ export const getMyTeam = async (req: Request, res: Response) => {
 
 // Get team for regular member (finds team where user is a member)
 export const getMyTeamAsMember = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const userId = (req as any).user.id;
 

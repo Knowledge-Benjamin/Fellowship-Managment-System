@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
-import prisma from '../prisma';
+import { PrismaClient } from "@prisma/client";
 
 const createPeriodSchema = z.object({
     academicYear: z.string().regex(/^\d{4}\/\d{4}$/, 'Must be in format YYYY/YYYY'),
@@ -20,6 +20,7 @@ const updatePeriodSchema = z.object({
  * Get all academic periods
  */
 export const getAllPeriods = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const periods = await prisma.academicPeriod.findMany({
             orderBy: [
@@ -39,6 +40,7 @@ export const getAllPeriods = async (req: Request, res: Response) => {
  * Get current active period
  */
 export const getCurrentPeriod = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const now = new Date();
 
@@ -64,6 +66,7 @@ export const getCurrentPeriod = async (req: Request, res: Response) => {
  * Create new academic period
  */
 export const createPeriod = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const validatedData = createPeriodSchema.parse(req.body);
 
@@ -115,6 +118,7 @@ export const createPeriod = async (req: Request, res: Response) => {
  * Update academic period
  */
 export const updatePeriod = async (req: Request<{ id: string }>, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { id } = req.params;
         const validatedData = updatePeriodSchema.parse(req.body);
@@ -165,6 +169,7 @@ export const updatePeriod = async (req: Request<{ id: string }>, res: Response) 
  * Delete academic period
  */
 export const deletePeriod = async (req: Request<{ id: string }>, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { id } = req.params;
 

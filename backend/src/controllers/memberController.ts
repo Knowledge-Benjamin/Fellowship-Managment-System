@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
 import QRCode from 'qrcode';
 import { z } from 'zod';
-import prisma from '../prisma';
 import { formatRegionName } from '../utils/displayFormatters';
 import { getCurrentAcademicStatus, isMemberFinalist, isMemberAlumni, fetchAllAcademicPeriods, computeCurrentYearFromPeriods } from '../utils/academicProgressionHelper';
 import { activeMemberFilter } from '../utils/queryHelpers';
@@ -10,6 +9,7 @@ import { createMemberRecord } from '../services/memberService';
 import { scheduleWelcomeEmail } from '../services/emailService';
 import { matchAndAdvanceDirectMemberPledge } from './bringOneController';
 import ExcelJS from 'exceljs';
+import { PrismaClient } from "@prisma/client";
 
 const createMemberSchema = z.object({
     fullName: z.string().min(2).max(120),
@@ -39,6 +39,7 @@ const createMemberSchema = z.object({
 
 // Create new member
 export const createMember = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const validatedData = createMemberSchema.parse(req.body);
 
@@ -89,7 +90,7 @@ export const createMember = async (req: Request, res: Response) => {
         await scheduleWelcomeEmail(member.email, member.fullName, fellowshipNumber, temporaryPassword || '', member.qrCode, undefined);
 
         // Execute Bring 1 auto-match for direct internal registration
-        matchAndAdvanceDirectMemberPledge({
+        matchAndAdvanceDirectMemberPledge(prisma, {
             email: member.email,
             phone: member.phoneNumber,
             memberId: member.id,
@@ -136,6 +137,7 @@ export const createMember = async (req: Request, res: Response) => {
 
 // Get all members with optional search and tag filters
 export const getMembers = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { search, tags, regionId, familyId, teamId, page = '1', limit = '50' } = req.query;
 
@@ -269,6 +271,7 @@ export const getMembers = async (req: Request, res: Response) => {
 };
 
 export const exportMembersToExcel = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { search, tags, regionId, familyId, teamId } = req.query;
 
@@ -394,6 +397,7 @@ export const exportMembersToExcel = async (req: Request, res: Response) => {
  * Get member's current academic status (calculated in real-time)
  */
 export const getMemberAcademicStatus = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { id } = req.params;
 
@@ -475,6 +479,7 @@ export const getMemberAcademicStatus = async (req: Request, res: Response) => {
 
 // Soft delete a member
 export const softDeleteMember = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { id } = req.params;
         const userId = (req as any).user.id;
@@ -504,6 +509,7 @@ export const softDeleteMember = async (req: Request, res: Response) => {
 };
 
 export const bulkSoftDeleteMembers = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { memberIds } = req.body;
         const userId = (req as any).user.id;
@@ -538,6 +544,7 @@ export const bulkSoftDeleteMembers = async (req: Request, res: Response) => {
  * Generate and return QR code image as PNG
  */
 export const getQRCodeImage = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const qrCodeValue = req.params.qrCodeValue as string;
 

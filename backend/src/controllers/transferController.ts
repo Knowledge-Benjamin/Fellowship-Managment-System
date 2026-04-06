@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
-import prisma from '../prisma';
+import { PrismaClient } from "@prisma/client";
 
 const createSchema = z.object({
     toRegionId: z.string().uuid(),
@@ -8,6 +8,7 @@ const createSchema = z.object({
 });
 
 export const requestTransfer = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const memberId = req.user?.id;
         if (!memberId) return res.status(401).json({ message: 'Unauthorized' });
@@ -47,6 +48,7 @@ export const requestTransfer = async (req: Request, res: Response) => {
 }
 
 export const getTransfers = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const userId = req.user?.id;
         if (!userId) return res.status(401).json({ message: 'Unauthorized' });
@@ -90,6 +92,7 @@ const reviewSchema = z.object({
 });
 
 export const reviewOrigin = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const id = req.params.id as string;
         const userId = req.user?.id;
@@ -146,6 +149,7 @@ export const reviewOrigin = async (req: Request, res: Response) => {
 }
 
 export const reviewDestination = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const id = req.params.id as string;
         const userId = req.user?.id;

@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
-import prisma from '../prisma';
 import ExcelJS from 'exceljs';
 import { getEventStatus } from '../utils/timezone';
+import { PrismaClient } from "@prisma/client";
 
 // ─── Validation schemas ───────────────────────────────────────────────────────
 
@@ -54,6 +54,7 @@ const updateContactSchema = z.object({
  * FM creates a mobilization campaign for an event.
  */
 export const createCampaign = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const userId = req.user?.id;
         if (!userId) return res.status(401).json({ message: 'Unauthorized' });
@@ -89,6 +90,7 @@ export const createCampaign = async (req: Request, res: Response) => {
  * Members see OPEN campaigns; FM sees all.
  */
 export const getCampaigns = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const isManager = req.user?.role === 'FELLOWSHIP_MANAGER';
         const wantsAdminView = String(req.query.adminView) === 'true';
@@ -133,6 +135,7 @@ export const getCampaigns = async (req: Request, res: Response) => {
  * Campaign detail: FM sees all contacts (if adminView); member sees only their own.
  */
 export const getCampaignById = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const userId = req.user?.id;
         if (!userId) return res.status(401).json({ message: 'Unauthorized' });
@@ -215,6 +218,7 @@ export const getCampaignById = async (req: Request, res: Response) => {
  * FM updates campaign status, deadline, or title.
  */
 export const updateCampaign = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const id = req.params.id as string;
         const data = updateCampaignSchema.parse(req.body);
@@ -243,6 +247,7 @@ export const updateCampaign = async (req: Request, res: Response) => {
  * FM deletes a campaign and all its contacts.
  */
 export const deleteCampaign = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const id = req.params.id as string;
 
@@ -265,6 +270,7 @@ export const deleteCampaign = async (req: Request, res: Response) => {
  * Member submits their contact list (up to maxContacts).
  */
 export const submitContacts = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const userId = req.user?.id;
         if (!userId) return res.status(401).json({ message: 'Unauthorized' });
@@ -377,6 +383,7 @@ export const submitContacts = async (req: Request, res: Response) => {
  * Members can only update their own contacts.
  */
 export const updateContact = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const contactId = req.params.contactId as string;
         const userId = req.user?.id;
@@ -437,6 +444,7 @@ export const updateContact = async (req: Request, res: Response) => {
  * FM: all contacts for a campaign with stats.
  */
 export const getCampaignContacts = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const id = req.params.id as string;
         const { status } = req.query;
@@ -487,6 +495,7 @@ export const getCampaignContacts = async (req: Request, res: Response) => {
  * FM exports all contacts as Excel.
  */
 export const exportCampaign = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const id = req.params.id as string;
 
@@ -592,6 +601,7 @@ export const exportCampaign = async (req: Request, res: Response) => {
  * Returns the unified Campaign Report Data for a Mobilization Campaign
  */
 export const getMobilizationReport = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const isManager = req.user?.role === 'FELLOWSHIP_MANAGER';
         if (!isManager) return res.status(403).json({ message: 'Forbidden' });
@@ -728,6 +738,7 @@ export const getMobilizationReport = async (req: Request, res: Response) => {
  * Fetches the entire conversation history for a specific Mobilization contact.
  */
 export const getMobilizationMessages = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const userId = req.user?.id;
         const isManager = req.user?.role === 'FELLOWSHIP_MANAGER';
@@ -759,6 +770,7 @@ export const getMobilizationMessages = async (req: Request, res: Response) => {
  * Submits a new message to the contact's chat thread.
  */
 export const sendMobilizationMessage = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const userId = req.user?.id;
         const isManager = req.user?.role === 'FELLOWSHIP_MANAGER';
@@ -797,6 +809,7 @@ export const sendMobilizationMessage = async (req: Request, res: Response) => {
  * Marks all messages in the thread NOT sent by the current user as read.
  */
 export const markMobilizationMessagesRead = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const userId = req.user?.id;
         if (!userId) return res.status(401).json({ message: 'Unauthorized' });

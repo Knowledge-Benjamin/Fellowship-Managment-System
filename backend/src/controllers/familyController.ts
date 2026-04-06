@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
-import prisma from '../prisma';
 import cache from '../utils/cache';
 import { formatRegionName } from '../utils/displayFormatters';
+import { PrismaClient } from "@prisma/client";
 
 // Validation schemas
 const createFamilySchema = z.object({
@@ -35,6 +35,7 @@ const generateMemberTagName = (familyName: string): string => {
 
 // Create family (Fellowship Manager only)
 export const createFamily = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const validatedData = createFamilySchema.parse(req.body);
         const userId = req.user?.id;
@@ -117,6 +118,7 @@ export const createFamily = async (req: Request, res: Response) => {
 
 // Get all families (with optional region filter for Regional Heads)
 export const getAllFamilies = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { regionId } = req.query;
         const userId = req.user?.id;
@@ -190,6 +192,7 @@ export const getAllFamilies = async (req: Request, res: Response) => {
 
 // Get families by region (for registration dropdown)
 export const getFamiliesByRegion = async (req: Request<{ regionId: string }>, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { regionId } = req.params;
 
@@ -241,6 +244,7 @@ export const getFamiliesByRegion = async (req: Request<{ regionId: string }>, re
 
 // Get family by ID with full details
 export const getFamilyById = async (req: Request<{ id: string }>, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { id } = req.params;
 
@@ -300,6 +304,7 @@ export const getFamilyById = async (req: Request<{ id: string }>, res: Response)
 
 // Update family
 export const updateFamily = async (req: Request<{ id: string }>, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { id } = req.params;
         const validatedData = updateFamilySchema.parse(req.body);
@@ -385,6 +390,7 @@ export const updateFamily = async (req: Request<{ id: string }>, res: Response) 
 
 // Delete family (soft delete)
 export const deleteFamily = async (req: Request<{ id: string }>, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { id } = req.params;
 
@@ -435,6 +441,7 @@ export const deleteFamily = async (req: Request<{ id: string }>, res: Response) 
 
 // Assign family head (replaces existing head automatically)
 export const assignFamilyHead = async (req: Request<{ id: string }>, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { id } = req.params;
         const validatedData = assignHeadSchema.parse(req.body);
@@ -596,6 +603,7 @@ export const assignFamilyHead = async (req: Request<{ id: string }>, res: Respon
 
 // Remove family head
 export const removeFamilyHead = async (req: Request<{ id: string }>, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { id } = req.params;
         const removerId = req.user?.id;
@@ -653,6 +661,7 @@ export const removeFamilyHead = async (req: Request<{ id: string }>, res: Respon
 
 // Add member to family
 export const addFamilyMember = async (req: Request<{ id: string }>, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { id } = req.params;
         const validatedData = addMemberSchema.parse(req.body);
@@ -747,6 +756,7 @@ export const addFamilyMember = async (req: Request<{ id: string }>, res: Respons
 
 // Remove member from family
 export const removeFamilyMember = async (req: Request<{ id: string; memberId: string }>, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const { id, memberId } = req.params;
         const removerId = req.user?.id;
@@ -810,6 +820,7 @@ export const removeFamilyMember = async (req: Request<{ id: string; memberId: st
 
 // Get family where current user is family head
 export const getMyFamily = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const userId = req.user?.id;
 
@@ -901,6 +912,7 @@ export const getMyFamily = async (req: Request, res: Response) => {
 
 // Get family for regular member (finds family where user is a member)
 export const getMyFamilyAsMember = async (req: Request, res: Response) => {
+    const prisma = (req as any).prisma as PrismaClient;
     try {
         const userId = (req as any).user.id;
 

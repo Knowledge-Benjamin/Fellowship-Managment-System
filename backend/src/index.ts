@@ -12,6 +12,8 @@ import rateLimit from 'express-rate-limit';
 import dns from 'dns';
 
 import { processEmailQueue } from './services/emailService';
+import { tenantMiddleware } from './middleware/tenantMiddleware';
+import { disconnectAll } from './lib/prismaConnectionManager';
 
 // Force IPv4 resolution to avoid connectivity issues on some platforms (Render/AWS)
 dns.setDefaultResultOrder('ipv4first');
@@ -60,6 +62,11 @@ app.use(limiter);
 
 app.use(express.json());
 
+// ── Tenant Database Injection ────────────────────────────────────────────────
+// Resolves the correct Neon PrismaClient for each campus and attaches it to
+// req.prisma before any route handler runs.
+app.use(tenantMiddleware);
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/members', memberRoutes);
@@ -98,4 +105,15 @@ app.listen(PORT, () => {
     setInterval(() => {
         processEmailQueue().catch(err => console.error('[BACKGROUND] Email processor error:', err));
     }, 30000); // Check every 30 seconds
+});
+
+// Graceful shutdown — close all Neon connections cleanly
+process.on('SIGTERM', async () => {
+    console.log('[Server] SIGTERM received. Closing database connections...');
+    await disconnectAll();
+    process.exit(0);
+});
+process.on('SIGINT', async () => {
+    await disconnectAll();
+    process.exit(0);
 });

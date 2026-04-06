@@ -1,7 +1,42 @@
 import axios from 'axios';
 
+/**
+ * Resolve the campus subdomain from the current browser URL.
+ * e.g.  tamu.fellowshipmanager.app  →  "tamu"
+ *       localhost                   →  null  (local dev fallback)
+ */
+function resolveCampusSubdomain(): string | null {
+    const hostname = window.location.hostname;
+    const parts = hostname.split('.');
+    // Only treat it as a subdomain if there are at least 3 parts (sub.domain.tld)
+    // Ignore "localhost", "127.0.0.1", and plain apex domains
+    if (parts.length >= 3 && parts[0] !== 'www') {
+        return parts[0];
+    }
+    return null;
+}
+
+const CAMPUS_SUBDOMAIN = resolveCampusSubdomain();
+
 const api = axios.create({
     baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000/api',
+});
+
+// ── Request interceptor ──────────────────────────────────────────────────────
+// Attaches: (1) JWT auth token, (2) X-Campus-Domain for tenant routing
+api.interceptors.request.use((config) => {
+    // Auth token
+    const token = localStorage.getItem('token');
+    if (token) {
+        config.headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    // Campus domain header — tells the backend which Neon DB to connect to
+    if (CAMPUS_SUBDOMAIN) {
+        config.headers['X-Campus-Domain'] = CAMPUS_SUBDOMAIN;
+    }
+
+    return config;
 });
 
 // Response interceptor to handle network errors

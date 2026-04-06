@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useTerminology } from '../context/TerminologyContext';
 import { useCheckInAccess } from '../hooks/useCheckInAccess';
 import {
     Home, QrCode, Bus, Calendar, UserPlus, PieChart, LogIn, LogOut,
@@ -46,6 +47,7 @@ function NavLink({ to, children, icon: Icon, onClick, className = '' }: NavLinkP
 const Navbar = () => {
     const { user, logout, isAuthenticated, isManager, hasTag, hasTeamLeaderTag, hasTeamMemberTag, hasFamilyMemberTag } = useAuth();
     const { hasAccess: hasCheckInAccess } = useCheckInAccess();
+    const { t } = useTerminology();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isManagementOpen, setIsManagementOpen] = useState(false);
     const [pendingCount, setPendingCount] = useState(0);
@@ -91,12 +93,12 @@ const Navbar = () => {
         { to: '/events', label: 'Events', icon: Calendar },
         { to: '/campaign-management', label: 'Campaign Admin', icon: Target },
         { to: '/leadership', label: 'Leadership', icon: Users },
-        { to: '/leadership/families', label: 'Families', icon: Users },
+        { to: '/leadership/families', label: `${t.FamilyGroup}s`, icon: Users },
         { to: '/members', label: 'Members', icon: Users },
         { to: '/academic-calendar', label: 'Academic Calendar', icon: Calendar },
         { to: '/courses', label: 'Courses', icon: BookOpen },
         { to: '/residences', label: 'Residences', icon: Home },
-        { to: '/regions', label: 'Regions', icon: MapPin },
+        { to: '/regions', label: `${t.Region}s`, icon: MapPin },
         { to: '/tags', label: 'Tags', icon: Tag },
         { to: '/guest-check-in', label: 'Guest Check-in', icon: UserPlus },
         { to: '/salvations', label: 'Salvations', icon: Heart },
@@ -201,14 +203,14 @@ const Navbar = () => {
                                     <NavLink to="/campaigns" icon={Target}>My Campaigns</NavLink>
                                     {isRegionalHead && (
                                         <NavLink to="/leadership/my-region" icon={MapPin}>
-                                            My Region
+                                            My {t.Region}
                                         </NavLink>
                                     )}
                                     {(hasTag('FAMILY_HEAD') || hasFamilyMemberTag()) && (
-                                        <NavLink to="/leadership/my-family" icon={Users}>My Family</NavLink>
+                                        <NavLink to="/leadership/my-family" icon={Users}>My {t.FamilyGroup}</NavLink>
                                     )}
                                     {(hasTeamLeaderTag() || hasTeamMemberTag()) && (
-                                        <NavLink to="/leadership/my-team" icon={Users}>My Team</NavLink>
+                                        <NavLink to="/leadership/my-team" icon={Users}>My {t.MinistryTeam}</NavLink>
                                     )}
                                     {/* Reports link — leaders only, never shown to plain members */}
                                     {isLeader && (
@@ -275,9 +277,9 @@ const Navbar = () => {
                                         <NavLink to="/transport" icon={Bus} className="w-full">Transport</NavLink>
                                         <NavLink to="/profile" icon={User} className="w-full">Profile</NavLink>
                                         <NavLink to="/campaigns" icon={Target} className="w-full">My Campaigns</NavLink>
-                                        {hasTag('REGIONAL_HEAD') && <NavLink to="/leadership/my-region" icon={MapPin} className="w-full">My Region</NavLink>}
-                                        {(hasTag('FAMILY_HEAD') || hasFamilyMemberTag()) && <NavLink to="/leadership/my-family" icon={Users} className="w-full">My Family</NavLink>}
-                                        {(hasTeamLeaderTag() || hasTeamMemberTag()) && <NavLink to="/leadership/my-team" icon={Users} className="w-full">My Team</NavLink>}
+                                        {hasTag('REGIONAL_HEAD') && <NavLink to="/leadership/my-region" icon={MapPin} className="w-full">My {t.Region}</NavLink>}
+                                        {(hasTag('FAMILY_HEAD') || hasFamilyMemberTag()) && <NavLink to="/leadership/my-family" icon={Users} className="w-full">My {t.FamilyGroup}</NavLink>}
+                                        {(hasTeamLeaderTag() || hasTeamMemberTag()) && <NavLink to="/leadership/my-team" icon={Users} className="w-full">My {t.MinistryTeam}</NavLink>}
                                         {/* Reports — leaders only */}
                                         {isLeader && <NavLink to="/leader/reports" icon={FileText} className="w-full">Reports</NavLink>}
                                     </div>

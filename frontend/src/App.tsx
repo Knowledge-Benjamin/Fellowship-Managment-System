@@ -43,6 +43,7 @@ import Sidebar from './components/Sidebar';
 const LEADER_ROLES = ['FELLOWSHIP_MANAGER', 'REGIONAL_HEAD', 'FAMILY_HEAD', 'TEAM_LEADER'] as const;
 import { ToastProvider } from './components/ToastProvider';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { TerminologyProvider } from './context/TerminologyContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import CheckInPermissionGuard from './components/CheckInPermissionGuard';
 import Navbar from './components/Navbar';
@@ -307,10 +308,12 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-        <ToastProvider>
-          <NetworkStatusListener />
-          <AppContent />
-        </ToastProvider>
+        <TerminologyProvider>
+          <ToastProvider>
+            <NetworkStatusListener />
+            <AppContent />
+          </ToastProvider>
+        </TerminologyProvider>
       </AuthProvider>
     </Router>
   );

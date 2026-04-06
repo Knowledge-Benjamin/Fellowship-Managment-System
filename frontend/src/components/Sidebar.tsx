@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink as RouterNavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useTerminology } from '../context/TerminologyContext';
 import { useCheckInAccess } from '../hooks/useCheckInAccess';
 import {
     Home, QrCode, Bus, Calendar, UserPlus, PieChart, LogOut,
@@ -60,6 +61,7 @@ const SidebarLink = ({ to, icon: Icon, label, isCollapsed, badgeCount }: Sidebar
 export default function Sidebar() {
     const { user, logout, isManager, hasTag, hasTeamLeaderTag, hasTeamMemberTag, hasFamilyMemberTag } = useAuth();
     const { hasAccess: hasCheckInAccess } = useCheckInAccess();
+    const { t } = useTerminology();
 
     // Load initial expanded state from local storage or default to large
     const [isCollapsed, setIsCollapsed] = useState(() => {
@@ -99,7 +101,7 @@ export default function Sidebar() {
                 {!isCollapsed && (
                     <div className="flex items-center gap-3 overflow-hidden">
                         <img src={logo} alt="Manifest Logo" className="w-10 h-10 rounded-full object-cover shrink-0 border-2 border-slate-100" />
-                        <span className="font-bold text-slate-800 truncate tracking-tight text-lg">Fellowship Manager</span>
+                    <span className="font-bold text-slate-800 truncate tracking-tight text-lg">{t.FellowshipManager}</span>
                     </div>
                 )}
                 {isCollapsed && (
@@ -132,9 +134,9 @@ export default function Sidebar() {
                 {(isRegionalHead || isFamilyHead || isTeamLeader) && (
                     <div className="mb-6">
                         {!isCollapsed && <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-3">My Leadership</h3>}
-                        {isRegionalHead && <SidebarLink to="/leadership/my-region" icon={MapPin} label="My Region" isCollapsed={isCollapsed} />}
-                        {isFamilyHead && <SidebarLink to="/leadership/my-family" icon={Users} label="My Family" isCollapsed={isCollapsed} />}
-                        {isTeamLeader && <SidebarLink to="/leadership/my-team" icon={Users} label="My Team" isCollapsed={isCollapsed} />}
+                        {isRegionalHead && <SidebarLink to="/leadership/my-region" icon={MapPin} label={`My ${t.Region}`} isCollapsed={isCollapsed} />}
+                        {isFamilyHead && <SidebarLink to="/leadership/my-family" icon={Users} label={`My ${t.FamilyGroup}`} isCollapsed={isCollapsed} />}
+                        {isTeamLeader && <SidebarLink to="/leadership/my-team" icon={Users} label={`My ${t.MinistryTeam}`} isCollapsed={isCollapsed} />}
                     </div>
                 )}
 
@@ -146,7 +148,7 @@ export default function Sidebar() {
                             <SidebarLink to="/members" icon={Users} label="Members Directory" isCollapsed={isCollapsed} />
                             <SidebarLink to="/internal-register" icon={UserPlus} label="Register Member" isCollapsed={isCollapsed} />
                             <SidebarLink to="/pending-members" icon={UserPlus} label="Pending Approvals" badgeCount={pendingCount} isCollapsed={isCollapsed} />
-                            <SidebarLink to="/leadership/families" icon={Users} label="Families" isCollapsed={isCollapsed} />
+                            <SidebarLink to="/leadership/families" icon={Users} label={`${t.FamilyGroup}s`} isCollapsed={isCollapsed} />
                             <SidebarLink to="/residences" icon={Home} label="Residences" isCollapsed={isCollapsed} />
                         </div>
 
@@ -162,7 +164,7 @@ export default function Sidebar() {
                             {!isCollapsed && <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-3">System Admin</h3>}
                             <SidebarLink to="/academic-calendar" icon={Calendar} label="Academic Calendar" isCollapsed={isCollapsed} />
                             <SidebarLink to="/courses" icon={BookOpen} label="Courses" isCollapsed={isCollapsed} />
-                            <SidebarLink to="/regions" icon={MapPin} label="Regions" isCollapsed={isCollapsed} />
+                            <SidebarLink to="/regions" icon={MapPin} label={`${t.Region}s`} isCollapsed={isCollapsed} />
                             <SidebarLink to="/tags" icon={Tag} label="System Tags" isCollapsed={isCollapsed} />
                             <SidebarLink to="/registration-tokens" icon={Link2} label="Reg Tokens" isCollapsed={isCollapsed} />
                             <SidebarLink to="/emails" icon={Mail} label="Email Delivery" isCollapsed={isCollapsed} />

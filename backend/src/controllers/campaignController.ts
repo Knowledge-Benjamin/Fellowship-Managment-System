@@ -672,7 +672,7 @@ export const getMobilizationReport = async (req: Request, res: Response) => {
             if (s.isLeader) leadersSubmitted++;
         });
 
-        const totalTarget = totalActiveMembers * campaign.maxContacts;
+        const totalTarget = campaign.manualTarget !== null ? campaign.manualTarget : (totalActiveMembers * campaign.maxContacts);
         
         const averageContactsPerMember = membersSubmitted > 0 ? (totalContactsSubmitted / membersSubmitted) : 0;
         

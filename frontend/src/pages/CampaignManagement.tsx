@@ -159,7 +159,8 @@ export default function CampaignManagement() {
                 title: editMobData.title,
                 description: editMobData.description,
                 submissionDeadline: new Date(editMobData.submissionDeadline).toISOString(),
-                maxContacts: Number(editMobData.maxContacts)
+                maxContacts: Number(editMobData.maxContacts),
+                manualTarget: editMobData.manualTarget === "" || editMobData.manualTarget === null ? null : Number(editMobData.manualTarget)
             });
             showToast('success', 'Mobilization campaign updated');
             setEditMobData(null);
@@ -253,7 +254,8 @@ export default function CampaignManagement() {
             await api.patch(`/bring-one/campaigns/${editB1Data.id}`, {
                 title: editB1Data.title,
                 description: editB1Data.description,
-                minPledges: Number(editB1Data.minPledges)
+                minPledges: Number(editB1Data.minPledges),
+                manualTarget: editB1Data.manualTarget === "" || editB1Data.manualTarget === null ? null : Number(editB1Data.manualTarget)
             });
             showToast('success', 'Bring 1 campaign updated');
             setEditB1Data(null);

@@ -447,8 +447,14 @@ export const exportEventPledges = async (req: Request, res: Response) => {
             regionMap.get(regionName)!.push(p);
         });
 
+        let sheetCounter = 1;
         const createSheet = (name: string, data: any[]) => {
-            const sheetName = name.replace(/[^a-zA-Z0-9 ]/g, "").substring(0, 31);
+            let sheetName = name.replace(/[^a-zA-Z0-9 ]/g, "").trim().substring(0, 31);
+            if (!sheetName) sheetName = `Group ${sheetCounter++}`;
+            if (workbook.getWorksheet(sheetName)) {
+                sheetName = `${sheetName.substring(0, 27)} ${sheetCounter++}`;
+            }
+
             const sheet = workbook.addWorksheet(sheetName, {
                 properties: { tabColor: { argb: 'FF14b8a6' } },
             });
@@ -762,6 +768,7 @@ export const getBringOneReport = async (req: Request, res: Response) => {
                     contactName: p.name,
                     phone: p.phone1 || p.phone2 || p.email,
                     submittedBy: p.inviter.fullName,
+                    region: p.inviter.region?.name || 'Unassigned',
                     status: p.status === 'ATTENDED' ? 'CONFIRMED' : 'PENDING',
                     isDuplicate: p.isDuplicate
                 }))

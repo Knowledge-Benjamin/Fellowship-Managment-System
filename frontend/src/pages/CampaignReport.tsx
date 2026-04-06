@@ -35,7 +35,7 @@ interface CampaignReportData {
     };
     drilldowns: {
         submitters: Array<{ memberId: string, name: string; region: string; isLeader: boolean; contactsCount: number }>;
-        contacts: Array<{ id: string, contactName: string; phone: string; submittedBy: string; status: string; isDuplicate: boolean }>;
+        contacts: Array<{ id: string, contactName: string; phone: string; submittedBy: string; region: string; status: string; isDuplicate: boolean }>;
     };
 }
 
@@ -144,16 +144,40 @@ export default function CampaignReport() {
         wsSubmitters['!cols'] = [{ wch: 30 }, { wch: 20 }, { wch: 15 }, { wch: 20 }];
         XLSX.utils.book_append_sheet(wb, wsSubmitters, 'Submitters');
 
-        // 3. Raw Contacts Sheet
-        const wsContacts = XLSX.utils.json_to_sheet(report.drilldowns.contacts.map(c => ({
-            'Contact/Pledge Name': c.contactName,
-            'Phone/Email': c.phone,
-            'Submitted By': c.submittedBy,
-            'Call/Event Status': c.status,
-            'Is Duplicate': c.isDuplicate ? 'Yes' : 'No'
-        })));
-        wsContacts['!cols'] = [{ wch: 30 }, { wch: 25 }, { wch: 30 }, { wch: 20 }, { wch: 15 }];
-        XLSX.utils.book_append_sheet(wb, wsContacts, 'Raw Contacts');
+        // 3. Raw Contacts Sheets (Grouped by Region)
+        const regionMap = new Map<string, any[]>();
+        report.drilldowns.contacts.forEach(c => {
+            const r = c.region || 'Unassigned';
+            if (!regionMap.has(r)) regionMap.set(r, []);
+            regionMap.get(r)!.push(c);
+        });
+
+        let sheetCounter = 1;
+        Array.from(regionMap.keys()).sort().forEach(regionName => {
+            let sheetName = regionName.replace(/[^a-zA-Z0-9 ]/g, "").trim().substring(0, 31);
+            if (!sheetName) sheetName = `Group ${sheetCounter++}`;
+            
+            // Check for sheet name collisions just in case
+            if (wb.SheetNames.includes(sheetName)) {
+                sheetName = `${sheetName.substring(0, 27)} ${sheetCounter++}`;
+            }
+
+            const regionContacts = regionMap.get(regionName)!;
+            const wsContacts = XLSX.utils.json_to_sheet(regionContacts.map(c => ({
+                'Contact/Pledge Name': c.contactName,
+                'Phone/Email': c.phone,
+                'Submitted By': c.submittedBy,
+                'Region': c.region,
+                'Call/Event Status': c.status,
+                'Is Duplicate': c.isDuplicate ? 'Yes' : 'No'
+            })));
+            wsContacts['!cols'] = [{ wch: 30 }, { wch: 25 }, { wch: 30 }, { wch: 20 }, { wch: 20 }, { wch: 15 }];
+            XLSX.utils.book_append_sheet(wb, wsContacts, sheetName);
+        });
+
+        if (regionMap.size === 0) {
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet([]), 'No Contacts');
+        }
 
         // Save
         const safeTitle = report.campaign.title.replace(/[^a-z0-9]/gi, '_').toLowerCase();

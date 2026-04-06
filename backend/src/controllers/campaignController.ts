@@ -517,8 +517,16 @@ export const exportCampaign = async (req: Request, res: Response) => {
             regionMap.get(regionName)!.push(c);
         });
 
+        let sheetCounter = 1;
         const createSheet = (name: string, data: any[]) => {
-            const sheetName = name.replace(/[^a-zA-Z0-9 ]/g, "").substring(0, 31);
+            let sheetName = name.replace(/[^a-zA-Z0-9 ]/g, "").trim().substring(0, 31);
+            if (!sheetName) sheetName = `Group ${sheetCounter++}`;
+            
+            // Check for duplicates
+            if (workbook.getWorksheet(sheetName)) {
+                sheetName = `${sheetName.substring(0, 27)} ${sheetCounter++}`;
+            }
+
             const sheet = workbook.addWorksheet(sheetName, {
                 properties: { tabColor: { argb: 'FF6366f1' } },
             });
@@ -699,6 +707,7 @@ export const getMobilizationReport = async (req: Request, res: Response) => {
                     contactName: c.name,
                     phone: c.phone,
                     submittedBy: c.submittedBy.fullName,
+                    region: c.submittedBy.region?.name || 'Unassigned',
                     status: c.callStatus,
                     isDuplicate: c.isDuplicate
                 }))

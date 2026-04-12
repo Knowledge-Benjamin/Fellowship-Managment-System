@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc",
-    "start": "npx prisma migrate deploy && npx prisma migrate deploy --schema=prisma/management.prisma && node dist/index.js",
+    "start": "node dist/migrate-all.js && node dist/index.js",
     "dev": "ts-node src/index.ts"
   },
   "keywords": [],

@@ -1,0 +1,52 @@
+import { execSync } from 'child_process';
+import { managementPrisma } from './utils/managementDb';
+
+async function migrateAllDatabases() {
+  console.log('[Migrate] Starting global migration process...');
+
+  try {
+    // 1. Migrate the Management Database
+    console.log('[Migrate] Applying migrations to Management Database...');
+    execSync('npx prisma migrate deploy --schema=prisma/management.prisma', { stdio: 'inherit' });
+    console.log('[Migrate] Management Database migrated successfully.');
+
+    // 2. Fetch all registered campuses
+    console.log('[Migrate] Fetching registered campuses for tenant migrations...');
+    const campuses = await managementPrisma.campus.findMany({
+      where: { isActive: true }
+    });
+
+    console.log(`[Migrate] Found ${campuses.length} active tenant database(s) to migrate.`);
+
+    // 3. Loop through and migrate each tenant database
+    for (const campus of campuses) {
+      console.log(`\n[Migrate] ----------------------------------------`);
+      console.log(`[Migrate] Migrating Tenant: ${campus.name} (${campus.subdomain})`);
+      
+      try {
+        execSync(`npx prisma migrate deploy --schema=prisma/schema.prisma`, {
+          env: {
+            ...process.env,
+            DATABASE_URL: campus.databaseUrl
+          },
+          stdio: 'inherit'
+        });
+        console.log(`[Migrate] Success for ${campus.name}`);
+      } catch (err: any) {
+        console.error(`[Migrate] ERROR applying migrations for ${campus.name}!`);
+        console.error(err.message);
+        // We continue attempting the others even if one tenant fails
+      }
+    }
+
+    console.log(`\n[Migrate] ----------------------------------------`);
+    console.log('[Migrate] Global migration process complete!');
+  } catch (error) {
+    console.error('[Migrate] Fatal error during global migration process:', error);
+    process.exit(1);
+  } finally {
+    await managementPrisma.$disconnect();
+  }
+}
+
+migrateAllDatabases();

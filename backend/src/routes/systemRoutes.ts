@@ -93,27 +93,35 @@ router.get('/campuses', systemAdminGuard, async (_req: Request, res: Response) =
 
 // ────────────────────────────────────────────────────────────────────────────
 // POST /api/system/campuses
-// Register a new campus + provision its Neon database via env var reference
+// Provision a new campus:
+//   1. Validate DB connectivity
+//   2. Run prisma migrate deploy against the new DB
+//   3. Seed initial regions, system tags, and a Fellowship Manager account
+//   4. Register the campus in the Management DB
+//   5. Return generated FM credentials to the caller
 // ────────────────────────────────────────────────────────────────────────────
 
 router.post('/campuses', systemAdminGuard, async (req: Request, res: Response) => {
-    const { name, subdomain, databaseUrl, config } = req.body as {
+    const { name, subdomain, databaseUrl, fmEmail, fmFullName, config } = req.body as {
         name: string;
         subdomain: string;
         databaseUrl: string;
+        fmEmail: string;
+        fmFullName: string;
         config?: Record<string, unknown>;
     };
 
-    if (!name || !subdomain || !databaseUrl) {
-        res.status(400).json({ error: 'name, subdomain, and databaseUrl are required.' });
+    if (!name || !subdomain || !databaseUrl || !fmEmail || !fmFullName) {
+        res.status(400).json({ error: 'name, subdomain, databaseUrl, fmEmail, and fmFullName are required.' });
         return;
     }
 
-    // Validate the provided DB URL by attempting a quick connection
+    // ── Step 1: Validate DB connectivity ────────────────────────────────────
+    let tenantClient: ReturnType<typeof getClientForUrl>;
     try {
-        const testClient = getClientForUrl(databaseUrl);
-        await testClient.$queryRaw`SELECT 1`;
-    } catch (err) {
+        tenantClient = getClientForUrl(databaseUrl);
+        await tenantClient.$queryRaw`SELECT 1`;
+    } catch (_err) {
         res.status(400).json({
             error: 'Cannot connect to the provided databaseUrl. Please verify the Neon connection string.',
         });
@@ -122,13 +130,83 @@ router.post('/campuses', systemAdminGuard, async (req: Request, res: Response) =
 
     const mgmt = getManagementClient();
 
-    // Check for subdomain clash
+    // ── Check for subdomain clash ────────────────────────────────────────────
     const existing = await (mgmt as any).campus.findUnique({ where: { subdomain } });
     if (existing) {
         res.status(409).json({ error: `Subdomain "${subdomain}" is already registered.` });
         return;
     }
 
+    // ── Step 2: Run Prisma migrations against the new DB ────────────────────
+    try {
+        const { execSync } = await import('child_process');
+        const path = await import('path');
+        const schemaPath = path.resolve(process.cwd(), 'prisma', 'schema.prisma');
+
+        execSync(`npx prisma migrate deploy --schema="${schemaPath}"`, {
+            env: { ...process.env, DATABASE_URL: databaseUrl, DIRECT_URL: databaseUrl },
+            stdio: 'pipe',
+            timeout: 120_000, // 2-min timeout for migration
+        });
+
+        console.log(`[Provision] ✅ Migrations applied to ${subdomain}`);
+    } catch (err: any) {
+        console.error('[Provision] Migration failed:', err.stderr?.toString() ?? err.message);
+        res.status(500).json({
+            error: 'Database migrations failed. Ensure the database is accessible and schema.prisma is valid.',
+            detail: err.stderr?.toString()?.slice(0, 500) ?? err.message,
+        });
+        return;
+    }
+
+    // ── Step 3: Seed initial data (regions, system tags, FM account) ─────────
+    let tempPassword: string;
+    try {
+        // Generate a secure temp password
+        const crypto = await import('crypto');
+        tempPassword = crypto.randomBytes(8).toString('hex'); // e.g. "a3f9b2c1d8e7f0a4"
+        const hashedPassword = await bcrypt.hash(tempPassword, 10);
+
+        // Seed regions
+        const [centralRegion] = await Promise.all([
+            tenantClient.region.upsert({ where: { name: 'Central' }, update: {}, create: { name: 'Central' } }),
+            tenantClient.region.upsert({ where: { name: 'Non-Resident' }, update: {}, create: { name: 'Non-Resident' } }),
+        ]);
+
+        // Seed system tags
+        await Promise.all([
+            tenantClient.tag.upsert({ where: { name: 'CHECK_IN_VOLUNTEER' }, update: {}, create: { name: 'CHECK_IN_VOLUNTEER', description: 'Temporary access for event check-in volunteers', type: 'SYSTEM', color: '#f59e0b', isSystem: true } }),
+            tenantClient.tag.upsert({ where: { name: 'ALUMNI' }, update: {}, create: { name: 'ALUMNI', description: 'Former student', type: 'SYSTEM', color: '#9333ea', isSystem: true, showOnRegistration: true } }),
+            tenantClient.tag.upsert({ where: { name: 'OTHER' }, update: {}, create: { name: 'OTHER', description: 'Community member or other', type: 'SYSTEM', color: '#6b7280', isSystem: true, showOnRegistration: true } }),
+        ]);
+
+        // Seed initial Fellowship Manager
+        await tenantClient.member.upsert({
+            where: { email: fmEmail },
+            update: {},
+            create: {
+                fullName: fmFullName,
+                email: fmEmail,
+                phoneNumber: '+256700000000',
+                password: hashedPassword,
+                role: 'FELLOWSHIP_MANAGER',
+                fellowshipNumber: 'AAA001',
+                gender: 'MALE',
+                regionId: centralRegion.id,
+            },
+        });
+
+        console.log(`[Provision] ✅ Seed complete for ${subdomain} — FM: ${fmEmail}`);
+    } catch (err: any) {
+        console.error('[Provision] Seeding failed:', err.message);
+        res.status(500).json({
+            error: 'Migrations succeeded but initial data seeding failed.',
+            detail: err.message,
+        });
+        return;
+    }
+
+    // ── Step 4: Register campus in Management DB ─────────────────────────────
     const defaultTerminology = {
         terminology: {
             Region: 'Region',
@@ -147,9 +225,21 @@ router.post('/campuses', systemAdminGuard, async (req: Request, res: Response) =
         },
     });
 
-    console.log(`[SystemAdmin] Campus provisioned: ${subdomain} (${name})`);
-    res.status(201).json({ id: campus.id, subdomain: campus.subdomain, name: campus.name });
+    console.log(`[SystemAdmin] Campus registered: ${subdomain} (${name})`);
+
+    // ── Step 5: Return credentials to caller ─────────────────────────────────
+    res.status(201).json({
+        id: campus.id,
+        subdomain: campus.subdomain,
+        name: campus.name,
+        credentials: {
+            email: fmEmail,
+            tempPassword,
+            url: `https://${subdomain}.makmanifest.org`,
+        },
+    });
 });
+
 
 // ────────────────────────────────────────────────────────────────────────────
 // PATCH /api/system/campuses/:id

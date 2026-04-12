@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Server, Loader2, Globe } from 'lucide-react';
+import { X, Server, Loader2, Globe, CheckCircle, Copy, ExternalLink } from 'lucide-react';
 import systemApi from '../../../systemApi';
 
 interface ProvisionCampusModalProps {
@@ -8,12 +8,22 @@ interface ProvisionCampusModalProps {
     onSuccess: () => void;
 }
 
+interface Credentials {
+    email: string;
+    tempPassword: string;
+    url: string;
+}
+
 const ProvisionCampusModal: React.FC<ProvisionCampusModalProps> = ({ isOpen, onClose, onSuccess }) => {
     const [name, setName] = useState('');
     const [subdomain, setSubdomain] = useState('');
     const [databaseUrl, setDatabaseUrl] = useState('');
+    const [fmEmail, setFmEmail] = useState('');
+    const [fmFullName, setFmFullName] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [credentials, setCredentials] = useState<Credentials | null>(null);
+    const [copied, setCopied] = useState(false);
 
     if (!isOpen) return null;
 
@@ -23,21 +33,36 @@ const ProvisionCampusModal: React.FC<ProvisionCampusModalProps> = ({ isOpen, onC
         setLoading(true);
 
         try {
-            await systemApi.post('/system/campuses', {
+            const { data } = await systemApi.post('/system/campuses', {
                 name,
                 subdomain: subdomain.toLowerCase().replace(/[^a-z0-9-]/g, ''),
                 databaseUrl,
+                fmEmail,
+                fmFullName,
             });
+            setCredentials(data.credentials);
             onSuccess();
-            // Reset state
-            setName('');
-            setSubdomain('');
-            setDatabaseUrl('');
         } catch (err: any) {
             setError(err.response?.data?.error || 'Failed to provision campus');
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleCopy = () => {
+        if (!credentials) return;
+        navigator.clipboard.writeText(
+            `Campus URL: ${credentials.url}\nLogin Email: ${credentials.email}\nTemporary Password: ${credentials.tempPassword}`
+        );
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
+    const handleClose = () => {
+        setName(''); setSubdomain(''); setDatabaseUrl('');
+        setFmEmail(''); setFmFullName('');
+        setError(''); setCredentials(null);
+        onClose();
     };
 
     return (
@@ -46,91 +71,145 @@ const ProvisionCampusModal: React.FC<ProvisionCampusModalProps> = ({ isOpen, onC
                 <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
                     <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                         <Server className="w-5 h-5 text-indigo-500" />
-                        Provision New Campus
+                        {credentials ? 'Campus Provisioned!' : 'Provision New Campus'}
                     </h2>
-                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                    <button onClick={handleClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
                         <X className="w-6 h-6" />
                     </button>
                 </div>
 
                 <div className="p-6">
-                    {error && (
-                        <div className="mb-6 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-3 rounded-lg text-sm">
-                            {error}
-                        </div>
-                    )}
-
-                    <form onSubmit={handleSubmit} className="space-y-5">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                Campus Name
-                            </label>
-                            <input
-                                type="text"
-                                required
-                                value={name}
-                                onChange={e => setName(e.target.value)}
-                                placeholder="e.g. Makerere University Business School"
-                                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                Subdomain
-                            </label>
-                            <div className="flex rounded-lg shadow-sm">
-                                <input
-                                    type="text"
-                                    required
-                                    value={subdomain}
-                                    onChange={e => setSubdomain(e.target.value)}
-                                    placeholder="mubs"
-                                    className="flex-1 min-w-0 block w-full px-4 py-2 rounded-none rounded-l-lg border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                                />
-                                <span className="inline-flex items-center px-4 rounded-r-lg border border-l-0 border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-600 text-gray-500 dark:text-gray-300 sm:text-sm">
-                                    .makmanifest.org
-                                </span>
+                    {/* ── Success view ── */}
+                    {credentials ? (
+                        <div className="space-y-5">
+                            <div className="flex items-center gap-3 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                                <CheckCircle className="w-6 h-6 text-green-500 flex-shrink-0" />
+                                <p className="text-sm text-green-700 dark:text-green-300 font-medium">
+                                    Campus provisioned successfully! Migrations applied and FM account created.
+                                </p>
                             </div>
-                            <p className="mt-1 text-xs text-gray-500 flex items-center gap-1">
-                                <Globe className="w-3 h-3" /> Creates a dedicated routing path for this campus
-                            </p>
-                        </div>
 
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                Neon Database URL
-                            </label>
-                            <input
-                                type="password"
-                                required
-                                value={databaseUrl}
-                                onChange={e => setDatabaseUrl(e.target.value)}
-                                placeholder="postgresql://user:password@endpoint..."
-                                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                            />
-                            <p className="mt-1 text-xs text-gray-500">
-                                Must be the pooled connection string. The backend will verify connectivity before saving.
-                            </p>
-                        </div>
+                            <div className="bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-3">
+                                <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Generated Credentials</p>
+                                <div className="space-y-2 text-sm">
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-500 dark:text-gray-400">Campus URL</span>
+                                        <a href={credentials.url} target="_blank" rel="noopener noreferrer" className="text-indigo-600 dark:text-indigo-400 font-medium flex items-center gap-1 hover:underline">
+                                            {credentials.url.replace('https://', '')}
+                                            <ExternalLink className="w-3 h-3" />
+                                        </a>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-500 dark:text-gray-400">FM Email</span>
+                                        <span className="font-mono text-gray-800 dark:text-gray-200">{credentials.email}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-500 dark:text-gray-400">Temp Password</span>
+                                        <span className="font-mono text-gray-800 dark:text-gray-200">{credentials.tempPassword}</span>
+                                    </div>
+                                </div>
+                            </div>
 
-                        <div className="pt-4 flex justify-end gap-3 border-t border-gray-100 dark:border-gray-700 mt-6">
-                            <button
-                                type="button"
-                                onClick={onClose}
-                                className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-2 focus:ring-indigo-500 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                type="submit"
-                                disabled={loading}
-                                className="flex items-center justify-center min-w-[120px] px-4 py-2 text-white bg-indigo-600 border border-transparent rounded-lg hover:bg-indigo-700 focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
-                            >
-                                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Provision Campus'}
-                            </button>
+                            <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 p-3 rounded-lg border border-amber-200 dark:border-amber-800">
+                                ⚠️ Copy these credentials now. The temporary password will not be shown again.
+                            </p>
+
+                            <div className="flex justify-end gap-3 pt-2">
+                                <button
+                                    onClick={handleCopy}
+                                    className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                                >
+                                    <Copy className="w-4 h-4" />
+                                    {copied ? 'Copied!' : 'Copy Credentials'}
+                                </button>
+                                <button onClick={handleClose} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
+                                    Done
+                                </button>
+                            </div>
                         </div>
-                    </form>
+                    ) : (
+                        /* ── Provision form ── */
+                        <>
+                            {error && (
+                                <div className="mb-5 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-3 rounded-lg text-sm">
+                                    {error}
+                                </div>
+                            )}
+
+                            <form onSubmit={handleSubmit} className="space-y-5">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Campus Name</label>
+                                    <input
+                                        type="text" required value={name} onChange={e => setName(e.target.value)}
+                                        placeholder="e.g. Makerere University Business School"
+                                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Subdomain</label>
+                                    <div className="flex rounded-lg shadow-sm">
+                                        <input
+                                            type="text" required value={subdomain} onChange={e => setSubdomain(e.target.value)}
+                                            placeholder="mubs"
+                                            className="flex-1 px-4 py-2 rounded-none rounded-l-lg border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                        />
+                                        <span className="inline-flex items-center px-4 rounded-r-lg border border-l-0 border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-600 text-gray-500 dark:text-gray-300 text-sm">
+                                            .makmanifest.org
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Neon Database URL</label>
+                                    <input
+                                        type="password" required value={databaseUrl} onChange={e => setDatabaseUrl(e.target.value)}
+                                        placeholder="postgresql://user:password@endpoint..."
+                                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                    />
+                                    <p className="mt-1 text-xs text-gray-500">Empty Neon database. Migrations will be applied automatically.</p>
+                                </div>
+
+                                <div className="border-t border-gray-100 dark:border-gray-700 pt-4">
+                                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Initial Fellowship Manager Account</p>
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Full Name</label>
+                                            <input
+                                                type="text" required value={fmFullName} onChange={e => setFmFullName(e.target.value)}
+                                                placeholder="e.g. John Doe"
+                                                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
+                                            <input
+                                                type="email" required value={fmEmail} onChange={e => setFmEmail(e.target.value)}
+                                                placeholder="fm@campus.org"
+                                                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="flex justify-end gap-3 pt-2 border-t border-gray-100 dark:border-gray-700">
+                                    <button type="button" onClick={handleClose}
+                                        className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700">
+                                        Cancel
+                                    </button>
+                                    <button type="submit" disabled={loading}
+                                        className="flex items-center justify-center min-w-[140px] px-4 py-2 text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50">
+                                        {loading ? (
+                                            <span className="flex items-center gap-2">
+                                                <Loader2 className="w-4 h-4 animate-spin" />
+                                                Provisioning…
+                                            </span>
+                                        ) : 'Provision Campus'}
+                                    </button>
+                                </div>
+                            </form>
+                        </>
+                    )}
                 </div>
             </div>
         </div>

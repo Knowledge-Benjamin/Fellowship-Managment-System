@@ -2,17 +2,41 @@ import axios from 'axios';
 
 /**
  * Resolve the campus subdomain from the current browser URL.
- * e.g.  tamu.fellowshipmanager.app  →  "tamu"
- *       localhost                   →  null  (local dev fallback)
+ *
+ * Resolution order:
+ * 1. `?campus=` URL query param  — for beta testing on mmi-beta.onrender.com
+ * 2. `localStorage.campus_override`  — persisted after setting via query param
+ * 3. Hostname subdomain  — production: tamu.makfellowship.org → "tamu"
+ * 4. null  — local dev fallback (no subdomain)
  */
 function resolveCampusSubdomain(): string | null {
+    // 1. Query-param override (for staging/beta testing)
+    const params = new URLSearchParams(window.location.search);
+    const campusParam = params.get('campus');
+    if (campusParam) {
+        localStorage.setItem('campus_override', campusParam);
+        return campusParam;
+    }
+
+    // 2. Persisted override from a previous ?campus= visit
+    const storedOverride = localStorage.getItem('campus_override');
+    if (storedOverride) {
+        return storedOverride;
+    }
+
+    // 3. Standard production hostname parsing
     const hostname = window.location.hostname;
     const parts = hostname.split('.');
     // Only treat it as a subdomain if there are at least 3 parts (sub.domain.tld)
-    // Ignore "localhost", "127.0.0.1", and plain apex domains
-    if (parts.length >= 3 && parts[0] !== 'www') {
+    // Ignore "localhost", "127.0.0.1", plain apex domains, and *.onrender.com
+    if (
+        parts.length >= 3 &&
+        parts[0] !== 'www' &&
+        !hostname.endsWith('.onrender.com')
+    ) {
         return parts[0];
     }
+
     return null;
 }
 

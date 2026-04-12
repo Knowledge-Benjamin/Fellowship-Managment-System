@@ -1,5 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import { getClientForUrl } from '../lib/prismaConnectionManager';
+import { getManagementClient } from '../lib/managementClient';
+
+// Cache to prevent hitting the management database on every single API request
+const subdomainToUrlCache = new Map<string, string>();
 
 /**
  * Tenant Resolution Strategy
@@ -7,37 +11,56 @@ import { getClientForUrl } from '../lib/prismaConnectionManager';
  * 1.  The frontend sends `X-Campus-Domain: tamu` (just the subdomain) in
  *     every authenticated request header.
  * 2.  We look up the corresponding DATABASE_URL from either:
- *       a) An environment variable  →  DATABASE_URL_<SUBDOMAIN_UPPER>
- *          e.g. DATABASE_URL_TAMU=postgres://...
- *       b) (Phase 3) A row in the Management / Control Plane DB.
+ *       a) In-memory Cache.
+ *       b) An environment variable (DATABASE_URL_<SUBDOMAIN_UPPER>).
+ *       c) (Phase 3) A row in the Management / Control Plane DB.
  * 3.  We instantiate (or reuse a cached) PrismaClient for that URL and
  *     attach it to `req.prisma`.
  * 4.  Any route that calls `(req as any).prisma` will automatically talk
  *     to the correct isolated campus database.
- *
- * FALLBACK:  If no X-Campus-Domain header is present, we fall back to the
- * monolith DATABASE_URL for backwards-compatible local development.
  */
 
-export function tenantMiddleware(req: Request, res: Response, next: NextFunction): void {
+export async function tenantMiddleware(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const subdomain = req.headers['x-campus-domain'] as string | undefined;
 
         let databaseUrl: string | undefined;
 
         if (subdomain) {
-            // Look for a campus-specific override variable first
-            const envKey = `DATABASE_URL_${subdomain.toUpperCase().replace(/-/g, '_')}`;
-            databaseUrl = process.env[envKey];
+            // 1. Check in-memory cache
+            if (subdomainToUrlCache.has(subdomain)) {
+                databaseUrl = subdomainToUrlCache.get(subdomain);
+            } else {
+                // 2. Look for a campus-specific override variable
+                const envKey = `DATABASE_URL_${subdomain.toUpperCase().replace(/-/g, '_')}`;
+                databaseUrl = process.env[envKey];
 
-            if (!databaseUrl) {
-                // Campus is registered but env var missing — refuse the request to prevent
-                // accidental cross-tenant data bleed into the fallback DB.
-                res.status(503).json({
-                    error: 'Campus database not configured.',
-                    detail: `No database URL found for campus: ${subdomain}. Contact your system administrator.`,
-                });
-                return;
+                // 3. Query the Management Database
+                if (!databaseUrl) {
+                    try {
+                        const managementPrisma = getManagementClient();
+                        const campus = await managementPrisma.campus.findUnique({
+                            where: { subdomain },
+                            select: { databaseUrl: true, isActive: true }
+                        });
+
+                        if (campus && campus.isActive) {
+                            databaseUrl = campus.databaseUrl;
+                        }
+                    } catch (dbError) {
+                        console.error('[TenantMiddleware] Error querying management database:', dbError);
+                    }
+                }
+
+                if (databaseUrl) {
+                    subdomainToUrlCache.set(subdomain, databaseUrl);
+                } else {
+                    res.status(503).json({
+                        error: 'Campus database not configured.',
+                        detail: `No database URL found for campus: ${subdomain}. Contact your system administrator.`,
+                    });
+                    return;
+                }
             }
         } else {
             // No subdomain header → monolith / local dev fallback

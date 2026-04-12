@@ -17,7 +17,6 @@ interface Credentials {
 const ProvisionCampusModal: React.FC<ProvisionCampusModalProps> = ({ isOpen, onClose, onSuccess }) => {
     const [name, setName] = useState('');
     const [subdomain, setSubdomain] = useState('');
-    const [databaseUrl, setDatabaseUrl] = useState('');
     const [fmEmail, setFmEmail] = useState('');
     const [fmFullName, setFmFullName] = useState('');
     const [loading, setLoading] = useState(false);
@@ -36,7 +35,6 @@ const ProvisionCampusModal: React.FC<ProvisionCampusModalProps> = ({ isOpen, onC
             const { data } = await systemApi.post('/system/campuses', {
                 name,
                 subdomain: subdomain.toLowerCase().replace(/[^a-z0-9-]/g, ''),
-                databaseUrl,
                 fmEmail,
                 fmFullName,
             });
@@ -59,7 +57,7 @@ const ProvisionCampusModal: React.FC<ProvisionCampusModalProps> = ({ isOpen, onC
     };
 
     const handleClose = () => {
-        setName(''); setSubdomain(''); setDatabaseUrl('');
+        setName(''); setSubdomain('');
         setFmEmail(''); setFmFullName('');
         setError(''); setCredentials(null);
         onClose();
@@ -158,17 +156,8 @@ const ProvisionCampusModal: React.FC<ProvisionCampusModalProps> = ({ isOpen, onC
                                             .makmanifest.org
                                         </span>
                                     </div>
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Database Connection String</label>
-                                    <input
-                                        type="password" required value={databaseUrl} onChange={e => setDatabaseUrl(e.target.value)}
-                                        placeholder="postgresql://user:password@endpoint..."
-                                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                                    />
-                                    <p className="mt-1 text-xs text-gray-500">
-                                        In your Neon dashboard, create a <strong>New Database</strong> within your existing project, then paste its connection string here. Migrations will run automatically.
+                                    <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                                        The physical database will be automatically generated in Neon via API.
                                     </p>
                                 </div>
 

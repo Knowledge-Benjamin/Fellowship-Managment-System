@@ -102,38 +102,90 @@ router.get('/campuses', systemAdminGuard, async (_req: Request, res: Response) =
 // ────────────────────────────────────────────────────────────────────────────
 
 router.post('/campuses', systemAdminGuard, async (req: Request, res: Response) => {
-    const { name, subdomain, databaseUrl, fmEmail, fmFullName, config } = req.body as {
+    const { name, subdomain, fmEmail, fmFullName, config } = req.body as {
         name: string;
         subdomain: string;
-        databaseUrl: string;
         fmEmail: string;
         fmFullName: string;
         config?: Record<string, unknown>;
     };
 
-    if (!name || !subdomain || !databaseUrl || !fmEmail || !fmFullName) {
-        res.status(400).json({ error: 'name, subdomain, databaseUrl, fmEmail, and fmFullName are required.' });
-        return;
-    }
-
-    // ── Step 1: Validate DB connectivity ────────────────────────────────────
-    let tenantClient: ReturnType<typeof getClientForUrl>;
-    try {
-        tenantClient = getClientForUrl(databaseUrl);
-        await tenantClient.$queryRaw`SELECT 1`;
-    } catch (_err) {
-        res.status(400).json({
-            error: 'Cannot connect to the provided databaseUrl. Please verify the Neon connection string.',
-        });
+    if (!name || !subdomain || !fmEmail || !fmFullName) {
+        res.status(400).json({ error: 'name, subdomain, fmEmail, and fmFullName are required.' });
         return;
     }
 
     const mgmt = getManagementClient();
 
-    // ── Check for subdomain clash ────────────────────────────────────────────
+    // ── Check for subdomain clash BEFORE creating the database ────────────────
     const existing = await (mgmt as any).campus.findUnique({ where: { subdomain } });
     if (existing) {
-        res.status(409).json({ error: `Subdomain "${subdomain}" is already registered.` });
+        res.status(409).json({ error: `Subdomain "${subdomain}" is already registered in the Management DB.` });
+        return;
+    }
+
+    // ── Step 1: Provision Physical Database via Neon API ────────────────────
+    const { 
+        NEON_API_KEY, NEON_PROJECT_ID, NEON_BRANCH_ID, 
+        NEON_DATABASE_OWNER_ROLE, NEON_DATABASE_PASSWORD, NEON_ENDPOINT_URL 
+    } = process.env;
+
+    if (!NEON_API_KEY || !NEON_PROJECT_ID || !NEON_BRANCH_ID || !NEON_DATABASE_OWNER_ROLE || !NEON_DATABASE_PASSWORD || !NEON_ENDPOINT_URL) {
+        res.status(500).json({ error: 'Server misconfiguration: Neon API provisioning variables are not set in the environment.' });
+        return;
+    }
+
+    let databaseUrl: string;
+
+    try {
+        console.log(`[Provision] Calling Neon API to create physical database: ${subdomain}...`);
+        
+        // Use native fetch to call the Neon API
+        const neonResponse = await fetch(`https://console.neon.tech/api/v2/projects/${NEON_PROJECT_ID}/branches/${NEON_BRANCH_ID}/databases`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${NEON_API_KEY}`,
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                database: {
+                    name: subdomain, // Use the subdomain as the database name
+                    owner_name: NEON_DATABASE_OWNER_ROLE
+                }
+            })
+        });
+
+        if (!neonResponse.ok) {
+            const errorData = await neonResponse.json();
+            // If it already exists natively in Neon, we can still proceed by attaching to it
+            if (neonResponse.status !== 409 && errorData.code !== 'ALREADY_EXISTS') {
+                throw new Error(`Neon API Error: ${JSON.stringify(errorData)}`);
+            }
+            console.log(`[Provision] Database ${subdomain} already existed in Neon, proceeding to use it.`);
+        } else {
+            console.log(`[Provision] ✅ Neon database physically created.`);
+        }
+
+        // Synthesize the securely constructed connection string
+        databaseUrl = `postgresql://${NEON_DATABASE_OWNER_ROLE}:${NEON_DATABASE_PASSWORD}@${NEON_ENDPOINT_URL}/${subdomain}?sslmode=require&channel_binding=require`;
+
+    } catch (neonErr: any) {
+        console.error('[Provision] Neon API failed:', neonErr.message);
+        res.status(502).json({
+            error: 'Failed to provision the physical database via the Neon API.',
+            detail: neonErr.message,
+        });
+        return;
+    }
+
+    let tenantClient: ReturnType<typeof getClientForUrl>;
+    try {
+        tenantClient = getClientForUrl(databaseUrl);
+        // Quick ping to ensure it's ready
+        await tenantClient.$queryRaw`SELECT 1`;
+    } catch (_err) {
+        res.status(500).json({ error: 'Database was created via API, but connectivity verification failed.' });
         return;
     }
 

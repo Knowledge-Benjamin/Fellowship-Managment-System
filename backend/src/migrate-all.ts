@@ -1,4 +1,5 @@
 import { execSync } from 'child_process';
+import * as bcrypt from 'bcryptjs';
 import { getManagementClient, disconnectManagementClient } from './lib/managementClient';
 
 async function migrateAllDatabases() {
@@ -12,7 +13,27 @@ async function migrateAllDatabases() {
     execSync('npx prisma db push --accept-data-loss --schema=prisma/schema.management.prisma', { stdio: 'inherit' });
     console.log('[Migrate] Management Database schema pushed successfully.');
 
-    // 2. Fetch all registered campuses
+    // 2. Seed SuperAdmin account (idempotent — skips if already exists)
+    // Credentials are read from env vars — never hardcoded in source.
+    const ADMIN_EMAIL = process.env.SYSTEM_ADMIN_EMAIL;
+    const ADMIN_PASSWORD = process.env.SYSTEM_ADMIN_PASSWORD;
+
+    if (ADMIN_EMAIL && ADMIN_PASSWORD) {
+      const existing = await managementPrisma.systemAdmin.findUnique({ where: { email: ADMIN_EMAIL } });
+      if (!existing) {
+        const passwordHash = await bcrypt.hash(ADMIN_PASSWORD, 12);
+        await managementPrisma.systemAdmin.create({
+          data: { email: ADMIN_EMAIL, passwordHash, fullName: 'Super Admin' },
+        });
+        console.log(`[Migrate] SuperAdmin created: ${ADMIN_EMAIL}`);
+      } else {
+        console.log(`[Migrate] SuperAdmin already exists — skipping.`);
+      }
+    } else {
+      console.warn('[Migrate] SYSTEM_ADMIN_EMAIL or SYSTEM_ADMIN_PASSWORD not set — skipping SuperAdmin seed.');
+    }
+
+    // 3. Fetch all registered campuses
     console.log('[Migrate] Fetching registered campuses for tenant migrations...');
     const campuses = await managementPrisma.campus.findMany({
       where: { isActive: true }
@@ -20,11 +41,11 @@ async function migrateAllDatabases() {
 
     console.log(`[Migrate] Found ${campuses.length} active tenant database(s) to migrate.`);
 
-    // 3. Loop through and migrate each tenant database
+    // 4. Loop through and migrate each tenant database
     for (const campus of campuses) {
       console.log(`\n[Migrate] ----------------------------------------`);
       console.log(`[Migrate] Migrating Tenant: ${campus.name} (${campus.subdomain})`);
-      
+
       try {
         execSync(`npx prisma migrate deploy --schema=prisma/schema.prisma`, {
           env: {
@@ -37,7 +58,7 @@ async function migrateAllDatabases() {
       } catch (err: any) {
         console.error(`[Migrate] ERROR applying migrations for ${campus.name}!`);
         console.error(err.message);
-        // We continue attempting the others even if one tenant fails
+        // Continue attempting the others even if one tenant fails
       }
     }
 

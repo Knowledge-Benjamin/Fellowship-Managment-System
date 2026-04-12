@@ -73,7 +73,8 @@ export async function tenantMiddleware(req: Request, res: Response, next: NextFu
         }
 
         // Attach the correct PrismaClient instance for this request lifecycle
-        (req as any).prisma = getClientForUrl(databaseUrl);
+        // (databaseUrl is guaranteed to be a string here due to the early returns)
+        (req as any).prisma = getClientForUrl(databaseUrl as string);
 
         next();
     } catch (err) {

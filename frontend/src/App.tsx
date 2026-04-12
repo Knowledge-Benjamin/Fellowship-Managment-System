@@ -37,14 +37,23 @@ const EmailManagement = lazy(() => import('./pages/EmailManagement'));
 const Campaigns = lazy(() => import('./pages/Campaigns'));
 const CampaignManagement = lazy(() => import('./pages/CampaignManagement'));
 const CampaignReport = lazy(() => import('./pages/CampaignReport'));
+
+// System Admin
+const SystemAdminLogin = lazy(() => import('./pages/SystemAdmin/SystemAdminLogin'));
+const CampusesOverview = lazy(() => import('./pages/SystemAdmin/CampusesOverview'));
+const CampusDetails = lazy(() => import('./pages/SystemAdmin/CampusDetails'));
+
 import Sidebar from './components/Sidebar';
 
 // Roles that can view dispatched reports
 const LEADER_ROLES = ['FELLOWSHIP_MANAGER', 'REGIONAL_HEAD', 'FAMILY_HEAD', 'TEAM_LEADER'] as const;
 import { ToastProvider } from './components/ToastProvider';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { SystemAdminAuthProvider } from './context/SystemAdminAuthContext';
 import { TerminologyProvider } from './context/TerminologyContext';
 import ProtectedRoute from './components/ProtectedRoute';
+import SystemAdminProtectedRoute from './components/SystemAdminProtectedRoute';
+import SystemAdminLayout from './layouts/SystemAdminLayout';
 import CheckInPermissionGuard from './components/CheckInPermissionGuard';
 import Navbar from './components/Navbar';
 import { NetworkStatusListener } from './components/NetworkStatusListener';
@@ -307,14 +316,40 @@ function AppContent() {
 function App() {
   return (
     <Router>
-      <AuthProvider>
-        <TerminologyProvider>
-          <ToastProvider>
-            <NetworkStatusListener />
-            <AppContent />
-          </ToastProvider>
-        </TerminologyProvider>
-      </AuthProvider>
+      <SystemAdminAuthProvider>
+        <AuthProvider>
+          <TerminologyProvider>
+            <ToastProvider>
+              <NetworkStatusListener />
+              <Routes>
+                {/* System Admin Routes bypass the regular AppContent */}
+                <Route path="/system-admin/login" element={
+                  <Suspense fallback={<div className="min-h-screen bg-slate-50"></div>}>
+                    <SystemAdminLogin />
+                  </Suspense>
+                } />
+                <Route path="/system-admin" element={<SystemAdminProtectedRoute />}>
+                  <Route element={<SystemAdminLayout />}>
+                    <Route path="dashboard" element={
+                      <Suspense fallback={<div>Loading...</div>}>
+                        <CampusesOverview />
+                      </Suspense>
+                    } />
+                    <Route path="campuses/:id" element={
+                      <Suspense fallback={<div>Loading...</div>}>
+                        <CampusDetails />
+                      </Suspense>
+                    } />
+                  </Route>
+                </Route>
+
+                {/* Normal App routes */}
+                <Route path="/*" element={<AppContent />} />
+              </Routes>
+            </ToastProvider>
+          </TerminologyProvider>
+        </AuthProvider>
+      </SystemAdminAuthProvider>
     </Router>
   );
 }

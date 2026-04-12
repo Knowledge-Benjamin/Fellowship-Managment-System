@@ -64,10 +64,24 @@ function AppContent() {
   const location = useLocation();
   const { isAuthenticated, isManager } = useAuth();
   const isRegistrationPage = location.pathname === '/register';
+  const isSystemAdmin = location.pathname.startsWith('/system-admin');
 
-  // Guard: system-admin routes are handled by the outer Routes tree.
-  // Prevent AppContent's inner <Routes> from running on those paths.
-  if (location.pathname.startsWith('/system-admin')) return null;
+  // For system-admin paths, render only their routes — skip all campus chrome
+  if (isSystemAdmin) {
+    return (
+      <Suspense fallback={<div className="min-h-screen bg-slate-50" />}>
+        <Routes>
+          <Route path="/system-admin/login" element={<SystemAdminLogin />} />
+          <Route path="/system-admin" element={<SystemAdminProtectedRoute />}>
+            <Route element={<SystemAdminLayout />}>
+              <Route path="dashboard" element={<CampusesOverview />} />
+              <Route path="campuses/:id" element={<CampusDetails />} />
+            </Route>
+          </Route>
+        </Routes>
+      </Suspense>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">
@@ -317,56 +331,19 @@ function AppContent() {
   );
 }
 
-// ── System Admin Section ──────────────────────────────────────────────────────
-// Completely isolated from campus providers/routes — no overlap possible.
-function SystemAdminSection() {
-  return (
-    <SystemAdminAuthProvider>
-      <Suspense fallback={<div className="min-h-screen bg-slate-50" />}>
-        <Routes>
-          <Route path="/system-admin/login" element={<SystemAdminLogin />} />
-          <Route path="/system-admin" element={<SystemAdminProtectedRoute />}>
-            <Route element={<SystemAdminLayout />}>
-              <Route path="dashboard" element={<CampusesOverview />} />
-              <Route path="campuses/:id" element={<CampusDetails />} />
-            </Route>
-          </Route>
-        </Routes>
-      </Suspense>
-    </SystemAdminAuthProvider>
-  );
-}
-
-// ── Campus App Section ────────────────────────────────────────────────────────
-// Regular campus app with its own independent Routes in AppContent.
-function CampusAppSection() {
-  return (
-    <AuthProvider>
-      <TerminologyProvider>
-        <ToastProvider>
-          <NetworkStatusListener />
-          <AppContent />
-        </ToastProvider>
-      </TerminologyProvider>
-    </AuthProvider>
-  );
-}
-
-// ── Router Branching ──────────────────────────────────────────────────────────
-// Reads location ONCE and renders either System Admin or Campus App.
-// This ensures only ONE <Routes> tree is ever active at a time.
-function RouterContent() {
-  const location = useLocation();
-  if (location.pathname.startsWith('/system-admin')) {
-    return <SystemAdminSection />;
-  }
-  return <CampusAppSection />;
-}
-
 function App() {
   return (
     <Router>
-      <RouterContent />
+      <SystemAdminAuthProvider>
+        <AuthProvider>
+          <TerminologyProvider>
+            <ToastProvider>
+              <NetworkStatusListener />
+              <AppContent />
+            </ToastProvider>
+          </TerminologyProvider>
+        </AuthProvider>
+      </SystemAdminAuthProvider>
     </Router>
   );
 }

@@ -317,43 +317,56 @@ function AppContent() {
   );
 }
 
+// ── System Admin Section ──────────────────────────────────────────────────────
+// Completely isolated from campus providers/routes — no overlap possible.
+function SystemAdminSection() {
+  return (
+    <SystemAdminAuthProvider>
+      <Suspense fallback={<div className="min-h-screen bg-slate-50" />}>
+        <Routes>
+          <Route path="/system-admin/login" element={<SystemAdminLogin />} />
+          <Route path="/system-admin" element={<SystemAdminProtectedRoute />}>
+            <Route element={<SystemAdminLayout />}>
+              <Route path="dashboard" element={<CampusesOverview />} />
+              <Route path="campuses/:id" element={<CampusDetails />} />
+            </Route>
+          </Route>
+        </Routes>
+      </Suspense>
+    </SystemAdminAuthProvider>
+  );
+}
+
+// ── Campus App Section ────────────────────────────────────────────────────────
+// Regular campus app with its own independent Routes in AppContent.
+function CampusAppSection() {
+  return (
+    <AuthProvider>
+      <TerminologyProvider>
+        <ToastProvider>
+          <NetworkStatusListener />
+          <AppContent />
+        </ToastProvider>
+      </TerminologyProvider>
+    </AuthProvider>
+  );
+}
+
+// ── Router Branching ──────────────────────────────────────────────────────────
+// Reads location ONCE and renders either System Admin or Campus App.
+// This ensures only ONE <Routes> tree is ever active at a time.
+function RouterContent() {
+  const location = useLocation();
+  if (location.pathname.startsWith('/system-admin')) {
+    return <SystemAdminSection />;
+  }
+  return <CampusAppSection />;
+}
+
 function App() {
   return (
     <Router>
-      <SystemAdminAuthProvider>
-        <AuthProvider>
-          <TerminologyProvider>
-            <ToastProvider>
-              <NetworkStatusListener />
-              <Routes>
-                {/* System Admin Routes bypass the regular AppContent */}
-                <Route path="/system-admin/login" element={
-                  <Suspense fallback={<div className="min-h-screen bg-slate-50"></div>}>
-                    <SystemAdminLogin />
-                  </Suspense>
-                } />
-                <Route path="/system-admin" element={<SystemAdminProtectedRoute />}>
-                  <Route element={<SystemAdminLayout />}>
-                    <Route path="dashboard" element={
-                      <Suspense fallback={<div>Loading...</div>}>
-                        <CampusesOverview />
-                      </Suspense>
-                    } />
-                    <Route path="campuses/:id" element={
-                      <Suspense fallback={<div>Loading...</div>}>
-                        <CampusDetails />
-                      </Suspense>
-                    } />
-                  </Route>
-                </Route>
-
-                {/* Normal App routes */}
-                <Route path="/*" element={<AppContent />} />
-              </Routes>
-            </ToastProvider>
-          </TerminologyProvider>
-        </AuthProvider>
-      </SystemAdminAuthProvider>
+      <RouterContent />
     </Router>
   );
 }

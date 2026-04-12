@@ -6,10 +6,11 @@ async function migrateAllDatabases() {
   const managementPrisma = getManagementClient();
 
   try {
-    // 1. Migrate the Management Database
-    console.log('[Migrate] Applying migrations to Management Database...');
-    execSync('npx prisma migrate deploy --schema=prisma/schema.management.prisma', { stdio: 'inherit' });
-    console.log('[Migrate] Management Database migrated successfully.');
+    // 1. Synchronize the Management Database Schema using db push
+    // Since management doesn't have a tracked migrations folder, we use db push.
+    console.log('[Migrate] Applying schema push to Management Database...');
+    execSync('npx prisma db push --accept-data-loss --schema=prisma/schema.management.prisma', { stdio: 'inherit' });
+    console.log('[Migrate] Management Database schema pushed successfully.');
 
     // 2. Fetch all registered campuses
     console.log('[Migrate] Fetching registered campuses for tenant migrations...');

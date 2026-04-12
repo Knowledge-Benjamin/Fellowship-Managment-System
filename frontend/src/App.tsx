@@ -65,6 +65,10 @@ function AppContent() {
   const { isAuthenticated, isManager } = useAuth();
   const isRegistrationPage = location.pathname === '/register';
 
+  // Guard: system-admin routes are handled by the outer Routes tree.
+  // Prevent AppContent's inner <Routes> from running on those paths.
+  if (location.pathname.startsWith('/system-admin')) return null;
+
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">
       {/* Universal Sidebar for Desktop */}

@@ -1,13 +1,14 @@
 import { execSync } from 'child_process';
-import { managementPrisma } from './utils/managementDb';
+import { getManagementClient, disconnectManagementClient } from './lib/managementClient';
 
 async function migrateAllDatabases() {
   console.log('[Migrate] Starting global migration process...');
+  const managementPrisma = getManagementClient();
 
   try {
     // 1. Migrate the Management Database
     console.log('[Migrate] Applying migrations to Management Database...');
-    execSync('npx prisma migrate deploy --schema=prisma/management.prisma', { stdio: 'inherit' });
+    execSync('npx prisma migrate deploy --schema=prisma/schema.management.prisma', { stdio: 'inherit' });
     console.log('[Migrate] Management Database migrated successfully.');
 
     // 2. Fetch all registered campuses
@@ -45,7 +46,7 @@ async function migrateAllDatabases() {
     console.error('[Migrate] Fatal error during global migration process:', error);
     process.exit(1);
   } finally {
-    await managementPrisma.$disconnect();
+    await disconnectManagementClient();
   }
 }
 

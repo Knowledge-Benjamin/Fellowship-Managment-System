@@ -52,7 +52,7 @@ const ProvisionCampusModal: React.FC<ProvisionCampusModalProps> = ({ isOpen, onC
     const handleCopy = () => {
         if (!credentials) return;
         navigator.clipboard.writeText(
-            `Campus URL: ${credentials.url}\nLogin Email: ${credentials.email}\nTemporary Password: ${credentials.tempPassword}`
+            `Campus URL: ${credentials.url}\nFM Login Email: ${credentials.email}\nTemporary Password: ${credentials.tempPassword}\n\nThe FM logs in with email + password, then confirms a 6-digit OTP sent to their inbox.`
         );
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
@@ -90,7 +90,7 @@ const ProvisionCampusModal: React.FC<ProvisionCampusModalProps> = ({ isOpen, onC
                             </div>
 
                             <div className="bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-3">
-                                <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Generated Credentials</p>
+                                <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">FM Access Credentials</p>
                                 <div className="space-y-2 text-sm">
                                     <div className="flex justify-between">
                                         <span className="text-gray-500 dark:text-gray-400">Campus URL</span>
@@ -100,18 +100,18 @@ const ProvisionCampusModal: React.FC<ProvisionCampusModalProps> = ({ isOpen, onC
                                         </a>
                                     </div>
                                     <div className="flex justify-between">
-                                        <span className="text-gray-500 dark:text-gray-400">FM Email</span>
+                                        <span className="text-gray-500 dark:text-gray-400">Email</span>
                                         <span className="font-mono text-gray-800 dark:text-gray-200">{credentials.email}</span>
                                     </div>
                                     <div className="flex justify-between">
-                                        <span className="text-gray-500 dark:text-gray-400">Temp Password</span>
+                                        <span className="text-gray-500 dark:text-gray-400">Temporary Password</span>
                                         <span className="font-mono text-gray-800 dark:text-gray-200">{credentials.tempPassword}</span>
                                     </div>
                                 </div>
                             </div>
 
                             <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 p-3 rounded-lg border border-amber-200 dark:border-amber-800">
-                                ⚠️ Copy these credentials now. The temporary password will not be shown again.
+                                ⚠️ Share these credentials securely — the FM uses the password to log in, then confirms a 6-digit OTP sent to their email. The password will not be shown again.
                             </p>
 
                             <div className="flex justify-end gap-3 pt-2">
@@ -161,13 +161,15 @@ const ProvisionCampusModal: React.FC<ProvisionCampusModalProps> = ({ isOpen, onC
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Neon Database URL</label>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Database Connection String</label>
                                     <input
                                         type="password" required value={databaseUrl} onChange={e => setDatabaseUrl(e.target.value)}
                                         placeholder="postgresql://user:password@endpoint..."
                                         className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                                     />
-                                    <p className="mt-1 text-xs text-gray-500">Empty Neon database. Migrations will be applied automatically.</p>
+                                    <p className="mt-1 text-xs text-gray-500">
+                                        In your Neon dashboard, create a <strong>New Database</strong> within your existing project, then paste its connection string here. Migrations will run automatically.
+                                    </p>
                                 </div>
 
                                 <div className="border-t border-gray-100 dark:border-gray-700 pt-4">

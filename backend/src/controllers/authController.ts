@@ -214,7 +214,7 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
         console.log('[LOGIN] Privileged account detected - MFA required');
 
         // Generate and send OTP
-        const otpCode = await createOTP(user.id);
+        const otpCode = await createOTP(prisma, user.id);
         const emailSent = await sendOTPEmail(user.email, user.fullName, otpCode);
 
         if (!emailSent) {
@@ -326,7 +326,7 @@ export const verifyOTP = asyncHandler(async (req: Request, res: Response) => {
     console.log(`[VERIFY OTP] Verifying OTP for member ${memberId}`);
 
     // Verify OTP code
-    const verification = await verifyOTPCode(memberId, otp);
+    const verification = await verifyOTPCode(prisma, memberId, otp);
 
     if (!verification.success) {
         console.log('[VERIFY OTP] Verification failed:', verification.reason);
@@ -450,7 +450,7 @@ export const resendOTP = asyncHandler(async (req: Request, res: Response) => {
     }
 
     // Generate and send new OTP
-    const otpCode = await createOTP(memberId);
+    const otpCode = await createOTP(prisma, memberId);
     const emailSent = await sendOTPEmail(user.email, user.fullName, otpCode);
 
     if (!emailSent) {

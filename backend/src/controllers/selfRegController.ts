@@ -491,7 +491,7 @@ export const approvePendingMember = async (req: Request, res: Response) => {
         }, { timeout: 15000 });
 
         //  - A failing email queue never rolls back the member creation
-        await scheduleWelcomeEmail(member.email, member.fullName, fellowshipNumber, temporaryPassword || '', member.qrCode, editedByFM);
+        await scheduleWelcomeEmail(prisma, member.email, member.fullName, fellowshipNumber, temporaryPassword || '', member.qrCode, editedByFM);
 
         // Execute Bring 1 auto-advance to JOINED
         advancePledgeToJoined(prisma, pending.id, member.id)

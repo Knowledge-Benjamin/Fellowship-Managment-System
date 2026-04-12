@@ -24,7 +24,7 @@ export const aggregateAttendanceStats = async (prisma: PrismaClient, attendances
     const totalAttendance = memberCount + guestCount;
 
     // Fetch periods once for synchronous, N+1-free year calculation
-    const allPeriods = await fetchAllAcademicPeriods();
+    const allPeriods = await fetchAllAcademicPeriods(prisma);
 
     // 2. Gender Breakdown
     const genderBreakdown = attendances.reduce(
@@ -286,7 +286,7 @@ export const getEventReport = async (req: Request<{ eventId: string }>, res: Res
         });
 
         // Get user's scope
-        const scope = await getUserReportScope(userId);
+        const scope = await getUserReportScope(prisma, userId);
         const memberFilter = buildMemberScopeFilter(scope);
 
         const event = await prisma.event.findUnique({
@@ -343,7 +343,7 @@ export const getEventReport = async (req: Request<{ eventId: string }>, res: Res
             where: { isDeleted: false, ...memberFilter },
         });
 
-        const allPeriods = await fetchAllAcademicPeriods();
+        const allPeriods = await fetchAllAcademicPeriods(prisma);
 
         // Map attendees to a lightweight format for frontend drill-downs (instant zero-latency clicks)
         const mappedAttendees = event.attendances.map((a: any) => {
@@ -487,7 +487,7 @@ export const getDashboardStats = async (req: Request, res: Response) => {
         }
 
         // Get user's scope  
-        const scope = await getUserReportScope(userId);
+        const scope = await getUserReportScope(prisma, userId);
         const memberFilter = buildMemberScopeFilter(scope);
 
         const [totalMembers, totalEvents, recentEvents, finalistsCount, alumniCount, activeFamilies, activeTeams] = await Promise.all([
@@ -569,7 +569,7 @@ export const getCustomReport = async (req: Request, res: Response) => {
         });
 
         // Get user's scope
-        const scope = await getUserReportScope(userId);
+        const scope = await getUserReportScope(prisma, userId);
         const memberFilter = buildMemberScopeFilter(scope);
 
         const where: any = {};
@@ -686,7 +686,7 @@ export const exportEventReportPDF = async (req: Request<{ eventId: string }>, re
             return res.status(401).json({ error: 'Unauthorized' });
         }
 
-        const scope = await getUserReportScope(userId);
+        const scope = await getUserReportScope(prisma, userId);
         const memberFilter = buildMemberScopeFilter(scope);
 
         const event = await prisma.event.findUnique({
@@ -774,7 +774,7 @@ export const exportEventReportExcel = async (req: Request<{ eventId: string }>, 
             return res.status(401).json({ error: 'Unauthorized' });
         }
 
-        const scope = await getUserReportScope(userId);
+        const scope = await getUserReportScope(prisma, userId);
         const memberFilter = buildMemberScopeFilter(scope);
 
         const event = await prisma.event.findUnique({
@@ -824,7 +824,7 @@ export const exportEventReportExcel = async (req: Request<{ eventId: string }>, 
 
         const stats = await aggregateAttendanceStats(prisma, event.attendances, event.guestAttendances, event.salvations, event.date);
 
-        const allPeriods = await fetchAllAcademicPeriods();
+        const allPeriods = await fetchAllAcademicPeriods(prisma);
 
         const mappedAttendees = event.attendances.map((a: any) => {
             const isAlumni = a.member?.memberTags?.some((mt: any) => mt.tag?.name === 'ALUMNI');
@@ -900,7 +900,7 @@ export const exportCustomReportPDF = async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'Start date and end date are required' });
         }
 
-        const scope = await getUserReportScope(userId);
+        const scope = await getUserReportScope(prisma, userId);
         const memberFilter = buildMemberScopeFilter(scope);
 
         const where: any = {};
@@ -1032,7 +1032,7 @@ export const exportCustomReportExcel = async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'Start date and end date are required' });
         }
 
-        const scope = await getUserReportScope(userId);
+        const scope = await getUserReportScope(prisma, userId);
         const memberFilter = buildMemberScopeFilter(scope);
 
         const where: any = {};
@@ -1307,7 +1307,7 @@ export const getEventReportMembers = async (req: Request<{ eventId: string }>, r
             return res.status(401).json({ error: 'Unauthorized' });
         }
 
-        const scope = await getUserReportScope(userId);
+        const scope = await getUserReportScope(prisma, userId);
         const memberFilter = buildMemberScopeFilter(scope);
 
         const members = await prisma.member.findMany({
@@ -1347,7 +1347,7 @@ export const getEventReportMembers = async (req: Request<{ eventId: string }>, r
             orderBy: { fullName: 'asc' },
         });
 
-        const allPeriods = await fetchAllAcademicPeriods();
+        const allPeriods = await fetchAllAcademicPeriods(prisma);
 
         // Map to the same shape as event report attendees so DrilldownTable
         // renders without any structural frontend changes

@@ -2,8 +2,6 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
 
-const prisma = new PrismaClient();
-
 interface DecodedToken {
     id: string;
     role: string;
@@ -33,6 +31,9 @@ export const protect = async (req: Request, res: Response, next: NextFunction) =
             token = req.headers.authorization.split(' ')[1];
 
             const decoded = jwt.verify(token, process.env.JWT_SECRET!) as DecodedToken;
+
+            // Use the tenant-scoped PrismaClient attached by tenantMiddleware
+            const prisma = (req as any).prisma as PrismaClient;
 
             const user = await prisma.member.findUnique({
                 where: { id: decoded.id },

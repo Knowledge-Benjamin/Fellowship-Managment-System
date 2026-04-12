@@ -1,7 +1,9 @@
 import nodemailer from 'nodemailer';
 import sgMail from '@sendgrid/mail';
 import QRCode from 'qrcode';
-import prisma from '../prisma';
+import { PrismaClient } from '@prisma/client';
+import { getManagementClient } from '../lib/managementClient';
+import { getClientForUrl } from '../lib/prismaConnectionManager';
 import { EmailStatus, Prisma } from '@prisma/client';
 import { checkConnectivity } from '../utils/networkHelper';
 import { getSettings } from '../controllers/emailController';
@@ -56,7 +58,7 @@ const sendEmail = async (
     const fromName = settings.fromName || 'Manifest Fellowship';
     const replyTo = settings.replyTo || fromAddress;
 
-    // Lightweight identification headers — does NOT include List-Unsubscribe or Reply-To
+    // Lightweight identification headers â€” does NOT include List-Unsubscribe or Reply-To
     // (List-Unsubscribe is a bulk-email header that triggers compliance processing on SendGrid,
     //  causing significant latency on transactional emails like OTP. Reply-To is already
     //  handled by the dedicated replyTo field on the SendGrid payload.)
@@ -77,11 +79,11 @@ const sendEmail = async (
                 html,
                 text,
             });
-            console.log(`[EMAIL] ✅ Sent via SendGrid to ${to}`);
+            console.log(`[EMAIL] âœ… Sent via SendGrid to ${to}`);
             return true;
         } catch (sendgridError) {
-            console.error('[EMAIL] ❌ SendGrid failed:', sendgridError);
-            console.log('[EMAIL] 🔄 Attempting SMTP fallback...');
+            console.error('[EMAIL] âŒ SendGrid failed:', sendgridError);
+            console.log('[EMAIL] ðŸ”„ Attempting SMTP fallback...');
         }
     }
 
@@ -96,10 +98,10 @@ const sendEmail = async (
             replyTo,
             headers: extraHeaders,
         });
-        console.log(`[EMAIL] ✅ Sent via SMTP fallback to ${to}`);
+        console.log(`[EMAIL] âœ… Sent via SMTP fallback to ${to}`);
         return true;
     } catch (smtpError) {
-        console.error('[EMAIL] ❌ SMTP fallback also failed:', smtpError);
+        console.error('[EMAIL] âŒ SMTP fallback also failed:', smtpError);
         return false;
     }
 };
@@ -142,7 +144,7 @@ export const sendOTPEmail = async (
                     </div>
                     
                     <div class="warning">
-                        <strong>⚠️ Security Notice:</strong> Never share this code with anyone. Fellowship staff will never ask for your verification code.
+                        <strong>âš ï¸ Security Notice:</strong> Never share this code with anyone. Fellowship staff will never ask for your verification code.
                     </div>
                     
                     <p><strong>Didn't request this code?</strong></p>
@@ -183,7 +185,7 @@ export const sendAccountLockedEmail = async (
     fullName: string,
     unlockTime: Date
 ): Promise<void> => {
-    const subject = '🔒 Account Temporarily Locked - Security Alert';
+    const subject = 'ðŸ”’ Account Temporarily Locked - Security Alert';
     const html = `
         <!DOCTYPE html>
         <html>
@@ -200,7 +202,7 @@ export const sendAccountLockedEmail = async (
         <body>
             <div class="container">
                 <div class="header">
-                    <h1 style="margin: 0;">🔒 Account Locked</h1>
+                    <h1 style="margin: 0;">ðŸ”’ Account Locked</h1>
                     <p style="margin: 5px 0 0 0;">Security Alert</p>
                 </div>
                 <div class="content">
@@ -253,7 +255,7 @@ export const sendWelcomeEmail = async (
             color: { dark: '#000000', light: '#FFFFFF' },
         });
 
-        const subject = '🎉 Welcome to Fellowship Manager!';
+        const subject = 'ðŸŽ‰ Welcome to Fellowship Manager!';
         const html = `
             <!DOCTYPE html>
             <html>
@@ -278,18 +280,18 @@ export const sendWelcomeEmail = async (
             <body>
                 <div class="container">
                     <div class="header">
-                        <h1 style="margin: 0; font-size: 28px;">🎉 Welcome to Fellowship!</h1>
+                        <h1 style="margin: 0; font-size: 28px;">ðŸŽ‰ Welcome to Fellowship!</h1>
                         <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Your registration was successful</p>
                     </div>
                     <div class="content">
                         <div class="welcome-box">
-                            <p style="margin: 0 0 15px 0; font-size: 18px; color: #14b8a6; font-weight: bold;">Hello <strong style="color: #0f172a;">${fullName}</strong>! 👋</p>
+                            <p style="margin: 0 0 15px 0; font-size: 18px; color: #14b8a6; font-weight: bold;">Hello <strong style="color: #0f172a;">${fullName}</strong>! ðŸ‘‹</p>
                             <p style="margin: 0; color: #64748b;">
                                 We're excited to have you as part of our fellowship community. Here are your account credentials and important information to get started.
                             </p>
                         </div>
 
-                        <h3 style="color: #0f172a; margin: 30px 0 15px 0;">📋 Your Account Details</h3>
+                        <h3 style="color: #0f172a; margin: 30px 0 15px 0;">ðŸ“‹ Your Account Details</h3>
                         
                         <div class="credential-item">
                             <div class="credential-label">Fellowship Number</div>
@@ -307,10 +309,10 @@ export const sendWelcomeEmail = async (
                         </div>
 
                         <div class="info-box">
-                            <strong>⚠️ Security Requirement:</strong> Your temporary password is provided above. For your security, you will be required to change this password immediately upon your first login.
+                            <strong>âš ï¸ Security Requirement:</strong> Your temporary password is provided above. For your security, you will be required to change this password immediately upon your first login.
                         </div>
 
-                        <h3 style="color: #0f172a; margin: 30px 0 15px 0;">📱 Your Personal QR Code</h3>
+                        <h3 style="color: #0f172a; margin: 30px 0 15px 0;">ðŸ“± Your Personal QR Code</h3>
                         <p style="color: #64748b; margin-bottom: 15px;">Use this QR code for quick check-in at fellowship events:</p>
                         
                         <div class="qr-container">
@@ -321,10 +323,10 @@ export const sendWelcomeEmail = async (
                         </div>
 
                         <div class="warning-box">
-                            <strong>🔒 Keep Your QR Code Safe:</strong> This QR code is unique to you. Do not share it with others as it provides access to your fellowship account.
+                            <strong>ðŸ”’ Keep Your QR Code Safe:</strong> This QR code is unique to you. Do not share it with others as it provides access to your fellowship account.
                         </div>
 
-                        <h3 style="color: #0f172a; margin: 30px 0 15px 0;">🚀 Getting Started</h3>
+                        <h3 style="color: #0f172a; margin: 30px 0 15px 0;">ðŸš€ Getting Started</h3>
                         <ol class="steps-list" style="color: #64748b;">
                             <li><strong style="color: #0f172a;">Log in</strong> using your email and the temporary password above</li>
                             <li><strong style="color: #0f172a;">Set a secure password</strong> when prompted</li>
@@ -334,7 +336,7 @@ export const sendWelcomeEmail = async (
                         </ol>
 
                         <div class="info-box" style="background: #f0f9ff; border-color: #0891b2;">
-                            <strong>💡 Need Help?</strong> Contact your fellowship administrator if you have any questions or need assistance accessing your account.
+                            <strong>ðŸ’¡ Need Help?</strong> Contact your fellowship administrator if you have any questions or need assistance accessing your account.
                         </div>
 
                         <p style="margin-top: 30px; color: #64748b;">
@@ -406,7 +408,7 @@ export const queueEmail = async (
             status: EmailStatus.PENDING,
         },
     });
-    console.log(`[EMAIL] 📥 Queued email for ${to}`);
+    console.log(`[EMAIL] ðŸ“¥ Queued email for ${to}`);
 };
 
 /**
@@ -416,70 +418,64 @@ export const queueEmail = async (
  * - Handles retries
  */
 export const processEmailQueue = async () => {
-    // 1. Check connectivity
     const isOnline = await checkConnectivity();
-    if (!isOnline) {
-        // Silent return if offline - don't log to avoid spamming console
-        return;
-    }
+    if (!isOnline) return;
 
     try {
-        // 2. Fetch pending emails (limit 5 per batch)
-        const pendingEmails = await prisma.emailQueue.findMany({
-            where: {
-                status: EmailStatus.PENDING,
-                attempts: { lt: 5 }, // Max 5 attempts
-            },
-            take: 5,
-            orderBy: { createdAt: 'asc' },
-        });
+        const mgmt = getManagementClient();
+        const campuses = await mgmt.campus.findMany({ where: { isActive: true } });
+        if (campuses.length === 0) return;
 
-        if (pendingEmails.length === 0) return;
-
-        console.log(`[EMAIL QUEUE] Processing ${pendingEmails.length} pending emails...`);
-
-        // 3. Process each email
-        for (const email of pendingEmails) {
-            // Mark as processing
-            await prisma.emailQueue.update({
-                where: { id: email.id },
-                data: { status: EmailStatus.PROCESSING },
+        for (const campus of campuses) {
+            const tenantPrisma = getClientForUrl(campus.databaseUrl);
+            
+            const pendingEmails = await tenantPrisma.emailQueue.findMany({
+                where: {
+                    status: EmailStatus.PENDING,
+                    attempts: { lt: 5 },
+                },
+                take: 5,
+                orderBy: { createdAt: 'asc' },
             });
 
-            try {
-                // Attempt to send
-                const sent = await sendEmail(email.email, email.subject, email.html, email.text);
+            if (pendingEmails.length === 0) continue;
 
-                if (sent) {
-                    // Success
-                    await prisma.emailQueue.update({
+            console.log(`[EMAIL QUEUE] Processing ${pendingEmails.length} pending emails for campus ${campus.name}...`);
+
+            for (const email of pendingEmails) {
+                await tenantPrisma.emailQueue.update({
+                    where: { id: email.id },
+                    data: { status: EmailStatus.PROCESSING },
+                });
+
+                try {
+                    const sent = await sendEmail(email.email, email.subject, email.html, email.text);
+
+                    if (sent) {
+                        await tenantPrisma.emailQueue.update({
+                            where: { id: email.id },
+                            data: {
+                                status: EmailStatus.COMPLETED,
+                                lastAttempt: new Date(),
+                                attempts: { increment: 1 },
+                            },
+                        });
+                        console.log(`[EMAIL QUEUE] ✅ Processed email for ${email.email}`);
+                    } else {
+                        throw new Error('SMTP Send Failed');
+                    }
+                } catch (error: any) {
+                    console.error(`[EMAIL QUEUE] ❌ Failed to process ${email.email}:`, error.message);
+                    await tenantPrisma.emailQueue.update({
                         where: { id: email.id },
                         data: {
-                            status: EmailStatus.COMPLETED,
+                            status: email.attempts >= 4 ? EmailStatus.FAILED : EmailStatus.PENDING,
                             lastAttempt: new Date(),
                             attempts: { increment: 1 },
+                            error: error.message,
                         },
                     });
-                    console.log(`[EMAIL QUEUE] ✅ Processed email for ${email.email}`);
-                } else {
-                    // Start of Selection
-                    // Soft failure (SMTP error but connected)
-                    throw new Error('SMTP Send Failed');
                 }
-            } catch (error: any) {
-                console.error(`[EMAIL QUEUE] ❌ Failed to process email for ${email.email}:`, error.message);
-
-                // Mark as pending for retry (with exponential backoff visibility in future if needed)
-                // For now, simple retry count increment
-                await prisma.emailQueue.update({
-                    where: { id: email.id },
-                    data: {
-                        status: email.attempts >= 4 ? EmailStatus.FAILED : EmailStatus.PENDING,
-                        lastAttempt: new Date(),
-                        attempts: { increment: 1 },
-                        error: error.message,
-                    },
-                });
             }
         }
     } catch (error) {
@@ -496,8 +492,7 @@ export const processEmailQueue = async () => {
  *   - transaction-timeout from QR generation delay
  *   - rolling back member creation if email queuing fails
  */
-export const scheduleWelcomeEmail = async (
-    email: string,
+export const scheduleWelcomeEmail = async ( prisma: PrismaClient, email: string,
     fullName: string,
     fellowshipNumber: string,
     temporaryPassword: string,
@@ -515,14 +510,14 @@ export const scheduleWelcomeEmail = async (
             color: { dark: '#000000', light: '#FFFFFF' },
         });
 
-        const subject = '🎉 Welcome to Fellowship Manager!';
+        const subject = 'ðŸŽ‰ Welcome to Fellowship Manager!';
 
-        // ── FM-edit notice (conditional) ─────────────────────────────────────
+        // â”€â”€ FM-edit notice (conditional) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         const fmEditNoticeHtml = editedByFM ? `
                         <div style="background:#fff8e1;border-left:4px solid #f59e0b;padding:16px 18px;margin:20px 0;border-radius:6px;">
-                            <p style="margin:0 0 6px 0;font-weight:700;color:#92400e;font-size:14px;">✏️ A Note About Your Registration Details</p>
+                            <p style="margin:0 0 6px 0;font-weight:700;color:#92400e;font-size:14px;">âœï¸ A Note About Your Registration Details</p>
                             <p style="margin:0;color:#78350f;font-size:13px;line-height:1.6;">
-                                Some of the information you submitted was reviewed and adjusted by the Fellowship Manager during approval — for example, correcting a spelling, matching your college or course to our records, or assigning your region.
+                                Some of the information you submitted was reviewed and adjusted by the Fellowship Manager during approval â€” for example, correcting a spelling, matching your college or course to our records, or assigning your region.
                             </p>
                             <p style="margin:10px 0 0;color:#78350f;font-size:13px;">
                                 Please <strong>log in and review your profile</strong> to confirm everything looks correct. If you believe any detail is wrong, you can submit a <strong>profile edit request</strong> directly from your account page and our team will review it promptly.
@@ -557,18 +552,18 @@ export const scheduleWelcomeEmail = async (
             <body>
                 <div class="container">
                     <div class="header">
-                        <h1 style="margin: 0; font-size: 28px;">🎉 Welcome to Fellowship!</h1>
+                        <h1 style="margin: 0; font-size: 28px;">ðŸŽ‰ Welcome to Fellowship!</h1>
                         <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Your registration was successful</p>
                     </div>
                     <div class="content">
                         <div class="welcome-box">
-                            <p style="margin: 0 0 15px 0; font-size: 18px; color: #14b8a6; font-weight: bold;">Hello <strong style="color: #0f172a;">${fullName}</strong>! 👋</p>
+                            <p style="margin: 0 0 15px 0; font-size: 18px; color: #14b8a6; font-weight: bold;">Hello <strong style="color: #0f172a;">${fullName}</strong>! ðŸ‘‹</p>
                             <p style="margin: 0; color: #64748b;">
                                 We're excited to have you as part of our fellowship community. Here are your account credentials and important information to get started.
                             </p>
                         </div>
 
-                        <h3 style="color: #0f172a; margin: 30px 0 15px 0;">📋 Your Account Details</h3>
+                        <h3 style="color: #0f172a; margin: 30px 0 15px 0;">ðŸ“‹ Your Account Details</h3>
                         
                         <div class="credential-item">
                             <div class="credential-label">Fellowship Number</div>
@@ -586,12 +581,12 @@ export const scheduleWelcomeEmail = async (
                         </div>
 
                         <div class="info-box">
-                            <strong>⚠️ Security Requirement:</strong> Your temporary password is provided above. For your security, you will be required to change this password immediately upon your first login.
+                            <strong>âš ï¸ Security Requirement:</strong> Your temporary password is provided above. For your security, you will be required to change this password immediately upon your first login.
                         </div>
 
                         ${fmEditNoticeHtml}
 
-                        <h3 style="color: #0f172a; margin: 30px 0 15px 0;">🚀 Getting Started</h3>
+                        <h3 style="color: #0f172a; margin: 30px 0 15px 0;">ðŸš€ Getting Started</h3>
                         <p style="color: #64748b; margin-bottom: 15px;">Use this QR code for quick check-in at fellowship events:</p>
                         
                         <div class="qr-container">
@@ -602,10 +597,10 @@ export const scheduleWelcomeEmail = async (
                         </div>
 
                         <div class="warning-box">
-                            <strong>🔒 Keep Your QR Code Safe:</strong> This QR code is unique to you. Do not share it with others as it provides access to your fellowship account.
+                            <strong>ðŸ”’ Keep Your QR Code Safe:</strong> This QR code is unique to you. Do not share it with others as it provides access to your fellowship account.
                         </div>
 
-                        <h3 style="color: #0f172a; margin: 30px 0 15px 0;">🚀 Getting Started</h3>
+                        <h3 style="color: #0f172a; margin: 30px 0 15px 0;">ðŸš€ Getting Started</h3>
                         <ol class="steps-list" style="color: #64748b;">
                             <li><strong style="color: #0f172a;">Log in</strong> to your account using your fellowship number and password</li>
                             <li><strong style="color: #0f172a;">Update your profile</strong> with additional information if needed</li>
@@ -615,7 +610,7 @@ export const scheduleWelcomeEmail = async (
                         </ol>
 
                         <div class="info-box" style="background: #f0f9ff; border-color: #0891b2;">
-                            <strong>💡 Need Help?</strong> Contact your fellowship administrator if you have any questions or need assistance accessing your account.
+                            <strong>ðŸ’¡ Need Help?</strong> Contact your fellowship administrator if you have any questions or need assistance accessing your account.
                         </div>
 
                         <!-- Login CTA Button -->
@@ -624,7 +619,7 @@ export const scheduleWelcomeEmail = async (
                                style="display:inline-block;background:#48A111;color:#ffffff;font-family:Arial,sans-serif;
                                       font-size:15px;font-weight:700;padding:14px 36px;border-radius:8px;
                                       text-decoration:none;letter-spacing:.3px;box-shadow:0 4px 14px rgba(72,161,17,0.35);">
-                                🔑 Login to Your Account
+                                ðŸ”‘ Login to Your Account
                             </a>
                             <p style="margin:10px 0 0;color:#94a3b8;font-size:12px;">Or copy this link: <a href="${loginUrl}" style="color:#48A111;">${loginUrl}</a></p>
                         </div>
@@ -681,10 +676,10 @@ The Fellowship Management Team
             },
         });
 
-        console.log(`[EMAIL] 📥 Welcome email queued (post-commit) for ${email}`);
+        console.log(`[EMAIL] ðŸ“¥ Welcome email queued (post-commit) for ${email}`);
     } catch (error) {
-        // Log but don't throw — member creation already succeeded; email can be retried manually
-        console.error(`[EMAIL] ❌ Failed to queue welcome email for ${email}:`, error);
+        // Log but don't throw â€” member creation already succeeded; email can be retried manually
+        console.error(`[EMAIL] âŒ Failed to queue welcome email for ${email}:`, error);
     }
 };
 
@@ -703,7 +698,7 @@ export const queueWelcomeEmail = async (
     });
 
 
-    const subject = '🎉 Welcome to Fellowship Manager!';
+    const subject = 'ðŸŽ‰ Welcome to Fellowship Manager!';
     const html = `
             <!DOCTYPE html>
             <html>
@@ -728,18 +723,18 @@ export const queueWelcomeEmail = async (
             <body>
                 <div class="container">
                     <div class="header">
-                        <h1 style="margin: 0; font-size: 28px;">🎉 Welcome to Fellowship!</h1>
+                        <h1 style="margin: 0; font-size: 28px;">ðŸŽ‰ Welcome to Fellowship!</h1>
                         <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Your registration was successful</p>
                     </div>
                     <div class="content">
                         <div class="welcome-box">
-                            <p style="margin: 0 0 15px 0; font-size: 18px; color: #14b8a6; font-weight: bold;">Hello <strong style="color: #0f172a;">${fullName}</strong>! 👋</p>
+                            <p style="margin: 0 0 15px 0; font-size: 18px; color: #14b8a6; font-weight: bold;">Hello <strong style="color: #0f172a;">${fullName}</strong>! ðŸ‘‹</p>
                             <p style="margin: 0; color: #64748b;">
                                 We're excited to have you as part of our fellowship community. Here are your account credentials and important information to get started.
                             </p>
                         </div>
 
-                        <h3 style="color: #0f172a; margin: 30px 0 15px 0;">📋 Your Account Details</h3>
+                        <h3 style="color: #0f172a; margin: 30px 0 15px 0;">ðŸ“‹ Your Account Details</h3>
                         
                         <div class="credential-item">
                             <div class="credential-label">Fellowship Number</div>
@@ -757,10 +752,10 @@ export const queueWelcomeEmail = async (
                         </div>
 
                         <div class="info-box">
-                            <strong>ℹ️ First Login:</strong> Your default password is the same as your fellowship number. Please change it after your first login for security purposes.
+                            <strong>â„¹ï¸ First Login:</strong> Your default password is the same as your fellowship number. Please change it after your first login for security purposes.
                         </div>
 
-                        <h3 style="color: #0f172a; margin: 30px 0 15px 0;">📱 Your Personal QR Code</h3>
+                        <h3 style="color: #0f172a; margin: 30px 0 15px 0;">ðŸ“± Your Personal QR Code</h3>
                         <p style="color: #64748b; margin-bottom: 15px;">Use this QR code for quick check-in at fellowship events:</p>
                         
                         <div class="qr-container">
@@ -771,10 +766,10 @@ export const queueWelcomeEmail = async (
                         </div>
 
                         <div class="warning-box">
-                            <strong>🔒 Keep Your QR Code Safe:</strong> This QR code is unique to you. Do not share it with others as it provides access to your fellowship account.
+                            <strong>ðŸ”’ Keep Your QR Code Safe:</strong> This QR code is unique to you. Do not share it with others as it provides access to your fellowship account.
                         </div>
 
-                        <h3 style="color: #0f172a; margin: 30px 0 15px 0;">🚀 Getting Started</h3>
+                        <h3 style="color: #0f172a; margin: 30px 0 15px 0;">ðŸš€ Getting Started</h3>
                         <ol class="steps-list" style="color: #64748b;">
                             <li><strong style="color: #0f172a;">Log in</strong> to your account using your fellowship number and password</li>
                             <li><strong style="color: #0f172a;">Update your profile</strong> with additional information if needed</li>
@@ -784,7 +779,7 @@ export const queueWelcomeEmail = async (
                         </ol>
 
                         <div class="info-box" style="background: #f0f9ff; border-color: #0891b2;">
-                            <strong>💡 Need Help?</strong> Contact your fellowship administrator if you have any questions or need assistance accessing your account.
+                            <strong>ðŸ’¡ Need Help?</strong> Contact your fellowship administrator if you have any questions or need assistance accessing your account.
                         </div>
 
                         <p style="margin-top: 30px; color: #64748b;">
@@ -842,7 +837,7 @@ export const sendProfileEditRequestNotification = async (
     changes: Array<{ field: string; oldValue: string; newValue: string }>,
     reason: string
 ): Promise<boolean> => {
-    const subject = '📝 Profile Edit Request — Action Required';
+    const subject = 'ðŸ“ Profile Edit Request â€” Action Required';
 
     const changesHtml = changes
         .map(
@@ -920,7 +915,7 @@ A member in your region has submitted a profile edit request.
 Member: ${memberFullName} (${memberFellowshipNumber})
 
 Requested Changes:
-${changes.map((c) => `  ${c.field}: "${c.oldValue}" → "${c.newValue}"`).join('\n')}
+${changes.map((c) => `  ${c.field}: "${c.oldValue}" â†’ "${c.newValue}"`).join('\n')}
 
 Reason: ${reason}
 
@@ -944,8 +939,8 @@ export const sendProfileEditDecisionNotification = async (
 ): Promise<boolean> => {
     const isApproved = decision === 'APPROVED';
     const subject = isApproved
-        ? '✅ Profile Edit Request Approved'
-        : '❌ Profile Edit Request Rejected';
+        ? 'âœ… Profile Edit Request Approved'
+        : 'âŒ Profile Edit Request Rejected';
 
     const statusColor = isApproved ? '#16a34a' : '#dc2626';
     const statusBg = isApproved ? '#f0fdf4' : '#fef2f2';
@@ -1005,7 +1000,7 @@ export const sendProfileEditDecisionNotification = async (
                     </div>` : ''}
 
                     ${isApproved
-            ? '<p style="color: #16a34a;">✅ Your profile has been updated with the approved changes.</p>'
+            ? '<p style="color: #16a34a;">âœ… Your profile has been updated with the approved changes.</p>'
             : '<p style="color: #64748b;">If you believe this is an error, please speak with your Regional Head directly.</p>'
         }
 
@@ -1028,7 +1023,7 @@ Your profile edit request has been ${decision}.
 ${decision === 'APPROVED' ? 'Your profile has been updated with the approved changes.' : 'Your request could not be approved at this time.'}
 
 Requested Changes:
-${changes.map((c) => `  ${c.field}: "${c.oldValue}" → "${c.newValue}"`).join('\n')}
+${changes.map((c) => `  ${c.field}: "${c.oldValue}" â†’ "${c.newValue}"`).join('\n')}
 
 ${reviewNote ? `Note from Regional Head: ${reviewNote}` : ''}
 
@@ -1045,7 +1040,7 @@ export const sendPasswordChangedEmail = async (
     email: string,
     fullName: string
 ): Promise<boolean> => {
-    const subject = '🔒 Your Password Has Been Changed';
+    const subject = 'ðŸ”’ Your Password Has Been Changed';
 
     const html = `
         <!DOCTYPE html>
@@ -1112,7 +1107,7 @@ export const sendPasswordResetEmail = async (
     const settings = getSettings();
     const resetUrl = `${settings.frontendUrl}/reset-password?token=${resetToken}`;
 
-    const subject = '🔐 Password Reset Request';
+    const subject = 'ðŸ” Password Reset Request';
     const html = `
         <!DOCTYPE html>
         <html>
@@ -1130,7 +1125,7 @@ export const sendPasswordResetEmail = async (
         <body>
             <div class="container">
                 <div class="header">
-                    <h1 style="margin: 0;">🔐 Password Reset</h1>
+                    <h1 style="margin: 0;">ðŸ” Password Reset</h1>
                 </div>
                 <div class="content">
                     <p>Hello <strong>${fullName}</strong>,</p>
@@ -1146,7 +1141,7 @@ export const sendPasswordResetEmail = async (
                     </p>
 
                     <div class="warning">
-                        <strong>⚠️ Security Notice:</strong> This link will expire in 15 minutes. If you did not request a password reset, you can safely ignore this email &mdash; your password will not be changed.
+                        <strong>âš ï¸ Security Notice:</strong> This link will expire in 15 minutes. If you did not request a password reset, you can safely ignore this email &mdash; your password will not be changed.
                     </div>
                     
                     <p style="margin-top: 30px;">Best regards,<br><strong>Fellowship Management Team</strong></p>

@@ -87,7 +87,7 @@ export const createMember = async (req: Request, res: Response) => {
         // Queue welcome email AFTER the transaction commits so that:
         //  - QR code generation cannot timeout the DB transaction
         //  - A failing email queue never rolls back the member creation
-        await scheduleWelcomeEmail(member.email, member.fullName, fellowshipNumber, temporaryPassword || '', member.qrCode, undefined);
+        await scheduleWelcomeEmail(prisma, member.email, member.fullName, fellowshipNumber, temporaryPassword || '', member.qrCode, undefined);
 
         // Execute Bring 1 auto-match for direct internal registration
         matchAndAdvanceDirectMemberPledge(prisma, {
@@ -343,7 +343,7 @@ export const exportMembersToExcel = async (req: Request, res: Response) => {
         sheet.views = [{ state: 'frozen', xSplit: 0, ySplit: 1 }];
         sheet.autoFilter = 'A1:L1';
 
-        const allPeriods = await fetchAllAcademicPeriods();
+        const allPeriods = await fetchAllAcademicPeriods(prisma);
 
         members.forEach((m, i) => {
             const isAlumni = m.memberTags?.some((mt: any) => mt.tag?.name === 'ALUMNI');
@@ -444,20 +444,20 @@ export const getMemberAcademicStatus = async (req: Request, res: Response) => {
             });
         }
 
-        const academicStatus = await getCurrentAcademicStatus({
+        const academicStatus = await getCurrentAcademicStatus(prisma, {
             registrationDate: member.registrationDate,
             initialYearOfStudy: member.initialYearOfStudy,
             initialSemester: member.initialSemester,
         });
 
-        const isFinalist = await isMemberFinalist({
+        const isFinalist = await isMemberFinalist(prisma, {
             registrationDate: member.registrationDate,
             initialYearOfStudy: member.initialYearOfStudy,
             initialSemester: member.initialSemester,
             courseRelation: member.courseRelation,
         });
 
-        const isAlumni = await isMemberAlumni({
+        const isAlumni = await isMemberAlumni(prisma, {
             registrationDate: member.registrationDate,
             initialYearOfStudy: member.initialYearOfStudy,
             initialSemester: member.initialSemester,

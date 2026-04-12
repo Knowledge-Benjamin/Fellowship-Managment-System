@@ -1,8 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { PrismaClient } from '@prisma/client';
 
-const prisma = new PrismaClient();
-
 interface AuthRequest extends Request {
     user?: {
         id: string;
@@ -42,6 +40,9 @@ export const checkInPermission = async (
             next();
             return;
         }
+
+        // Use the tenant-scoped PrismaClient attached by tenantMiddleware
+        const prisma = (req as any).prisma as PrismaClient;
 
         // For non-managers, check if they're a volunteer for this event
         const volunteer = await prisma.eventVolunteer.findUnique({

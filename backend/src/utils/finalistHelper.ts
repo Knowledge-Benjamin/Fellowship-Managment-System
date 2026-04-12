@@ -1,5 +1,4 @@
-import prisma from '../prisma';
-import { Prisma } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import {
     isMemberFinalist,
     isMemberAlumni,
@@ -10,7 +9,7 @@ import {
  * Check if a member qualifies as a finalist (deprecated - use isMemberFinalist from academicProgressionHelper)
  * @deprecated Use isMemberFinalist from academicProgressionHelper instead
  */
-export async function isFinalist(memberId: string): Promise<boolean> {
+export async function isFinalist(prisma: PrismaClient, memberId: string): Promise<boolean> {
     const member = await prisma.member.findUnique({
         where: { id: memberId },
         select: {
@@ -25,7 +24,7 @@ export async function isFinalist(memberId: string): Promise<boolean> {
 
     if (!member) return false;
 
-    return await isMemberFinalist({
+    return await isMemberFinalist(prisma, {
         registrationDate: member.registrationDate,
         initialYearOfStudy: member.initialYearOfStudy,
         initialSemester: member.initialSemester,
@@ -39,6 +38,7 @@ export async function isFinalist(memberId: string): Promise<boolean> {
  * Ensures mutual exclusion: member can only have one or neither
  */
 export async function updateMemberTags(
+    prisma: PrismaClient,
     memberId: string,
     assignedByUserId: string,
     tx?: Prisma.TransactionClient
@@ -62,8 +62,8 @@ export async function updateMemberTags(
             return;
         }
 
-        const isNowFinalist = await isMemberFinalist(member);
-        const isNowAlumni = await isMemberAlumni(member);
+        const isNowFinalist = await isMemberFinalist(prisma, member);
+        const isNowAlumni = await isMemberAlumni(prisma, member);
 
         // Get both system tags
         const [finalistTag, alumniTag] = await Promise.all([
@@ -184,8 +184,9 @@ export async function updateMemberTags(
  * @deprecated Use updateMemberTags instead
  */
 export async function updateFinalistTag(
+    prisma: PrismaClient,
     memberId: string,
     assignedByUserId: string
 ): Promise<void> {
-    return updateMemberTags(memberId, assignedByUserId);
+    return updateMemberTags(prisma, memberId, assignedByUserId);
 }

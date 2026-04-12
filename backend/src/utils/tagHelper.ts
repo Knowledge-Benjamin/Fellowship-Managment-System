@@ -1,10 +1,10 @@
-import prisma from '../prisma';
+import { PrismaClient } from '@prisma/client';
 
 /**
- * Check if a member has an active, non-expired tag
- * Auto-deactivates expired tags
+ * Check if a member has an active, non-expired tag.
+ * `prisma` is passed explicitly for tenant isolation.
  */
-export const hasActiveTag = async (memberId: string, tagName: string): Promise<boolean> => {
+export const hasActiveTag = async (prisma: PrismaClient, memberId: string, tagName: string): Promise<boolean> => {
     const tag = await prisma.tag.findUnique({
         where: { name: tagName },
         select: { id: true },
@@ -24,7 +24,6 @@ export const hasActiveTag = async (memberId: string, tagName: string): Promise<b
 
     // Check if tag has expired
     if (memberTag.expiresAt && new Date() > new Date(memberTag.expiresAt)) {
-        // Expired - return false without updating (avoids unique constraint violation)
         return false;
     }
 
@@ -32,9 +31,9 @@ export const hasActiveTag = async (memberId: string, tagName: string): Promise<b
 };
 
 /**
- * Get all active, non-expired tags for a member
+ * Get all active, non-expired tag names for a member.
  */
-export const getActiveTags = async (memberId: string): Promise<string[]> => {
+export const getActiveTags = async (prisma: PrismaClient, memberId: string): Promise<string[]> => {
     const memberTags = await prisma.memberTag.findMany({
         where: {
             memberId,
@@ -47,15 +46,11 @@ export const getActiveTags = async (memberId: string): Promise<string[]> => {
         },
     });
 
-    // Filter out expired tags and auto-deactivate them
     const validTags: string[] = [];
     const now = new Date();
 
     for (const mt of memberTags) {
-        // Skip expired tags without updating (avoids unique constraint violation)
-        if (mt.expiresAt && now > new Date(mt.expiresAt)) {
-            continue; // Skip expired
-        }
+        if (mt.expiresAt && now > new Date(mt.expiresAt)) continue;
         validTags.push(mt.tag.name);
     }
 

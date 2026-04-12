@@ -169,7 +169,7 @@ export async function createMemberRecord(
 
     // 5. Finalist / alumni tag evaluation (requires course + year + semester)
     if (input.courseId && input.initialYearOfStudy && input.initialSemester) {
-        await updateMemberTags(member.id, member.id, tx);
+        await updateMemberTags(tx as any, member.id, member.id, tx);
     }
 
     // 6. Welcome email is queued by the caller AFTER the transaction commits

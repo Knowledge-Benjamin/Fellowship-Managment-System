@@ -1,5 +1,4 @@
-import { Member, MemberTag } from '@prisma/client';
-import prisma from '../prisma';
+import { Member, MemberTag, PrismaClient } from '@prisma/client';
 
 /**
  * Check if a member is a privileged account requiring MFA
@@ -83,7 +82,7 @@ export const getRemainingLockoutTime = (user: Member): number | null => {
 /**
  * Fetch user with all necessary relations for privilege check
  */
-export const getUserWithPrivilegeInfo = async (userId: string) => {
+export const getUserWithPrivilegeInfo = async (prisma: PrismaClient, userId: string) => {
     return await prisma.member.findFirst({
         where: {
             id: userId,

@@ -38,22 +38,14 @@ const Campaigns = lazy(() => import('./pages/Campaigns'));
 const CampaignManagement = lazy(() => import('./pages/CampaignManagement'));
 const CampaignReport = lazy(() => import('./pages/CampaignReport'));
 
-// System Admin
-const SystemAdminLogin = lazy(() => import('./pages/SystemAdmin/SystemAdminLogin'));
-const CampusesOverview = lazy(() => import('./pages/SystemAdmin/CampusesOverview'));
-const CampusDetails = lazy(() => import('./pages/SystemAdmin/CampusDetails'));
-
 import Sidebar from './components/Sidebar';
 
 // Roles that can view dispatched reports
 const LEADER_ROLES = ['FELLOWSHIP_MANAGER', 'REGIONAL_HEAD', 'FAMILY_HEAD', 'TEAM_LEADER'] as const;
 import { ToastProvider } from './components/ToastProvider';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { SystemAdminAuthProvider } from './context/SystemAdminAuthContext';
 import { TerminologyProvider } from './context/TerminologyContext';
 import ProtectedRoute from './components/ProtectedRoute';
-import SystemAdminProtectedRoute from './components/SystemAdminProtectedRoute';
-import SystemAdminLayout from './layouts/SystemAdminLayout';
 import CheckInPermissionGuard from './components/CheckInPermissionGuard';
 import Navbar from './components/Navbar';
 import { NetworkStatusListener } from './components/NetworkStatusListener';
@@ -64,25 +56,6 @@ function AppContent() {
   const location = useLocation();
   const { isAuthenticated, isManager } = useAuth();
   const isRegistrationPage = location.pathname === '/register';
-  const isSystemAdmin = location.pathname.startsWith('/system-admin');
-
-  // For system-admin paths, render only their routes — skip all campus chrome
-  if (isSystemAdmin) {
-    return (
-      <Suspense fallback={<div className="min-h-screen bg-slate-50" />}>
-        <Routes>
-          <Route path="/system-admin/login" element={<SystemAdminLogin />} />
-          <Route path="/system-admin" element={<SystemAdminProtectedRoute />}>
-            <Route element={<SystemAdminLayout />}>
-              <Route path="dashboard" element={<CampusesOverview />} />
-              <Route path="campuses/:id" element={<CampusDetails />} />
-            </Route>
-          </Route>
-        </Routes>
-      </Suspense>
-    );
-  }
-
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">
       {/* Universal Sidebar for Desktop */}
@@ -334,16 +307,14 @@ function AppContent() {
 function App() {
   return (
     <Router>
-      <SystemAdminAuthProvider>
-        <AuthProvider>
-          <TerminologyProvider>
-            <ToastProvider>
-              <NetworkStatusListener />
-              <AppContent />
-            </ToastProvider>
-          </TerminologyProvider>
-        </AuthProvider>
-      </SystemAdminAuthProvider>
+      <AuthProvider>
+        <TerminologyProvider>
+          <ToastProvider>
+            <NetworkStatusListener />
+            <AppContent />
+          </ToastProvider>
+        </TerminologyProvider>
+      </AuthProvider>
     </Router>
   );
 }

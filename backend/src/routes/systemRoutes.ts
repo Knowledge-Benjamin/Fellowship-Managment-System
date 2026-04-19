@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { getManagementClient } from '../lib/managementClient';
 import { getClientForUrl } from '../lib/prismaConnectionManager';
+import { scheduleWelcomeEmail } from '../services/emailService';
 
 const router = Router();
 
@@ -264,6 +265,16 @@ router.post('/campuses', systemAdminGuard, async (req: Request, res: Response) =
         });
 
         console.log(`[Provision] ✅ Seed complete for ${subdomain} — FM: ${fmEmail}`);
+
+        // Dispatch Welcome Email to the Fellowship Manager so they get their login credentials!
+        await scheduleWelcomeEmail(
+            tenantClient,
+            fmEmail,
+            fmFullName,
+            'AAA001',
+            tempPassword,
+            JSON.stringify({ userId: 'AAA001', type: 'MEMBER' }) // Minimal QR content
+        );
     } catch (err: any) {
         console.error('[Provision] Seeding failed:', err.message);
         res.status(500).json({

@@ -694,7 +694,7 @@ export const forgotPassword = asyncHandler(async (req: Request, res: Response) =
     });
 
     // Send the email with the raw token (front-end URL)
-    await sendPasswordResetEmail(user.email, user.fullName, resetToken);
+    await sendPasswordResetEmail(user.email, user.fullName, resetToken, (req as any).tenantSubdomain);
 
     res.json({ message: 'If an account exists with that email, a password reset link has been sent.' });
 });

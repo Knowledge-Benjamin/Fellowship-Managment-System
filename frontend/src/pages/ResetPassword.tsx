@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Shield, Key, Lock, ArrowRight, CheckCircle2 } from 'lucide-react';
 import api from '../api';
@@ -13,6 +13,14 @@ const ResetPassword = () => {
     const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
     const [message, setMessage] = useState('');
     const navigate = useNavigate();
+
+    // Rehydrate Tenant Context dynamically from email hyperlinks!
+    useEffect(() => {
+        const campus = searchParams.get('campus');
+        if (campus) {
+            localStorage.setItem('campus_override', campus);
+        }
+    }, [searchParams]);
 
     // Sound effect
     const playSuccessSound = () => {

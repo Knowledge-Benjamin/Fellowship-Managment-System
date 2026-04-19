@@ -1102,10 +1102,21 @@ Fellowship Management System
 export const sendPasswordResetEmail = async (
     email: string,
     fullName: string,
-    resetToken: string
+    resetToken: string,
+    tenantSubdomain?: string
 ): Promise<void> => {
     const settings = getSettings();
-    const resetUrl = `${settings.frontendUrl}/reset-password?token=${resetToken}`;
+    let resetUrl = '';
+    const isBetaEnvironment = settings.frontendUrl.includes('mmi-beta.onrender.com');
+
+    if (tenantSubdomain && !isBetaEnvironment) {
+        const baseUrl = settings.frontendUrl.replace('://', `://${tenantSubdomain}.`);
+        resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
+    } else if (tenantSubdomain && isBetaEnvironment) {
+        resetUrl = `${settings.frontendUrl}/reset-password?token=${resetToken}&campus=${tenantSubdomain}`;
+    } else {
+        resetUrl = `${settings.frontendUrl}/reset-password?token=${resetToken}`;
+    }
 
     const subject = 'ðŸ” Password Reset Request';
     const html = `

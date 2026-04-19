@@ -423,7 +423,7 @@ export const processEmailQueue = async () => {
 
     try {
         const mgmt = getManagementClient();
-        const campuses = await mgmt.campus.findMany({ where: { isActive: true } });
+        const campuses = await mgmt.campus.findMany({ where: { isActive: true, isDeleted: false } });
         if (campuses.length === 0) return;
 
         for (const campus of campuses) {

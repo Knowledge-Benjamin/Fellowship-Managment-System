@@ -91,7 +91,11 @@ export const createToken = async (req: Request, res: Response) => {
         });
 
         const baseUrl = process.env.FRONTEND_URL || req.get('origin') || 'http://localhost:5173';
-        const url = `${baseUrl}/register?token=${token}`;
+        // Embed the campus subdomain so the frontend can set X-Campus-Domain when the member
+        // arrives cold from an email link (no localStorage entry exists yet).
+        const campusSubdomain = req.headers['x-campus-domain'] as string | undefined;
+        const campusParam = campusSubdomain ? `&campus=${campusSubdomain}` : '';
+        const url = `${baseUrl}/register?token=${token}${campusParam}`;
 
         res.status(201).json({ ...regToken, url });
     } catch (error: any) {
@@ -116,9 +120,11 @@ export const listTokens = async (req: Request, res: Response) => {
         });
 
         const baseUrl = process.env.FRONTEND_URL || req.get('origin') || 'http://localhost:5173';
+        const campusSubdomain = req.headers['x-campus-domain'] as string | undefined;
+        const campusParam = campusSubdomain ? `&campus=${campusSubdomain}` : '';
         const result = tokens.map(t => ({
             ...t,
-            url: `${baseUrl}/register?token=${t.token}`,
+            url: `${baseUrl}/register?token=${t.token}${campusParam}`,
             pendingCount: t._count.pendingMembers,
         }));
 

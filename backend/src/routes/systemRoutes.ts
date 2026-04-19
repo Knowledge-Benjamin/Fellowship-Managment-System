@@ -393,5 +393,92 @@ router.get('/config/tenant', async (req: Request, res: Response) => {
         });
     }
 });
+// ────────────────────────────────────────────────────────────────────────────
+// CAMPUS DEPROVISIONING Endpoints
+// ────────────────────────────────────────────────────────────────────────────
+
+// 1. Suspend / Activate Campus
+router.patch('/campuses/:subdomain/suspend', systemAdminGuard, async (req: Request, res: Response) => {
+    const { subdomain } = req.params;
+    const { isActive } = req.body; // e.g. { isActive: false } to suspend
+    
+    if (typeof isActive !== 'boolean') {
+        res.status(400).json({ error: 'isActive boolean is required in the body' });
+        return;
+    }
+
+    try {
+        const mgmt = getManagementClient();
+        const campus = await (mgmt as any).campus.update({
+            where: { subdomain },
+            data: { isActive },
+        });
+        res.json({ message: `Campus ${subdomain} suspension status updated`, campus });
+    } catch (err: any) {
+        res.status(500).json({ error: 'Failed to update suspension status', detail: err.message });
+    }
+});
+
+// 2. Soft Delete (Archival)
+router.delete('/campuses/:subdomain', systemAdminGuard, async (req: Request, res: Response) => {
+    const { subdomain } = req.params;
+    
+    try {
+        const mgmt = getManagementClient();
+        const campus = await (mgmt as any).campus.update({
+            where: { subdomain },
+            data: { 
+                isDeleted: true, 
+                isActive: false, 
+                deletedAt: new Date() 
+            },
+        });
+        res.json({ message: `Campus ${subdomain} has been softly deleted and archived.`, campus });
+    } catch (err: any) {
+        res.status(500).json({ error: 'Failed to archive campus', detail: err.message });
+    }
+});
+
+// 3. HARD Delete (Physical destruction via Neon API)
+router.delete('/campuses/:subdomain/hard', systemAdminGuard, async (req: Request, res: Response) => {
+    const { subdomain } = req.params;
+    
+    try {
+        // Step 1: Destroy the database logic in the Neon Control Plane
+        const NEON_API_KEY = process.env.NEON_API_KEY;
+        const NEON_PROJECT_ID = process.env.NEON_PROJECT_ID;
+        const NEON_BRANCH_ID = process.env.NEON_BRANCH_ID;
+
+        if (!NEON_API_KEY || !NEON_PROJECT_ID || !NEON_BRANCH_ID) {
+            res.status(500).json({ error: 'Neon integration is missing from environment variables. Aborting nuke.' });
+            return;
+        }
+
+        const neonUrl = `https://console.neon.tech/api/v2/projects/${NEON_PROJECT_ID}/branches/${NEON_BRANCH_ID}/databases/${subdomain}`;
+        
+        const neonResponse = await global.fetch(neonUrl, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${NEON_API_KEY}`
+            }
+        });
+
+        if (!neonResponse.ok && neonResponse.status !== 404) {
+            const errorDetails = await neonResponse.json();
+            throw new Error(`Neon API failed to delete physical database: ${JSON.stringify(errorDetails)}`);
+        }
+
+        // Step 2: Purge the Management DB record completely
+        const mgmt = getManagementClient();
+        await (mgmt as any).campus.delete({
+            where: { subdomain }
+        });
+
+        res.json({ message: `Campus ${subdomain} has been COMPLETELY physically destroyed and untracked.` });
+    } catch (err: any) {
+        console.error('[Provision] Hard delete failed:', err);
+        res.status(500).json({ error: 'Hard destruction failed', detail: err.message });
+    }
+});
 
 export default router;

@@ -3,7 +3,12 @@ import { getClientForUrl } from '../lib/prismaConnectionManager';
 import { getManagementClient } from '../lib/managementClient';
 
 // Cache to prevent hitting the management database on every single API request
-const subdomainToUrlCache = new Map<string, string>();
+// Added a 60-second TTL (Time-To-Live) to securely enforce Campus suspensions network-wide.
+interface CacheEntry {
+    url: string;
+    expiresAt: number;
+}
+const subdomainToUrlCache = new Map<string, CacheEntry>();
 
 /**
  * Tenant Resolution Strategy
@@ -11,7 +16,7 @@ const subdomainToUrlCache = new Map<string, string>();
  * 1.  The frontend sends `X-Campus-Domain: tamu` (just the subdomain) in
  *     every authenticated request header.
  * 2.  We look up the corresponding DATABASE_URL from either:
- *       a) In-memory Cache.
+ *       a) In-memory Cache (TTL Validated).
  *       b) An environment variable (DATABASE_URL_<SUBDOMAIN_UPPER>).
  *       c) (Phase 3) A row in the Management / Control Plane DB.
  * 3.  We instantiate (or reuse a cached) PrismaClient for that URL and
@@ -27,10 +32,14 @@ export async function tenantMiddleware(req: Request, res: Response, next: NextFu
         let databaseUrl: string | undefined;
 
         if (subdomain) {
-            // 1. Check in-memory cache
-            if (subdomainToUrlCache.has(subdomain)) {
-                databaseUrl = subdomainToUrlCache.get(subdomain);
+            // 1. Check in-memory TTL cache
+            const cacheHit = subdomainToUrlCache.get(subdomain);
+            if (cacheHit && cacheHit.expiresAt > Date.now()) {
+                databaseUrl = cacheHit.url;
             } else {
+                // Remove expired cache if it exists
+                if (cacheHit) subdomainToUrlCache.delete(subdomain);
+
                 // 2. Look for a campus-specific override variable
                 const envKey = `DATABASE_URL_${subdomain.toUpperCase().replace(/-/g, '_')}`;
                 databaseUrl = process.env[envKey];
@@ -41,11 +50,20 @@ export async function tenantMiddleware(req: Request, res: Response, next: NextFu
                         const managementPrisma = getManagementClient();
                         const campus = await managementPrisma.campus.findUnique({
                             where: { subdomain },
-                            select: { databaseUrl: true, isActive: true }
+                            // Check isDeleted manually so we do not cache deleted campuses
+                            select: { databaseUrl: true, isActive: true, isDeleted: true }
                         });
 
-                        if (campus && campus.isActive) {
+                        if (campus && !campus.isDeleted && campus.isActive) {
                             databaseUrl = campus.databaseUrl;
+                        } else if (campus && (!campus.isActive || campus.isDeleted)) {
+                            res.status(403).json({
+                                error: 'Campus access is restricted.',
+                                detail: campus.isDeleted 
+                                    ? `The campus '${subdomain}' has been archived.` 
+                                    : `The campus '${subdomain}' has been temporarily suspended. Please contact the System Administrator.`,
+                            });
+                            return;
                         }
                     } catch (dbError) {
                         console.error('[TenantMiddleware] Error querying management database:', dbError);
@@ -53,7 +71,11 @@ export async function tenantMiddleware(req: Request, res: Response, next: NextFu
                 }
 
                 if (databaseUrl) {
-                    subdomainToUrlCache.set(subdomain, databaseUrl);
+                    // Set cache with 60-second TTL
+                    subdomainToUrlCache.set(subdomain, { 
+                        url: databaseUrl, 
+                        expiresAt: Date.now() + 60000 
+                    });
                 } else {
                     res.status(503).json({
                         error: 'Campus database not configured.',

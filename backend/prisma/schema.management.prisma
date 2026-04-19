@@ -21,6 +21,8 @@ model Campus {
   subdomain   String   @unique                // "makerere" → makerere.domain.com
   databaseUrl String                          // Full Neon connection string for this tenant's DB
   isActive    Boolean  @default(true)
+  isDeleted   Boolean  @default(false)
+  deletedAt   DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

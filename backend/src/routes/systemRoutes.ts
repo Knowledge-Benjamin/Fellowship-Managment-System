@@ -180,15 +180,30 @@ router.post('/campuses', systemAdminGuard, async (req: Request, res: Response) =
     }
 
     let tenantClient: ReturnType<typeof getClientForUrl>;
-    try {
-        tenantClient = getClientForUrl(databaseUrl);
-        // Quick ping to ensure it's ready
-        await tenantClient.$queryRaw`SELECT 1`;
-    } catch (_err) {
-        res.status(500).json({ error: 'Database was created via API, but connectivity verification failed.' });
-        return;
+    let connected = false;
+    let lastError = null;
+
+    tenantClient = getClientForUrl(databaseUrl);
+
+    for (let attempt = 1; attempt <= 5; attempt++) {
+        try {
+            await tenantClient.$queryRaw`SELECT 1`;
+            connected = true;
+            break;
+        } catch (err) {
+            lastError = err;
+            console.log(`[Provision] Connection verification attempt ${attempt} failed. Retrying in 2s...`);
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+        }
     }
 
+    if (!connected) {
+        res.status(500).json({ 
+            error: 'Database was successfully created via API, but connectivity verification failed after multiple attempts. The Neon proxy might be taking too long to route to this new database.',
+            detail: typeof lastError === 'object' && lastError !== null ? (lastError as any).message : String(lastError)
+        });
+        return;
+    }
     // ── Step 2: Run Prisma migrations against the new DB ────────────────────
     try {
         const { execSync } = await import('child_process');

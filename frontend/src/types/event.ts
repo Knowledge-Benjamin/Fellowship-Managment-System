@@ -6,7 +6,7 @@ export interface Event {
     endTime: string;
     allowGuestCheckin: boolean;
     status?: string;
-    type?: 'TUESDAY_FELLOWSHIP' | 'THURSDAY_PHANEROO';
+    type?: string;
     venue?: string;
     isRecurring?: boolean;
     recurrenceRule?: string;

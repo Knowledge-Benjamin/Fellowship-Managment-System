@@ -25,7 +25,7 @@ const EventManagement = () => {
         date: '',
         startTime: '',
         endTime: '',
-        type: 'TUESDAY_FELLOWSHIP' as 'TUESDAY_FELLOWSHIP' | 'THURSDAY_PHANEROO',
+        type: '',
         venue: '',
     });
     const PAGE_SIZE = 3;
@@ -37,7 +37,7 @@ const EventManagement = () => {
         date: '',
         startTime: '18:00',
         endTime: '20:00',
-        type: 'TUESDAY_FELLOWSHIP' as const,
+        type: '',
         venue: '',
         isRecurring: false,
         recurrenceRule: 'WEEKLY',
@@ -70,7 +70,7 @@ const EventManagement = () => {
                 date: '',
                 startTime: '18:00',
                 endTime: '20:00',
-                type: 'TUESDAY_FELLOWSHIP',
+                type: '',
                 venue: '',
                 isRecurring: false,
                 recurrenceRule: 'WEEKLY',
@@ -120,7 +120,7 @@ const EventManagement = () => {
             date: typeof event.date === 'string' ? event.date.split('T')[0] : new Date(event.date).toISOString().split('T')[0],
             startTime: event.startTime,
             endTime: event.endTime,
-            type: event.type ?? 'TUESDAY_FELLOWSHIP',
+            type: event.type ?? '',
             venue: event.venue ?? '',
         });
     };
@@ -176,7 +176,7 @@ const EventManagement = () => {
                 <div className="flex items-start justify-between gap-2 mb-2">
                     <div className="flex-1 min-w-0">
                         <h3 className="text-sm font-bold text-slate-900 truncate leading-tight">{event.name}</h3>
-                        <p className="text-xs text-slate-400 mt-0.5">{event.type === 'TUESDAY_FELLOWSHIP' ? 'Fellowship' : 'Phaneroo'}</p>
+                        <p className="text-xs text-slate-400 mt-0.5 capitalize">{event.type?.replace(/_/g, ' ').toLowerCase() || 'Event'}</p>
                     </div>
                     {/* Icon-only action buttons */}
                     <div className="flex items-center gap-1 shrink-0">
@@ -392,13 +392,14 @@ const EventManagement = () => {
                                         Type
                                         <span className="text-red-500">*</span>
                                     </label>
-                                    <CustomSelect
+                                    <input
+                                        type="text"
+                                        required
                                         value={formData.type}
-                                        onChange={(v: string) => setFormData({ ...formData, type: v as any })}
-                                        options={[
-                                            { value: 'TUESDAY_FELLOWSHIP', label: 'Tuesday Fellowship' },
-                                            { value: 'THURSDAY_PHANEROO', label: 'Thursday Phaneroo' },
-                                        ]}
+                                        onChange={(e) => setFormData({ ...formData, type: e.target.value.toUpperCase().replace(/\s+/g, '_') })}
+                                        className={inputClass}
+                                        placeholder="e.g. SUNDAY_SERVICE"
+                                        {...inputFocusStyle}
                                     />
                                 </div>
                             </div>
@@ -757,13 +758,13 @@ const EventManagement = () => {
                                         <List className="w-3.5 h-3.5" style={{ color: '#48A111' }} />
                                         Type <span className="text-red-500">*</span>
                                     </label>
-                                    <CustomSelect
+                                    <input
+                                        type="text"
+                                        required
                                         value={editFormData.type}
-                                        onChange={(v: string) => setEditFormData({ ...editFormData, type: v as 'TUESDAY_FELLOWSHIP' | 'THURSDAY_PHANEROO' })}
-                                        options={[
-                                            { value: 'TUESDAY_FELLOWSHIP', label: 'Tuesday Fellowship' },
-                                            { value: 'THURSDAY_PHANEROO', label: 'Thursday Phaneroo' },
-                                        ]}
+                                        onChange={(e) => setEditFormData({ ...editFormData, type: e.target.value.toUpperCase().replace(/\s+/g, '_') })}
+                                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border-2 border-slate-200 text-slate-900 text-sm focus:outline-none focus:border-blue-400 transition-all"
+                                        placeholder="e.g. SUNDAY_SERVICE"
                                     />
                                 </div>
                             </div>

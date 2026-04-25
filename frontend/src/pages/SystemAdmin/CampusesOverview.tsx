@@ -98,7 +98,7 @@ const CampusesOverview: React.FC = () => {
                                 </div>
                                 <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 mb-4">
                                     <Globe className="w-4 h-4 mr-1.5 flex-shrink-0" />
-                                    <span className="truncate">{campus.subdomain}.makmanifest.org</span>
+                                    <span className="truncate">{campus.subdomain}.{import.meta.env.VITE_APP_DOMAIN || 'makmanifest.org'}</span>
                                 </div>
                                 <div className="text-xs text-gray-400 dark:text-gray-500">
                                     Deployed: {format(new Date(campus.createdAt), 'MMM d, yyyy')}
@@ -113,7 +113,7 @@ const CampusesOverview: React.FC = () => {
                                     <Settings className="w-4 h-4" />
                                 </Link>
                                 <a
-                                    href={`https://${campus.subdomain}.makmanifest.org`}
+                                    href={`https://${campus.subdomain}.${import.meta.env.VITE_APP_DOMAIN || 'makmanifest.org'}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-colors"

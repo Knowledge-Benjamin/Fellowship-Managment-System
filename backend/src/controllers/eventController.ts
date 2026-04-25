@@ -9,7 +9,11 @@ const createEventSchema = z.object({
     date: z.string().datetime().or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)),
     startTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Invalid time format (HH:MM)'),
     endTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Invalid time format (HH:MM)'),
-    type: z.enum(['TUESDAY_FELLOWSHIP', 'THURSDAY_PHANEROO']),
+    // Free-form event type — not restricted to Makerere-specific values.
+    // Any campus can define their own: "SUNDAY_SERVICE", "PRAYER_NIGHT", "OUTREACH", etc.
+    // Input is trimmed and normalised to UPPER_SNAKE_CASE automatically.
+    type: z.string().min(2, 'Event type is required').max(60, 'Event type too long')
+        .transform(val => val.trim().toUpperCase().replace(/\s+/g, '_')),
     venue: z.string().max(200).optional().transform(val => val === '' ? undefined : val),
     isRecurring: z.boolean().optional(),
     recurrenceRule: z.string().optional().transform(val => val === '' ? undefined : val),

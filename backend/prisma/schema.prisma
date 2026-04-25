@@ -13,10 +13,8 @@ enum Gender {
   FEMALE
 }
 
-enum ServiceType {
-  TUESDAY_FELLOWSHIP
-  THURSDAY_PHANEROO
-}
+// ServiceType was replaced with a free-form String field.
+// Each campus defines their own event type labels (e.g. "TUESDAY_FELLOWSHIP", "SUNDAY_SERVICE").
 
 enum CheckInMethod {
   QR
@@ -223,7 +221,7 @@ model Event {
   date              DateTime
   startTime         String // Format: "HH:MM"
   endTime           String // Format: "HH:MM"
-  type              ServiceType
+  type              String      // Free-form label per campus — e.g. "TUESDAY_FELLOWSHIP", "SUNDAY_SERVICE"
   venue             String?
   isRecurring       Boolean     @default(false)
   recurrenceRule    String? // DAILY, WEEKLY, MONTHLY

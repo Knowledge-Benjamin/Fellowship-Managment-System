@@ -48,17 +48,28 @@ const CheckIn = () => {
         [selectedEvent?.id]
     ) || 0;
 
-    const checkPermission = async (eventId: string) => {
+    const checkPermission = async (eventId: string, attempt = 1): Promise<void> => {
         try {
             const response = await api.get(`/volunteers/${eventId}/check-permission`);
             if (!response.data.hasPermission) {
                 setAccessDenied(true);
                 setMessage('You do not have permission to perform check-ins for this event.');
+            } else {
+                // Explicitly clear access denied in case this was a retry that succeeded
+                setAccessDenied(false);
             }
         } catch (error) {
-            console.error('Failed to check permission:', error);
-            setAccessDenied(true);
-            setMessage('Unable to verify check-in permissions. Access denied for security.');
+            if (attempt < 3) {
+                // Retry with exponential backoff: 1s, 2s
+                const delay = attempt * 1000;
+                console.warn(`[CheckIn] Permission check failed (attempt ${attempt}), retrying in ${delay}ms...`);
+                setTimeout(() => checkPermission(eventId, attempt + 1), delay);
+            } else {
+                // All 3 attempts failed — deny access for security
+                console.error('Failed to check permission after 3 attempts:', error);
+                setAccessDenied(true);
+                setMessage('Unable to verify check-in permissions after multiple attempts. Please check your connection and refresh the page.');
+            }
         }
     };
 

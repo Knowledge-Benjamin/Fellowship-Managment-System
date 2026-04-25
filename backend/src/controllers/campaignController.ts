@@ -30,6 +30,8 @@ const contactEntrySchema = z.object({
     email: z.string().email().optional().or(z.literal('').transform(() => undefined)),
     relationship: z.string().max(50).optional(),
     callStatus: z.enum(['PENDING', 'CONFIRMED', 'NOT_CONFIRMED']).optional(),
+    transportNeed: z.enum(['NEEDS_TRANSPORT', 'DOES_NOT_NEED_TRANSPORT', 'PENDING']).optional(),
+    location: z.string().optional().nullable(),
 });
 
 const submitContactsSchema = z.object({
@@ -42,6 +44,8 @@ const updateContactSchema = z.object({
     email: z.string().email().optional().or(z.literal('').transform(() => undefined)),
     relationship: z.string().max(50).optional(),
     callStatus: z.enum(['PENDING', 'CONFIRMED', 'NOT_CONFIRMED']).optional(),
+    transportNeed: z.enum(['NEEDS_TRANSPORT', 'DOES_NOT_NEED_TRANSPORT', 'PENDING']).optional(),
+    location: z.string().optional().nullable(),
     notes: z.string().max(500).optional(),
     calledById: z.string().uuid().optional(),
     isDuplicate: z.boolean().optional(),
@@ -335,6 +339,8 @@ export const submitContacts = async (req: Request, res: Response) => {
                 email: c.email || null,
                 relationship: c.relationship || null,
                 callStatus: (c.callStatus || 'PENDING') as any,
+                transportNeed: (c.transportNeed || 'PENDING') as any,
+                location: c.location || null,
                 calledById: c.callStatus && c.callStatus !== 'PENDING' ? userId : undefined,
                 calledAt: c.callStatus && c.callStatus !== 'PENDING' ? new Date() : undefined,
                 isDuplicate: duplicatePhones.has(c.phone) || (!!c.email && duplicateEmails.has(c.email)),
@@ -418,6 +424,8 @@ export const updateContact = async (req: Request, res: Response) => {
         if (data.email       !== undefined) payload.email       = data.email;
         if (data.relationship!== undefined) payload.relationship= data.relationship;
         if (data.callStatus  !== undefined) payload.callStatus  = data.callStatus;
+        if (data.transportNeed !== undefined) payload.transportNeed = data.transportNeed;
+        if (data.location    !== undefined) payload.location    = data.location;
         if (data.notes       !== undefined) payload.notes       = data.notes;
         if (data.isDuplicate !== undefined) payload.isDuplicate = data.isDuplicate;
         if (data.callStatus && data.callStatus !== 'PENDING' && !contact.calledAt) {
@@ -542,7 +550,7 @@ export const exportCampaign = async (req: Request, res: Response) => {
 
             const headerRow = sheet.addRow([
                 'Submitted By', 'Fellowship #', 'Region', 'Contact Name', 'Phone', 'Email',
-                'Relationship', 'Call Status', 'Called By', 'Called At', 'Notes', 'Duplicate?',
+                'Relationship', 'Transport Need', 'Location', 'Call Status', 'Called By', 'Called At', 'Notes', 'Duplicate?',
             ]);
             headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
             headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF6366f1' } };
@@ -559,6 +567,8 @@ export const exportCampaign = async (req: Request, res: Response) => {
                     c.phone,
                     c.email || '-',
                     c.relationship || '-',
+                    c.transportNeed ? c.transportNeed.replace(/_/g, ' ') : 'PENDING',
+                    c.location || '-',
                     c.callStatus.replace(/_/g, ' '),
                     c.calledBy?.fullName || '-',
                     c.calledAt ? c.calledAt.toISOString().split('T')[0] : '-',
@@ -570,7 +580,7 @@ export const exportCampaign = async (req: Request, res: Response) => {
 
             sheet.columns = [
                 { width: 28 }, { width: 15 }, { width: 20 }, { width: 28 }, { width: 18 },
-                { width: 28 }, { width: 18 }, { width: 16 }, { width: 25 },
+                { width: 28 }, { width: 18 }, { width: 18 }, { width: 20 }, { width: 16 }, { width: 25 },
                 { width: 14 }, { width: 30 }, { width: 12 },
             ];
         };

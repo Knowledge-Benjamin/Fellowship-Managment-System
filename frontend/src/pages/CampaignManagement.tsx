@@ -475,6 +475,13 @@ export default function CampaignManagement() {
                                                                 <Phone size={12} /> {contact.phone}
                                                             </div>
                                                             {contact.email && <div className="text-xs text-slate-400 mt-0.5">{contact.email}</div>}
+                                                            {contact.transportNeed && contact.transportNeed !== 'PENDING' && (
+                                                                <div className="mt-1">
+                                                                    <span className={`text-[10px] px-1.5 py-0.5 rounded inline-block font-bold ${contact.transportNeed === 'NEEDS_TRANSPORT' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-500'}`}>
+                                                                        {contact.transportNeed === 'NEEDS_TRANSPORT' ? `Needs Transport${contact.location ? ` (${contact.location})` : ''}` : 'No Transport Needed'}
+                                                                    </span>
+                                                                </div>
+                                                            )}
                                                         </td>
                                                         <td className="px-6 py-4 text-slate-600">{contact.relationship || '-'}</td>
                                                         <td className="px-6 py-4">

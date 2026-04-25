@@ -12,9 +12,9 @@ export default function Campaigns() {
     // State for the currently selected campaign to submit to
     const [activeCampaignId, setActiveCampaignId] = useState<string | null>(null);
     const [activeCampaignDetail, setActiveCampaignDetail] = useState<any | null>(null);
-    const [newContacts, setNewContacts] = useState([{ name: '', phone: '', email: '', relationship: '', callStatus: 'PENDING' }]);
+    const [newContacts, setNewContacts] = useState([{ name: '', phone: '', email: '', relationship: '', callStatus: 'PENDING', transportNeed: 'PENDING', location: '' }]);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [editingContact, setEditingContact] = useState<{ id: string; name: string; phone: string; email: string; relationship: string } | null>(null);
+    const [editingContact, setEditingContact] = useState<{ id: string; name: string; phone: string; email: string; relationship: string; transportNeed: string; location: string } | null>(null);
 
     // Chat State
     const [chatEntity, setChatEntity] = useState<{ id: string; name: string } | null>(null);
@@ -64,7 +64,7 @@ export default function Campaigns() {
     };
 
     const handleAddRow = () => {
-        setNewContacts([...newContacts, { name: '', phone: '', email: '', relationship: '', callStatus: 'PENDING' }]);
+        setNewContacts([...newContacts, { name: '', phone: '', email: '', relationship: '', callStatus: 'PENDING', transportNeed: 'PENDING', location: '' }]);
     };
 
     const handleRemoveRow = (index: number) => {
@@ -81,9 +81,13 @@ export default function Campaigns() {
     const handleSubmitContacts = async (e: React.FormEvent, campaign: any) => {
         e.preventDefault();
         
-        const validContacts = newContacts.filter(c => c.name.trim() && c.phone.trim());
+        const validContacts = newContacts.filter(c => {
+            if (!c.name.trim() || !c.phone.trim()) return false;
+            if (c.transportNeed === 'NEEDS_TRANSPORT' && !c.location.trim()) return false;
+            return true;
+        });
         if (validContacts.length === 0) {
-            showToast('error', 'Please provide at least a name and phone number for one contact');
+            showToast('error', 'Please provide name, phone, and location (if transport is needed) for at least one contact');
             return;
         }
 
@@ -97,7 +101,7 @@ export default function Campaigns() {
             setIsSubmitting(true);
             await api.post(`/campaigns/${campaign.id}/contacts`, { contacts: validContacts });
             showToast('success', 'Contacts submitted successfully!');
-            setNewContacts([{ name: '', phone: '', email: '', relationship: '', callStatus: 'PENDING' }]);
+            setNewContacts([{ name: '', phone: '', email: '', relationship: '', callStatus: 'PENDING', transportNeed: 'PENDING', location: '' }]);
             fetchCampaigns(); // refresh to show updated progress
             fetchCampaignDetail(campaign.id); // also refresh detail view
         } catch (error: any) {
@@ -125,6 +129,8 @@ export default function Campaigns() {
                 phone: editingContact.phone,
                 email: editingContact.email,
                 relationship: editingContact.relationship,
+                transportNeed: editingContact.transportNeed,
+                location: editingContact.location,
             });
             showToast('success', 'Contact updated!');
             setEditingContact(null);
@@ -333,6 +339,25 @@ export default function Campaigns() {
                                                     <option value="CONFIRMED">Status: Confirmed</option>
                                                     <option value="NOT_CONFIRMED">Status: Dropped Out</option>
                                                 </select>
+                                                <select
+                                                    value={contact.transportNeed}
+                                                    onChange={(e) => handleChange(index, 'transportNeed', e.target.value)}
+                                                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#48A111] focus:ring-1 focus:ring-[#48A111] outline-none transition-all text-sm bg-white font-medium text-slate-700"
+                                                >
+                                                    <option value="PENDING">Transport: Pending</option>
+                                                    <option value="NEEDS_TRANSPORT">Needs Transport</option>
+                                                    <option value="DOES_NOT_NEED_TRANSPORT">Doesn't Need Transport</option>
+                                                </select>
+                                                {contact.transportNeed === 'NEEDS_TRANSPORT' && (
+                                                    <input 
+                                                        type="text" 
+                                                        placeholder="Location *" 
+                                                        required
+                                                        value={contact.location}
+                                                        onChange={(e) => handleChange(index, 'location', e.target.value)}
+                                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#48A111] focus:ring-1 focus:ring-[#48A111] outline-none transition-all text-sm bg-white md:col-span-2"
+                                                    />
+                                                )}
                                             </div>
                                             <button 
                                                 type="button" 
@@ -419,6 +444,23 @@ export default function Campaigns() {
                                                     value={editingContact!.relationship}
                                                     onChange={e => setEditingContact({ ...editingContact!, relationship: e.target.value })}
                                                 />
+                                                <select
+                                                    className="text-sm border border-slate-300 rounded-lg px-2.5 py-1.5 outline-none focus:border-[#48A111]"
+                                                    value={editingContact!.transportNeed}
+                                                    onChange={e => setEditingContact({ ...editingContact!, transportNeed: e.target.value })}
+                                                >
+                                                    <option value="PENDING">Transport: Pending</option>
+                                                    <option value="NEEDS_TRANSPORT">Needs Transport</option>
+                                                    <option value="DOES_NOT_NEED_TRANSPORT">Doesn't Need Transport</option>
+                                                </select>
+                                                {editingContact!.transportNeed === 'NEEDS_TRANSPORT' && (
+                                                    <input
+                                                        className="text-sm border border-slate-300 rounded-lg px-2.5 py-1.5 outline-none focus:border-[#48A111]"
+                                                        placeholder="Location *"
+                                                        value={editingContact!.location}
+                                                        onChange={e => setEditingContact({ ...editingContact!, location: e.target.value })}
+                                                    />
+                                                )}
                                                 <div className="flex gap-2 mt-1">
                                                     <button
                                                         onClick={() => handleSaveContactEdit(activeCampaign.id)}
@@ -452,6 +494,11 @@ export default function Campaigns() {
                                                         {c.relationship && (
                                                             <span className="text-[10px] text-slate-400 bg-slate-200/60 px-1.5 py-0.5 rounded mt-1 inline-block">{c.relationship}</span>
                                                         )}
+                                                        {c.transportNeed && c.transportNeed !== 'PENDING' && (
+                                                            <span className={`text-[10px] px-1.5 py-0.5 rounded mt-1 inline-block ml-1 ${c.transportNeed === 'NEEDS_TRANSPORT' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-200/60 text-slate-500'}`}>
+                                                                {c.transportNeed === 'NEEDS_TRANSPORT' ? `Needs Transport${c.location ? ` (${c.location})` : ''}` : 'No Transport Needed'}
+                                                            </span>
+                                                        )}
                                                     </div>
                                                     <div className="flex flex-col gap-2 shrink-0">
                                                         <button
@@ -466,7 +513,7 @@ export default function Campaigns() {
                                                         </button>
                                                         {activeCampaign.status === 'OPEN' && (
                                                             <button
-                                                                onClick={() => setEditingContact({ id: c.id, name: c.name, phone: c.phone, email: c.email || '', relationship: c.relationship || '' })}
+                                                                onClick={() => setEditingContact({ id: c.id, name: c.name, phone: c.phone, email: c.email || '', relationship: c.relationship || '', transportNeed: c.transportNeed || 'PENDING', location: c.location || '' })}
                                                                 className="p-1.5 text-slate-400 hover:text-[#48A111] hover:bg-[#e9f5e1] rounded-lg transition-colors"
                                                                 title="Edit contact"
                                                             >

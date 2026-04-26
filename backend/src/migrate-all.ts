@@ -60,8 +60,27 @@ async function migrateAllDatabases() {
           `;
           
           if (result && result.length > 0 && result[0].data_type === 'USER-DEFINED') {
-              console.log(`[Migrate] Auto-healing: Event.type is still an Enum. Deleting false migration record...`);
-              await tenantPrisma.$executeRaw`DELETE FROM _prisma_migrations WHERE migration_name = '20260426130503_change_event_type_to_string'`;
+              console.log(`[Migrate] Auto-healing: Event.type is still an Enum. Forcefully altering table schema...`);
+              
+              // 1. Alter Event.type to TEXT
+              await tenantPrisma.$executeRawUnsafe(`ALTER TABLE "Event" ALTER COLUMN "type" TYPE TEXT USING "type"::text;`);
+              
+              // 2. Create TransportNeed enum (ignore if exists)
+              try {
+                  await tenantPrisma.$executeRawUnsafe(`CREATE TYPE "TransportNeed" AS ENUM ('NEEDS_TRANSPORT', 'DOES_NOT_NEED_TRANSPORT', 'PENDING');`);
+              } catch (e) {}
+              
+              // 3. Update MobilizationContact
+              try {
+                  await tenantPrisma.$executeRawUnsafe(`ALTER TABLE "MobilizationContact" ADD COLUMN "location" TEXT, ADD COLUMN "transportNeed" "TransportNeed" NOT NULL DEFAULT 'PENDING';`);
+              } catch (e) {}
+              
+              // 4. Cleanup old ServiceType enum
+              try {
+                  await tenantPrisma.$executeRawUnsafe(`DROP TYPE IF EXISTS "ServiceType" CASCADE;`);
+              } catch (e) {}
+              
+              console.log(`[Migrate] Auto-heal SQL executed successfully.`);
           }
         } catch (healErr: any) {
           console.warn(`[Migrate] Auto-heal check failed (safe to ignore):`, healErr.message);

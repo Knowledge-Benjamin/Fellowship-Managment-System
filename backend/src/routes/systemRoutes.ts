@@ -273,7 +273,9 @@ router.post('/campuses', systemAdminGuard, async (req: Request, res: Response) =
             fmFullName,
             'AAA001',
             tempPassword,
-            JSON.stringify({ userId: 'AAA001', type: 'MEMBER' }) // Minimal QR content
+            JSON.stringify({ userId: 'AAA001', type: 'MEMBER' }), // Minimal QR content
+            undefined, // editedByFM — not applicable for FM seeding
+            subdomain  // tenantSubdomain — ensures login link points to correct campus
         );
     } catch (err: any) {
         console.error('[Provision] Seeding failed:', err.message);

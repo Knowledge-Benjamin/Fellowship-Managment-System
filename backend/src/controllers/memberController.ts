@@ -87,7 +87,7 @@ export const createMember = async (req: Request, res: Response) => {
         // Queue welcome email AFTER the transaction commits so that:
         //  - QR code generation cannot timeout the DB transaction
         //  - A failing email queue never rolls back the member creation
-        await scheduleWelcomeEmail(prisma, member.email, member.fullName, fellowshipNumber, temporaryPassword || '', member.qrCode, undefined);
+        await scheduleWelcomeEmail(prisma, member.email, member.fullName, fellowshipNumber, temporaryPassword || '', member.qrCode, undefined, (req as any).tenantSubdomain);
 
         // Execute Bring 1 auto-match for direct internal registration
         matchAndAdvanceDirectMemberPledge(prisma, {

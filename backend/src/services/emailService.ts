@@ -144,7 +144,7 @@ export const sendOTPEmail = async (
                     </div>
                     
                     <div class="warning">
-                        <strong>âš ï¸ Security Notice:</strong> Never share this code with anyone. Fellowship staff will never ask for your verification code.
+                        <strong>Security Notice:</strong> Never share this code with anyone. Fellowship staff will never ask for your verification code.
                     </div>
                     
                     <p><strong>Didn't request this code?</strong></p>
@@ -185,7 +185,7 @@ export const sendAccountLockedEmail = async (
     fullName: string,
     unlockTime: Date
 ): Promise<void> => {
-    const subject = 'ðŸ”’ Account Temporarily Locked - Security Alert';
+    const subject = 'Account Temporarily Locked - Security Alert';
     const html = `
         <!DOCTYPE html>
         <html>
@@ -202,7 +202,7 @@ export const sendAccountLockedEmail = async (
         <body>
             <div class="container">
                 <div class="header">
-                    <h1 style="margin: 0;">ðŸ”’ Account Locked</h1>
+                    <h1 style="margin: 0;">Account Locked</h1>
                     <p style="margin: 5px 0 0 0;">Security Alert</p>
                 </div>
                 <div class="content">
@@ -255,7 +255,7 @@ export const sendWelcomeEmail = async (
             color: { dark: '#000000', light: '#FFFFFF' },
         });
 
-        const subject = 'ðŸŽ‰ Welcome to Fellowship Manager!';
+        const subject = 'Welcome to Fellowship Manager';
         const html = `
             <!DOCTYPE html>
             <html>
@@ -280,18 +280,18 @@ export const sendWelcomeEmail = async (
             <body>
                 <div class="container">
                     <div class="header">
-                        <h1 style="margin: 0; font-size: 28px;">ðŸŽ‰ Welcome to Fellowship!</h1>
+                        <h1 style="margin: 0; font-size: 28px;">Welcome to Fellowship!</h1>
                         <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Your registration was successful</p>
                     </div>
                     <div class="content">
                         <div class="welcome-box">
-                            <p style="margin: 0 0 15px 0; font-size: 18px; color: #14b8a6; font-weight: bold;">Hello <strong style="color: #0f172a;">${fullName}</strong>! ðŸ‘‹</p>
+                            <p style="margin: 0 0 15px 0; font-size: 18px; color: #14b8a6; font-weight: bold;">Hello <strong style="color: #0f172a;">${fullName}</strong>!</p>
                             <p style="margin: 0; color: #64748b;">
                                 We're excited to have you as part of our fellowship community. Here are your account credentials and important information to get started.
                             </p>
                         </div>
 
-                        <h3 style="color: #0f172a; margin: 30px 0 15px 0;">ðŸ“‹ Your Account Details</h3>
+                        <h3 style="color: #0f172a; margin: 30px 0 15px 0;">Your Account Details</h3>
                         
                         <div class="credential-item">
                             <div class="credential-label">Fellowship Number</div>
@@ -309,10 +309,10 @@ export const sendWelcomeEmail = async (
                         </div>
 
                         <div class="info-box">
-                            <strong>âš ï¸ Security Requirement:</strong> Your temporary password is provided above. For your security, you will be required to change this password immediately upon your first login.
+                            <strong>Security Requirement:</strong> Your temporary password is provided above. For your security, you will be required to change this password immediately upon your first login.
                         </div>
 
-                        <h3 style="color: #0f172a; margin: 30px 0 15px 0;">ðŸ“± Your Personal QR Code</h3>
+                        <h3 style="color: #0f172a; margin: 30px 0 15px 0;">Your Personal QR Code</h3>
                         <p style="color: #64748b; margin-bottom: 15px;">Use this QR code for quick check-in at fellowship events:</p>
                         
                         <div class="qr-container">
@@ -323,10 +323,10 @@ export const sendWelcomeEmail = async (
                         </div>
 
                         <div class="warning-box">
-                            <strong>ðŸ”’ Keep Your QR Code Safe:</strong> This QR code is unique to you. Do not share it with others as it provides access to your fellowship account.
+                            <strong>Keep Your QR Code Safe:</strong> This QR code is unique to you. Do not share it with others as it provides access to your fellowship account.
                         </div>
 
-                        <h3 style="color: #0f172a; margin: 30px 0 15px 0;">ðŸš€ Getting Started</h3>
+                        <h3 style="color: #0f172a; margin: 30px 0 15px 0;">Getting Started</h3>
                         <ol class="steps-list" style="color: #64748b;">
                             <li><strong style="color: #0f172a;">Log in</strong> using your email and the temporary password above</li>
                             <li><strong style="color: #0f172a;">Set a secure password</strong> when prompted</li>
@@ -336,7 +336,7 @@ export const sendWelcomeEmail = async (
                         </ol>
 
                         <div class="info-box" style="background: #f0f9ff; border-color: #0891b2;">
-                            <strong>ðŸ’¡ Need Help?</strong> Contact your fellowship administrator if you have any questions or need assistance accessing your account.
+                            <strong>Need Help?</strong> Contact your fellowship administrator if you have any questions or need assistance accessing your account.
                         </div>
 
                         <p style="margin-top: 30px; color: #64748b;">
@@ -497,11 +497,21 @@ export const scheduleWelcomeEmail = async ( prisma: PrismaClient, email: string,
     fellowshipNumber: string,
     temporaryPassword: string,
     qrCodeValue: string,
-    editedByFM?: boolean
+    editedByFM?: boolean,
+    tenantSubdomain?: string
 ): Promise<void> => {
     try {
         const settings = getSettings();
-        const loginUrl = `${settings.frontendUrl}/login`;
+        const isBetaEnvironment = settings.frontendUrl.includes('mmi-beta.onrender.com');
+        let loginUrl: string;
+        if (tenantSubdomain && !isBetaEnvironment) {
+            const baseUrl = settings.frontendUrl.replace('://', `://${tenantSubdomain}.`);
+            loginUrl = `${baseUrl}/login`;
+        } else if (tenantSubdomain && isBetaEnvironment) {
+            loginUrl = `${settings.frontendUrl}/login?campus=${tenantSubdomain}`;
+        } else {
+            loginUrl = `${settings.frontendUrl}/login`;
+        }
 
         // Generate QR code OUTSIDE the DB transaction
         const qrCodeDataUrl = await QRCode.toDataURL(qrCodeValue, {
@@ -510,14 +520,14 @@ export const scheduleWelcomeEmail = async ( prisma: PrismaClient, email: string,
             color: { dark: '#000000', light: '#FFFFFF' },
         });
 
-        const subject = 'ðŸŽ‰ Welcome to Fellowship Manager!';
+        const subject = 'Welcome to Fellowship Manager!';
 
-        // â”€â”€ FM-edit notice (conditional) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // FM-edit notice (conditional)
         const fmEditNoticeHtml = editedByFM ? `
                         <div style="background:#fff8e1;border-left:4px solid #f59e0b;padding:16px 18px;margin:20px 0;border-radius:6px;">
-                            <p style="margin:0 0 6px 0;font-weight:700;color:#92400e;font-size:14px;">âœï¸ A Note About Your Registration Details</p>
+                            <p style="margin:0 0 6px 0;font-weight:700;color:#92400e;font-size:14px;">A Note About Your Registration Details</p>
                             <p style="margin:0;color:#78350f;font-size:13px;line-height:1.6;">
-                                Some of the information you submitted was reviewed and adjusted by the Fellowship Manager during approval â€” for example, correcting a spelling, matching your college or course to our records, or assigning your region.
+                                Some of the information you submitted was reviewed and adjusted by the Fellowship Manager during approval — for example, correcting a spelling, matching your college or course to our records, or assigning your region.
                             </p>
                             <p style="margin:10px 0 0;color:#78350f;font-size:13px;">
                                 Please <strong>log in and review your profile</strong> to confirm everything looks correct. If you believe any detail is wrong, you can submit a <strong>profile edit request</strong> directly from your account page and our team will review it promptly.
@@ -552,18 +562,18 @@ export const scheduleWelcomeEmail = async ( prisma: PrismaClient, email: string,
             <body>
                 <div class="container">
                     <div class="header">
-                        <h1 style="margin: 0; font-size: 28px;">ðŸŽ‰ Welcome to Fellowship!</h1>
+                        <h1 style="margin: 0; font-size: 28px;">Welcome to Fellowship!</h1>
                         <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Your registration was successful</p>
                     </div>
                     <div class="content">
                         <div class="welcome-box">
-                            <p style="margin: 0 0 15px 0; font-size: 18px; color: #14b8a6; font-weight: bold;">Hello <strong style="color: #0f172a;">${fullName}</strong>! ðŸ‘‹</p>
+                            <p style="margin: 0 0 15px 0; font-size: 18px; color: #14b8a6; font-weight: bold;">Hello <strong style="color: #0f172a;">${fullName}</strong>!</p>
                             <p style="margin: 0; color: #64748b;">
                                 We're excited to have you as part of our fellowship community. Here are your account credentials and important information to get started.
                             </p>
                         </div>
 
-                        <h3 style="color: #0f172a; margin: 30px 0 15px 0;">ðŸ“‹ Your Account Details</h3>
+                        <h3 style="color: #0f172a; margin: 30px 0 15px 0;">Your Account Details</h3>
                         
                         <div class="credential-item">
                             <div class="credential-label">Fellowship Number</div>
@@ -581,12 +591,12 @@ export const scheduleWelcomeEmail = async ( prisma: PrismaClient, email: string,
                         </div>
 
                         <div class="info-box">
-                            <strong>âš ï¸ Security Requirement:</strong> Your temporary password is provided above. For your security, you will be required to change this password immediately upon your first login.
+                            <strong>Security Requirement:</strong> Your temporary password is provided above. For your security, you will be required to change this password immediately upon your first login.
                         </div>
 
                         ${fmEditNoticeHtml}
 
-                        <h3 style="color: #0f172a; margin: 30px 0 15px 0;">ðŸš€ Getting Started</h3>
+                        <h3 style="color: #0f172a; margin: 30px 0 15px 0;">Your Personal QR Code</h3>
                         <p style="color: #64748b; margin-bottom: 15px;">Use this QR code for quick check-in at fellowship events:</p>
                         
                         <div class="qr-container">
@@ -597,10 +607,10 @@ export const scheduleWelcomeEmail = async ( prisma: PrismaClient, email: string,
                         </div>
 
                         <div class="warning-box">
-                            <strong>ðŸ”’ Keep Your QR Code Safe:</strong> This QR code is unique to you. Do not share it with others as it provides access to your fellowship account.
+                            <strong>Keep Your QR Code Safe:</strong> This QR code is unique to you. Do not share it with others as it provides access to your fellowship account.
                         </div>
 
-                        <h3 style="color: #0f172a; margin: 30px 0 15px 0;">ðŸš€ Getting Started</h3>
+                        <h3 style="color: #0f172a; margin: 30px 0 15px 0;">Getting Started</h3>
                         <ol class="steps-list" style="color: #64748b;">
                             <li><strong style="color: #0f172a;">Log in</strong> to your account using your fellowship number and password</li>
                             <li><strong style="color: #0f172a;">Update your profile</strong> with additional information if needed</li>
@@ -610,7 +620,7 @@ export const scheduleWelcomeEmail = async ( prisma: PrismaClient, email: string,
                         </ol>
 
                         <div class="info-box" style="background: #f0f9ff; border-color: #0891b2;">
-                            <strong>ðŸ’¡ Need Help?</strong> Contact your fellowship administrator if you have any questions or need assistance accessing your account.
+                            <strong>Need Help?</strong> Contact your fellowship administrator if you have any questions or need assistance accessing your account.
                         </div>
 
                         <!-- Login CTA Button -->
@@ -619,7 +629,7 @@ export const scheduleWelcomeEmail = async ( prisma: PrismaClient, email: string,
                                style="display:inline-block;background:#48A111;color:#ffffff;font-family:Arial,sans-serif;
                                       font-size:15px;font-weight:700;padding:14px 36px;border-radius:8px;
                                       text-decoration:none;letter-spacing:.3px;box-shadow:0 4px 14px rgba(72,161,17,0.35);">
-                                ðŸ”‘ Login to Your Account
+                                Login to Your Account
                             </a>
                             <p style="margin:10px 0 0;color:#94a3b8;font-size:12px;">Or copy this link: <a href="${loginUrl}" style="color:#48A111;">${loginUrl}</a></p>
                         </div>
@@ -698,7 +708,7 @@ export const queueWelcomeEmail = async (
     });
 
 
-    const subject = 'ðŸŽ‰ Welcome to Fellowship Manager!';
+    const subject = 'Welcome to Fellowship Manager';
     const html = `
             <!DOCTYPE html>
             <html>
@@ -723,18 +733,18 @@ export const queueWelcomeEmail = async (
             <body>
                 <div class="container">
                     <div class="header">
-                        <h1 style="margin: 0; font-size: 28px;">ðŸŽ‰ Welcome to Fellowship!</h1>
+                        <h1 style="margin: 0; font-size: 28px;">Welcome to Fellowship!</h1>
                         <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Your registration was successful</p>
                     </div>
                     <div class="content">
                         <div class="welcome-box">
-                            <p style="margin: 0 0 15px 0; font-size: 18px; color: #14b8a6; font-weight: bold;">Hello <strong style="color: #0f172a;">${fullName}</strong>! ðŸ‘‹</p>
+                            <p style="margin: 0 0 15px 0; font-size: 18px; color: #14b8a6; font-weight: bold;">Hello <strong style="color: #0f172a;">${fullName}</strong>!</p>
                             <p style="margin: 0; color: #64748b;">
                                 We're excited to have you as part of our fellowship community. Here are your account credentials and important information to get started.
                             </p>
                         </div>
 
-                        <h3 style="color: #0f172a; margin: 30px 0 15px 0;">ðŸ“‹ Your Account Details</h3>
+                        <h3 style="color: #0f172a; margin: 30px 0 15px 0;">Your Account Details</h3>
                         
                         <div class="credential-item">
                             <div class="credential-label">Fellowship Number</div>
@@ -752,10 +762,10 @@ export const queueWelcomeEmail = async (
                         </div>
 
                         <div class="info-box">
-                            <strong>â„¹ï¸ First Login:</strong> Your default password is the same as your fellowship number. Please change it after your first login for security purposes.
+                            <strong>First Login:</strong> Your default password is the same as your fellowship number. Please change it after your first login for security purposes.
                         </div>
 
-                        <h3 style="color: #0f172a; margin: 30px 0 15px 0;">ðŸ“± Your Personal QR Code</h3>
+                        <h3 style="color: #0f172a; margin: 30px 0 15px 0;">Your Personal QR Code</h3>
                         <p style="color: #64748b; margin-bottom: 15px;">Use this QR code for quick check-in at fellowship events:</p>
                         
                         <div class="qr-container">
@@ -766,10 +776,10 @@ export const queueWelcomeEmail = async (
                         </div>
 
                         <div class="warning-box">
-                            <strong>ðŸ”’ Keep Your QR Code Safe:</strong> This QR code is unique to you. Do not share it with others as it provides access to your fellowship account.
+                            <strong>Keep Your QR Code Safe:</strong> This QR code is unique to you. Do not share it with others as it provides access to your fellowship account.
                         </div>
 
-                        <h3 style="color: #0f172a; margin: 30px 0 15px 0;">ðŸš€ Getting Started</h3>
+                        <h3 style="color: #0f172a; margin: 30px 0 15px 0;">Getting Started</h3>
                         <ol class="steps-list" style="color: #64748b;">
                             <li><strong style="color: #0f172a;">Log in</strong> to your account using your fellowship number and password</li>
                             <li><strong style="color: #0f172a;">Update your profile</strong> with additional information if needed</li>
@@ -779,7 +789,7 @@ export const queueWelcomeEmail = async (
                         </ol>
 
                         <div class="info-box" style="background: #f0f9ff; border-color: #0891b2;">
-                            <strong>ðŸ’¡ Need Help?</strong> Contact your fellowship administrator if you have any questions or need assistance accessing your account.
+                            <strong>Need Help?</strong> Contact your fellowship administrator if you have any questions or need assistance accessing your account.
                         </div>
 
                         <p style="margin-top: 30px; color: #64748b;">
@@ -837,7 +847,7 @@ export const sendProfileEditRequestNotification = async (
     changes: Array<{ field: string; oldValue: string; newValue: string }>,
     reason: string
 ): Promise<boolean> => {
-    const subject = 'ðŸ“ Profile Edit Request â€” Action Required';
+    const subject = 'Profile Edit Request - Action Required';
 
     const changesHtml = changes
         .map(
@@ -915,7 +925,7 @@ A member in your region has submitted a profile edit request.
 Member: ${memberFullName} (${memberFellowshipNumber})
 
 Requested Changes:
-${changes.map((c) => `  ${c.field}: "${c.oldValue}" â†’ "${c.newValue}"`).join('\n')}
+${changes.map((c) => `  ${c.field}: "${c.oldValue}" -> "${c.newValue}"`).join('\n')}
 
 Reason: ${reason}
 
@@ -939,8 +949,8 @@ export const sendProfileEditDecisionNotification = async (
 ): Promise<boolean> => {
     const isApproved = decision === 'APPROVED';
     const subject = isApproved
-        ? 'âœ… Profile Edit Request Approved'
-        : 'âŒ Profile Edit Request Rejected';
+        ? 'Profile Edit Request Approved'
+        : 'Profile Edit Request Rejected';
 
     const statusColor = isApproved ? '#16a34a' : '#dc2626';
     const statusBg = isApproved ? '#f0fdf4' : '#fef2f2';
@@ -1000,7 +1010,7 @@ export const sendProfileEditDecisionNotification = async (
                     </div>` : ''}
 
                     ${isApproved
-            ? '<p style="color: #16a34a;">âœ… Your profile has been updated with the approved changes.</p>'
+            ? '<p style="color: #16a34a;">Your profile has been updated with the approved changes.</p>'
             : '<p style="color: #64748b;">If you believe this is an error, please speak with your Regional Head directly.</p>'
         }
 
@@ -1023,7 +1033,7 @@ Your profile edit request has been ${decision}.
 ${decision === 'APPROVED' ? 'Your profile has been updated with the approved changes.' : 'Your request could not be approved at this time.'}
 
 Requested Changes:
-${changes.map((c) => `  ${c.field}: "${c.oldValue}" â†’ "${c.newValue}"`).join('\n')}
+${changes.map((c) => `  ${c.field}: "${c.oldValue}" -> "${c.newValue}"`).join('\n')}
 
 ${reviewNote ? `Note from Regional Head: ${reviewNote}` : ''}
 
@@ -1040,7 +1050,7 @@ export const sendPasswordChangedEmail = async (
     email: string,
     fullName: string
 ): Promise<boolean> => {
-    const subject = 'ðŸ”’ Your Password Has Been Changed';
+    const subject = 'Your Password Has Been Changed';
 
     const html = `
         <!DOCTYPE html>
@@ -1118,7 +1128,7 @@ export const sendPasswordResetEmail = async (
         resetUrl = `${settings.frontendUrl}/reset-password?token=${resetToken}`;
     }
 
-    const subject = 'ðŸ” Password Reset Request';
+    const subject = 'Password Reset Request';
     const html = `
         <!DOCTYPE html>
         <html>
@@ -1136,7 +1146,7 @@ export const sendPasswordResetEmail = async (
         <body>
             <div class="container">
                 <div class="header">
-                    <h1 style="margin: 0;">ðŸ” Password Reset</h1>
+                    <h1 style="margin: 0;">Password Reset</h1>
                 </div>
                 <div class="content">
                     <p>Hello <strong>${fullName}</strong>,</p>
@@ -1152,7 +1162,7 @@ export const sendPasswordResetEmail = async (
                     </p>
 
                     <div class="warning">
-                        <strong>âš ï¸ Security Notice:</strong> This link will expire in 15 minutes. If you did not request a password reset, you can safely ignore this email &mdash; your password will not be changed.
+                        <strong>Security Notice:</strong> This link will expire in 15 minutes. If you did not request a password reset, you can safely ignore this email &mdash; your password will not be changed.
                     </div>
                     
                     <p style="margin-top: 30px;">Best regards,<br><strong>Fellowship Management Team</strong></p>

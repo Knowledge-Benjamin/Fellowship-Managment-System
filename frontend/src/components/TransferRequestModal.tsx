@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { X, Loader2, MapPin, Send } from 'lucide-react';
 import api from '../api';
 import { useToast } from './ToastProvider';
@@ -24,25 +24,25 @@ const TransferRequestModal: React.FC<TransferRequestModalProps> = ({ isOpen, onC
     const [reason, setReason] = useState('');
     const [submitting, setSubmitting] = useState(false);
 
+    const fetchRegions = useCallback(async () => {
+        try {
+            setLoadingRegions(true);
+            const res = await api.get('/regions');
+            setRegions(res.data);
+        } catch {
+            showToast('error', 'Failed to load regions.');
+        } finally {
+            setLoadingRegions(false);
+        }
+    }, [showToast]);
+
     useEffect(() => {
         if (isOpen) {
             fetchRegions();
             setSelectedRegionId('');
             setReason('');
         }
-    }, [isOpen]);
-
-    const fetchRegions = async () => {
-        try {
-            setLoadingRegions(true);
-            const res = await api.get('/regions');
-            setRegions(res.data);
-        } catch (error) {
-            showToast('error', 'Failed to load regions.');
-        } finally {
-            setLoadingRegions(false);
-        }
-    };
+    }, [isOpen, fetchRegions]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -60,8 +60,9 @@ const TransferRequestModal: React.FC<TransferRequestModalProps> = ({ isOpen, onC
             });
             showToast('success', 'Transfer request submitted successfully. Awaiting origin approval.');
             onClose();
-        } catch (error: any) {
-            showToast('error', error.response?.data?.message || 'Failed to submit transfer request.');
+        } catch (err: unknown) {
+            const apiErr = err as { response?: { data?: { message?: string } } };
+            showToast('error', apiErr.response?.data?.message || 'Failed to submit transfer request.');
         } finally {
             setSubmitting(false);
         }

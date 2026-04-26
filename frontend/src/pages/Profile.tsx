@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { useToast } from '../components/ToastProvider';
+
 import api from '../api';
 import QRCode from 'react-qr-code';
 import {
@@ -65,7 +65,6 @@ interface ExtendedProfile {
 const Profile = () => {
     const { user, isManager } = useAuth();
     const navigate = useNavigate();
-    const { showToast } = useToast();
     const [tags, setTags] = useState<Tag[]>([]);
     const [loadingTags, setLoadingTags] = useState(true);
     const [academicStatus, setAcademicStatus] = useState<AcademicStatus | null>(null);
@@ -82,6 +81,7 @@ const Profile = () => {
             fetchAcademicStatus();
             fetchExtProfile();
         }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user?.id]);
 
     const fetchUserTags = async () => {
@@ -89,8 +89,8 @@ const Profile = () => {
             setLoadingTags(true);
             const response = await api.get(`/tags/members/${user?.id}/history`);
             const activeTags = response.data
-                .filter((mt: any) => mt.isActive)
-                .map((mt: any) => mt.tag);
+                .filter((mt: { isActive: boolean; tag: Tag }) => mt.isActive)
+                .map((mt: { isActive: boolean; tag: Tag }) => mt.tag);
             setTags(activeTags);
         } catch (error) {
             console.error('Failed to fetch user tags:', error);
@@ -243,7 +243,7 @@ const Profile = () => {
                                 return (
                                     <button
                                         key={tab.id}
-                                        onClick={() => setActiveTab(tab.id as any)}
+                                        onClick={() => setActiveTab(tab.id as 'personal' | 'fellowship' | 'academic' | 'security' | 'campaigns')}
                                         className={`flex items-center gap-3 px-4 py-3.5 rounded-2xl text-sm font-semibold transition-all duration-200 ${
                                             isActive 
                                             ? 'bg-[#e9f5e1] text-[#48A111] translate-x-1 shadow-sm' 

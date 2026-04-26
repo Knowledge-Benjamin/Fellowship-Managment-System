@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useToast } from './ToastProvider';
 import api from '../api';
 import db from '../db';
@@ -13,7 +13,7 @@ export const NetworkStatusListener = () => {
     const { warning, success } = useToast();
 
     // ─── OFFLINE SYNC ENGINE ───────────────────────────────────────────────
-    const triggerBackgroundSync = async () => {
+    const triggerBackgroundSync = useCallback(async () => {
         if (!navigator.onLine) return;
 
         try {
@@ -41,7 +41,7 @@ export const NetworkStatusListener = () => {
             console.error('[PWA] Background sync failed:', error);
             warning('Failed to sync offline records. We will try again shortly.');
         }
-    };
+    }, [success, warning]);
 
     useEffect(() => {
         // Attempt an initial sync on load if online
@@ -63,7 +63,7 @@ export const NetworkStatusListener = () => {
             window.removeEventListener('online', handleOnline);
             window.removeEventListener('offline', handleOffline);
         };
-    }, [success, warning]);
+    }, [success, warning, triggerBackgroundSync]);
 
     return null; // This component does not render anything
 };

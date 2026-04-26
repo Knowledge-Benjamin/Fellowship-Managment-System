@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import api from '../api';
 import { useToast } from '../components/ToastProvider';
 import LoadingSpinner from '../components/LoadingSpinner';
 import {
     Mail, Send, Clock, CheckCircle, XCircle, AlertCircle, RefreshCw,
     Trash2, Eye, X, ChevronLeft, ChevronRight, Settings, Inbox,
-    LayoutTemplate, Search, Filter, Users, MapPin, Tag, Link, Plus, Loader2,
+    LayoutTemplate, Search, Users, MapPin, Tag, Link, Loader2,
     Info, ExternalLink
 } from 'lucide-react';
 
@@ -37,7 +37,7 @@ interface TagOption { id: string; name: string; color: string; }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const STATUS_CONFIG: Record<EmailStatus, { label: string; icon: any; cls: string }> = {
+const STATUS_CONFIG: Record<EmailStatus, { label: string; icon: React.ElementType; cls: string }> = {
     PENDING: { label: 'Pending', icon: Clock, cls: 'bg-amber-50 text-amber-600 border-amber-200' },
     PROCESSING: { label: 'Processing', icon: RefreshCw, cls: 'bg-blue-50 text-blue-600 border-blue-200' },
     COMPLETED: { label: 'Sent', icon: CheckCircle, cls: 'bg-[#e9f5e1] text-[#48A111] border-[#c3e6a4]' },
@@ -63,7 +63,7 @@ const EmailManagement = () => {
     const { showToast } = useToast();
     const [tab, setTab] = useState<Tab>('queue');
 
-    const tabs: { id: Tab; label: string; icon: any }[] = [
+    const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
         { id: 'queue', label: 'Queue & History', icon: Inbox },
         { id: 'compose', label: 'Compose', icon: Send },
         { id: 'templates', label: 'Templates', icon: LayoutTemplate },
@@ -104,7 +104,7 @@ const EmailManagement = () => {
 
 // ─── Queue Tab ────────────────────────────────────────────────────────────────
 
-function QueueTab({ showToast }: { showToast: Function }) {
+function QueueTab({ showToast }: { showToast: (type: 'success' | 'error', msg: string) => void }) {
     const [emails, setEmails] = useState<QueueEmail[]>([]);
     const [stats, setStats] = useState<Stats | null>(null);
     const [loading, setLoading] = useState(true);
@@ -115,7 +115,7 @@ function QueueTab({ showToast }: { showToast: Function }) {
     const [preview, setPreview] = useState<EmailPreview | null>(null);
     const [previewLoading, setPreviewLoading] = useState(false);
 
-    const fetchData = async (p = page) => {
+    const fetchData = useCallback(async (p = page) => {
         setLoading(true);
         try {
             const [qRes, sRes] = await Promise.all([
@@ -127,17 +127,18 @@ function QueueTab({ showToast }: { showToast: Function }) {
             setStats(sRes.data);
         } catch { showToast('error', 'Failed to load email queue'); }
         finally { setLoading(false); }
-    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [statusFilter, search, page]);
 
-    useEffect(() => { setPage(1); fetchData(1); }, [statusFilter, search]);
-    useEffect(() => { fetchData(); }, [page]);
+    useEffect(() => { setPage(1); fetchData(1); }, [statusFilter, search, fetchData]);
+    useEffect(() => { fetchData(); }, [page, fetchData]);
 
     const handleRetry = async (id: string) => {
         try {
             await api.post(`/emails/queue/${id}/retry`);
             showToast('success', 'Email queued for retry');
             fetchData();
-        } catch (e: any) { showToast('error', e.response?.data?.error || 'Failed to retry'); }
+        } catch (err: unknown) { showToast('error', (err as { response?: { data?: { error?: string } } }).response?.data?.error || 'Failed to retry'); }
     };
 
     const handleDelete = async (id: string) => {
@@ -146,7 +147,7 @@ function QueueTab({ showToast }: { showToast: Function }) {
             await api.delete(`/emails/queue/${id}`);
             showToast('success', 'Email removed');
             fetchData();
-        } catch (e: any) { showToast('error', e.response?.data?.error || 'Failed to delete'); }
+        } catch (err: unknown) { showToast('error', (err as { response?: { data?: { error?: string } } }).response?.data?.error || 'Failed to delete'); }
     };
 
     const openPreview = async (id: string) => {
@@ -337,7 +338,7 @@ function QueueTab({ showToast }: { showToast: Function }) {
 
 // ─── Compose Tab ──────────────────────────────────────────────────────────────
 
-function ComposeTab({ showToast }: { showToast: Function }) {
+function ComposeTab({ showToast }: { showToast: (type: 'success' | 'error', msg: string) => void }) {
     const [toMode, setToMode] = useState<'all' | 'region' | 'tag' | 'email'>('email');
     const [targetEmail, setTargetEmail] = useState('');
     const [regionId, setRegionId] = useState('');
@@ -363,7 +364,7 @@ function ComposeTab({ showToast }: { showToast: Function }) {
         e.preventDefault();
         setSending(true);
         try {
-            const payload: any = { subject, html, text: text || subject, ctaLabel: ctaLabel || undefined, ctaUrl: ctaUrl || undefined };
+            const payload: Record<string, unknown> = { subject, html, text: text || subject, ctaLabel: ctaLabel || undefined, ctaUrl: ctaUrl || undefined };
             if (toMode === 'email') payload.targetEmail = targetEmail;
             else if (toMode === 'region') payload.regionId = regionId;
             else if (toMode === 'tag') payload.tagId = tagId;
@@ -372,8 +373,8 @@ function ComposeTab({ showToast }: { showToast: Function }) {
             const res = await api.post('/emails/compose', payload);
             showToast('success', res.data.message);
             setSubject(''); setHtml(''); setText(''); setCtaLabel(''); setCtaUrl(''); setTargetEmail('');
-        } catch (err: any) {
-            showToast('error', err.response?.data?.error || 'Failed to send');
+        } catch (err: unknown) {
+            showToast('error', (err as { response?: { data?: { error?: string } } }).response?.data?.error || 'Failed to send');
         } finally { setSending(false); }
     };
 
@@ -586,7 +587,7 @@ function TemplatesTab() {
 
 // ─── Settings Tab ─────────────────────────────────────────────────────────────
 
-function SettingsTab({ showToast }: { showToast: Function }) {
+function SettingsTab({ showToast }: { showToast: (type: 'success' | 'error', msg: string) => void }) {
     const [settings, setSettings] = useState({ fromName: '', replyTo: '', frontendUrl: '', sendgridConfigured: false, sendgridFrom: null as string | null, gmailUser: null as string | null });
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);

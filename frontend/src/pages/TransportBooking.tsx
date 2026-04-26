@@ -1,14 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
+import type { Event } from '../types/event';
 import { Bus, MapPin, CheckCircle, AlertCircle, Clock, Navigation, Search, User } from 'lucide-react';
 import EventSelector from '../components/EventSelector';
+
+interface Member {
+    id: string;
+    fullName: string;
+}
+
+
 
 const TransportBooking = () => {
     const [pickup, setPickup] = useState('');
     const [phoneNumber, setPhoneNumber] = useState('');
-    const [member, setMember] = useState<any>(null);
-    const [activeEvents, setActiveEvents] = useState<any[]>([]);
-    const [selectedEvent, setSelectedEvent] = useState<any>(null);
+    const [member, setMember] = useState<Member | null>(null);
+    const [activeEvents, setActiveEvents] = useState<Event[]>([]);
+    const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSearching, setIsSearching] = useState(false);
     const [bookingStatus, setBookingStatus] = useState<'idle' | 'success' | 'error' | 'no-event'>('idle');
@@ -26,7 +34,7 @@ const TransportBooking = () => {
             if (events.length === 1) {
                 setSelectedEvent(events[0]);
             }
-        } catch (error) {
+        } catch {
             setBookingStatus('no-event');
         }
     };
@@ -37,7 +45,7 @@ const TransportBooking = () => {
         try {
             const response = await api.get(`/members/phone/${phoneNumber}`);
             setMember(response.data);
-        } catch (error) {
+        } catch {
             alert('Member not found');
             setMember(null);
         } finally {
@@ -72,7 +80,7 @@ const TransportBooking = () => {
                 setMember(null);
                 setPickup('');
             }, 3000);
-        } catch (error) {
+        } catch {
             setBookingStatus('error');
             setTimeout(() => setBookingStatus('idle'), 3000);
         } finally {

@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import api from '../api';
 import { useToast } from './ToastProvider';
-import { Loader2, X, Building, BookOpen } from 'lucide-react';
+import { Loader2, X, Building } from 'lucide-react';
 
 interface AddCollegeModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSuccess: (college: any) => void;
+    onSuccess: (college: { id: string; name: string; code?: string | null }) => void;
 }
 
 const AddCollegeModal: React.FC<AddCollegeModalProps> = ({ isOpen, onClose, onSuccess }) => {
@@ -33,8 +33,9 @@ const AddCollegeModal: React.FC<AddCollegeModalProps> = ({ isOpen, onClose, onSu
             setName('');
             setCode('');
             onClose();
-        } catch (error: any) {
-            console.error('Failed to create college:', error);
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { error?: string } } };
+            console.error('Failed to create college:', err);
             showToast('error', error.response?.data?.error || 'Failed to create college');
         } finally {
             setLoading(false);

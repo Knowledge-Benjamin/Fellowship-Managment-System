@@ -24,7 +24,7 @@
     "react-qr-reader": "^3.0.0-beta-1",
     "react-router-dom": "^7.9.6",
     "recharts": "^3.4.1",
-    "vite-plugin-pwa": "^1.1.0",
+    "vite-plugin-pwa": "^0.19.8",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {

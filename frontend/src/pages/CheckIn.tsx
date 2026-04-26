@@ -120,6 +120,7 @@ const CheckIn = () => {
 
     useEffect(() => {
         fetchActiveEvent();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     // ─── OFFLINE SYNCING ───────────────────────────────────────────────
@@ -131,7 +132,7 @@ const CheckIn = () => {
             const members = response.data.members;
 
             // Map server data to Dexie schema
-            const rosterRecords = members.map((m: any) => ({
+            const rosterRecords = members.map((m: { id: string; fullName: string; fellowshipNumber: string; phoneNumber: string; qrCode?: string; region?: { name: string } }) => ({
                 id: m.id,
                 eventId: selectedEvent.id,
                 fullName: m.fullName,
@@ -183,10 +184,11 @@ const CheckIn = () => {
 
                     autoDismiss(method);
                     return; // Live check-in succeeded, exit early!
-                } catch (liveError: any) {
+                } catch (err: unknown) {
+                    const liveError = err as { response?: { status?: number; data?: { error?: string } } };
                     // If it's a 400 or 409 error (e.g., already checked in, wrong QR), don't fallback to offline. Pass the live error down.
-                    if (liveError.response && [400, 403, 404].includes(liveError.response.status)) {
-                        throw new Error(liveError.response.data.error || 'Live Check-in Rejected.');
+                    if (liveError.response && liveError.response.status && [400, 403, 404].includes(liveError.response.status)) {
+                        throw new Error(liveError.response.data?.error || 'Live Check-in Rejected.');
                     }
                     console.warn('Live checkin failed (Likely network). Falling back to Offline db...', liveError);
                     // Otherwise, it's likely a 500 or network error. Continue down to Option B (Offline fallback).
@@ -236,7 +238,8 @@ const CheckIn = () => {
 
             autoDismiss(method);
 
-        } catch (error: any) {
+        } catch (err: unknown) {
+            const error = err as Error;
             console.error('Check-in error:', error);
             setStatus('error');
             setMessage(error.message || 'Check-in Failed. Please try again.');
@@ -281,7 +284,7 @@ const CheckIn = () => {
 
                     try {
                         await processCheckIn('QR', decodedText);
-                    } catch (error: any) {
+                    } catch {
                         // Error is handled inside processCheckIn
                     }
                 },
@@ -300,6 +303,7 @@ const CheckIn = () => {
                 });
             };
         }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [scanning, selectedEvent, accessDenied]);
 
     const handleStartScan = () => {
@@ -327,7 +331,7 @@ const CheckIn = () => {
 
         try {
             await processCheckIn('FELLOWSHIP_NUMBER', fellowshipNumber.toUpperCase());
-        } catch (error: any) {
+        } catch {
             // Error handled inside process
         } finally {
             setFellowshipLookupLoading(false);

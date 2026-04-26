@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Server, Loader2, Globe, CheckCircle, Copy, ExternalLink } from 'lucide-react';
+import { X, Server, Loader2, CheckCircle, Copy, ExternalLink } from 'lucide-react';
 import systemApi from '../../../systemApi';
 
 interface ProvisionCampusModalProps {
@@ -40,8 +40,9 @@ const ProvisionCampusModal: React.FC<ProvisionCampusModalProps> = ({ isOpen, onC
             });
             setCredentials(data.credentials);
             onSuccess();
-        } catch (err: any) {
-            setError(err.response?.data?.error || 'Failed to provision campus');
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { error?: string } } };
+            setError(error.response?.data?.error || 'Failed to provision campus');
         } finally {
             setLoading(false);
         }

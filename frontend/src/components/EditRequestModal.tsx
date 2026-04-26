@@ -15,7 +15,7 @@ import '../styles/phoneInput.css';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-interface College { id: string; name: string; code?: string; }
+interface College { id: string; name: string; code?: string | null; }
 interface Course { id: string; name: string; durationYears?: number; collegeId?: string; }
 interface Residence { id: string; name: string; type: string; }
 
@@ -115,7 +115,7 @@ const EditRequestModal: React.FC<EditRequestModalProps> = ({
         }).catch(() => {
             showToast('error', 'Failed to load form data.');
         }).finally(() => setLoadingData(false));
-    }, [isOpen]);
+    }, [isOpen, showToast]);
 
     // Load courses by college when college changes
     useEffect(() => {
@@ -126,7 +126,7 @@ const EditRequestModal: React.FC<EditRequestModalProps> = ({
         api.get(`/courses?collegeId=${formData.collegeId}`)
             .then(res => setCourses(res.data))
             .catch(() => showToast('error', 'Failed to load courses.'));
-    }, [formData.collegeId]);
+    }, [formData.collegeId, showToast]);
 
     // Reset pre-populate whenever the modal opens with updated profile data
     useEffect(() => {
@@ -202,8 +202,9 @@ const EditRequestModal: React.FC<EditRequestModalProps> = ({
             showToast('success', 'Edit request submitted! Your Regional Head will review it.');
             onSuccess();
             onClose();
-        } catch (err: any) {
-            const msg = err.response?.data?.message || 'Failed to submit edit request.';
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { message?: string } } };
+            const msg = error.response?.data?.message || 'Failed to submit edit request.';
             showToast('error', msg);
         } finally {
             setLoading(false);
@@ -233,7 +234,7 @@ const EditRequestModal: React.FC<EditRequestModalProps> = ({
         }
     };
 
-    const handleCollegeSaved = (college: College) => {
+    const handleCollegeSaved = (college: { id: string; name: string; code?: string | null }) => {
         setColleges(prev => [...prev, college].sort((a, b) => a.name.localeCompare(b.name)));
         setFormData(prev => ({ ...prev, collegeId: college.id, courseId: '' }));
     };

@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Lock, ShieldCheck, ArrowRight } from 'lucide-react';
 import api from '../api';
-import logo from '../assets/logo.jpg';
 import { ToastProvider, useToast } from '../components/ToastProvider';
 
 const ForcePasswordChangeContent = () => {
@@ -12,8 +11,12 @@ const ForcePasswordChangeContent = () => {
     const navigate = useNavigate();
     const { login } = useAuth();
     
-    const [email, setEmail] = useState('');
-    const [oldPassword, setOldPassword] = useState('');
+    const [email] = useState<string>(
+        () => (location.state as { email?: string })?.email ?? ''
+    );
+    const [oldPassword] = useState<string>(
+        () => (location.state as { oldPassword?: string })?.oldPassword ?? ''
+    );
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [loading, setLoading] = useState(false);
@@ -21,12 +24,9 @@ const ForcePasswordChangeContent = () => {
 
     useEffect(() => {
         // Must come from the Login page trap with credentials
-        if (!location.state || !location.state.email || !location.state.oldPassword) {
+        if (!location.state || !(location.state as Record<string, unknown>).email) {
             navigate('/login', { replace: true });
-            return;
         }
-        setEmail(location.state.email);
-        setOldPassword(location.state.oldPassword);
     }, [location, navigate]);
 
     const validateForm = () => {
@@ -65,7 +65,7 @@ const ForcePasswordChangeContent = () => {
             });
 
             const data = response.data;
-            const { token, message, ...userData } = data;
+            const { token, ...userData } = data;
 
             showToast('success', 'Password completely secured! Logging you in...');
 
@@ -82,9 +82,10 @@ const ForcePasswordChangeContent = () => {
                 });
             }, 1000);
             
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('[FORCE_CHANGE_PW] Error:', err);
-            setError(err.response?.data?.message || err.message || 'Failed to update password');
+            const apiErr = err as { response?: { data?: { message?: string } }; message?: string };
+            setError(apiErr.response?.data?.message || apiErr.message || 'Failed to update password');
             setLoading(false);
         }
     };

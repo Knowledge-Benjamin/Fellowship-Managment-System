@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import api from '../api';
 import { useToast } from '../components/ToastProvider';
 import { Link2, Plus, Copy, CheckCircle, XCircle, Clock, Users, Loader2, X, Calendar } from 'lucide-react';
@@ -30,23 +30,23 @@ const RegistrationTokens = () => {
     const [expiresAt, setExpiresAt] = useState('');
     const [maxUses, setMaxUses] = useState('');
 
-    const fetchTokens = async () => {
+    const fetchTokens = useCallback(async () => {
         try {
             setLoading(true);
             const res = await api.get('/reg-tokens');
-            const fetched = res.data.map((t: any) => ({
+            const fetched = res.data.map((t: Omit<RegToken, 'url'>) => ({
                 ...t,
                 url: `${window.location.origin}/register?token=${t.token}`
             }));
-            setTokens(fetched);
+            setTokens(fetched as RegToken[]);
         } catch {
             showToast('error', 'Failed to load registration tokens');
         } finally {
             setLoading(false);
         }
-    };
+    }, [showToast]);
 
-    useEffect(() => { fetchTokens(); }, []);
+    useEffect(() => { fetchTokens(); }, [fetchTokens]);
 
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();

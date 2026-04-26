@@ -1,10 +1,14 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 
-const prisma = new PrismaClient();
-
-export const generateFellowshipNumber = async (): Promise<string> => {
-    // Find the last member with a fellowship number, regardless of role
-    const lastMember = await prisma.member.findFirst({
+/**
+ * Generates the next fellowship number using the provided transaction/prisma client.
+ * MUST receive the tenant-scoped prisma/tx client — never uses a singleton.
+ */
+export const generateFellowshipNumber = async (
+    prismaOrTx: Prisma.TransactionClient | { member: { findFirst: Function } }
+): Promise<string> => {
+    // Find the last member with a fellowship number
+    const lastMember = await (prismaOrTx as any).member.findFirst({
         orderBy: {
             fellowshipNumber: 'desc',
         },
@@ -23,8 +27,7 @@ export const generateFellowshipNumber = async (): Promise<string> => {
     const match = lastNumber.match(/^([A-Z]{3})(\d{3})$/);
 
     if (!match) {
-        // If the last number doesn't match the format, start over or handle error
-        // For safety/robustness, we'll return the start of the sequence if we can't parse the last one
+        // If the last number doesn't match the format, start from beginning
         return 'AAA001';
     }
 

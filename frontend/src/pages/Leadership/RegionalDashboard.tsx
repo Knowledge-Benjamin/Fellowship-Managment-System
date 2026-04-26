@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Building2, AlertCircle, MapPin, Clock, CheckCircle, XCircle, Edit2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Users, Building2, AlertCircle, CheckCircle, XCircle, Edit2, ChevronDown, ChevronUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import api from '../../api';
-import { useAuth } from '../../context/AuthContext';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import TransferManagementPanel from './components/TransferManagementPanel';
 
@@ -60,7 +59,6 @@ const RegionalDashboard = () => {
     const [reviewingId, setReviewingId] = useState<string | null>(null);
     const [reviewNote, setReviewNote] = useState('');
     const [expandedRequestId, setExpandedRequestId] = useState<string | null>(null);
-    const { user } = useAuth();
 
     useEffect(() => {
         fetchMyRegion();
@@ -73,7 +71,8 @@ const RegionalDashboard = () => {
             const response = await api.get('/regions/my-region');
             setRegion(response.data);
             setError(null);
-        } catch (error: any) {
+        } catch (err: unknown) {
+            const error = err as { response?: { status?: number } };
             console.error('Failed to fetch region:', error);
             if (error.response?.status === 404) {
                 setError('You are not assigned as a regional head');
@@ -91,7 +90,7 @@ const RegionalDashboard = () => {
             setLoadingRequests(true);
             const response = await api.get('/members/edit-requests?status=PENDING');
             setEditRequests(response.data);
-        } catch (error: any) {
+        } catch (error) {
             console.error('Failed to fetch edit requests:', error);
         } finally {
             setLoadingRequests(false);
@@ -109,7 +108,8 @@ const RegionalDashboard = () => {
             setReviewNote('');
             setExpandedRequestId(null);
             setEditRequests((prev) => prev.filter((r) => r.id !== requestId));
-        } catch (error: any) {
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { message?: string } } };
             const msg = error.response?.data?.message || `Failed to ${status.toLowerCase()} request`;
             toast.error(msg);
         } finally {

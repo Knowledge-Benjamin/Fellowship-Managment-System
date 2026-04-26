@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import type { E164Number } from 'libphonenumber-js/core';
+import type { E164Number, CountryCode } from 'libphonenumber-js/core';
 import { parsePhoneNumber, getCountryCallingCode, getExampleNumber } from 'libphonenumber-js';
 import examples from 'libphonenumber-js/mobile/examples';
 import CountrySelector from './CountrySelector';
@@ -26,11 +26,11 @@ const PhoneInput: React.FC<PhoneInputProps> = ({
     // Calculate max length for current country
     const maxLength = useMemo(() => {
         try {
-            const exampleNumber = getExampleNumber(country as any, examples);
+            const exampleNumber = getExampleNumber(country as CountryCode, examples);
             if (exampleNumber) {
                 return exampleNumber.nationalNumber.length;
             }
-        } catch (error) {
+        } catch {
             // Fallback to reasonable default
         }
         return 15; // Default max length
@@ -42,10 +42,11 @@ const PhoneInput: React.FC<PhoneInputProps> = ({
             try {
                 const parsed = parsePhoneNumber(value);
                 if (parsed) {
-                    setCountry(parsed.country || 'UG');
+                    // eslint-disable-next-line react-hooks/set-state-in-effect
+                    setCountry(parsed.country as CountryCode || 'UG');
                     setNationalNumber(parsed.nationalNumber);
                 }
-            } catch (error) {
+            } catch {
                 // Invalid phone number, keep defaults
             }
             isInitialMount.current = false;
@@ -72,11 +73,11 @@ const PhoneInput: React.FC<PhoneInputProps> = ({
             onChange(undefined);
         } else {
             try {
-                const callingCode = getCountryCallingCode(country as any);
+                const callingCode = getCountryCallingCode(country as CountryCode);
                 const digitsOnly = cleaned.replace(/\D/g, '');
                 const e164 = `+${callingCode}${digitsOnly}`;
                 onChange(e164 as E164Number);
-            } catch (error) {
+            } catch {
                 onChange(undefined);
             }
         }
@@ -88,11 +89,11 @@ const PhoneInput: React.FC<PhoneInputProps> = ({
         // Calculate max length for new country
         let newMaxLength = 15;
         try {
-            const exampleNumber = getExampleNumber(newCountry as any, examples);
+            const exampleNumber = getExampleNumber(newCountry as CountryCode, examples);
             if (exampleNumber) {
                 newMaxLength = exampleNumber.nationalNumber.length;
             }
-        } catch (error) {
+        } catch {
             // Use default
         }
 
@@ -109,11 +110,11 @@ const PhoneInput: React.FC<PhoneInputProps> = ({
         // Update E164 with new country code
         if (updatedNumber) {
             try {
-                const callingCode = getCountryCallingCode(newCountry as any);
+                const callingCode = getCountryCallingCode(newCountry as CountryCode);
                 const digitsOnly = updatedNumber.replace(/\D/g, '');
                 const e164 = `+${callingCode}${digitsOnly}`;
                 onChange(e164 as E164Number);
-            } catch (error) {
+            } catch {
                 onChange(undefined);
             }
         }

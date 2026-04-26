@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { X, UserPlus } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import api from '../../api';
@@ -37,13 +37,7 @@ const AddFamilyMemberModal: React.FC<AddFamilyMemberModalProps> = ({
     const [fetchingMembers, setFetchingMembers] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
 
-    useEffect(() => {
-        if (isOpen) {
-            fetchMembers();
-        }
-    }, [isOpen]);
-
-    const fetchMembers = async () => {
+    const fetchMembers = useCallback(async () => {
         setFetchingMembers(true);
         try {
             const response = await api.get('/members');
@@ -58,7 +52,13 @@ const AddFamilyMemberModal: React.FC<AddFamilyMemberModalProps> = ({
         } finally {
             setFetchingMembers(false);
         }
-    };
+    }, [family.region.id]);
+
+    useEffect(() => {
+        if (isOpen) {
+            fetchMembers();
+        }
+    }, [isOpen, fetchMembers]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -78,7 +78,8 @@ const AddFamilyMemberModal: React.FC<AddFamilyMemberModalProps> = ({
             toast.success(`${selectedMember?.fullName} added to ${family.name}`);
             onSuccess();
             handleClose();
-        } catch (error: any) {
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { message?: string } } };
             console.error('Error adding member:', error);
             toast.error(error.response?.data?.message || 'Failed to add member');
         } finally {

@@ -17,7 +17,7 @@ import TransferRequestModal from '../../components/TransferRequestModal';
 import FamilyTransferRequestModal from '../../components/FamilyTransferRequestModal';
 import '../../styles/phoneInput.css';
 
-interface College { id: string; name: string; code?: string; }
+interface College { id: string; name: string; code?: string | null; }
 interface Course { id: string; name: string; durationYears?: number; }
 interface Residence { id: string; name: string; type: string; }
 
@@ -98,6 +98,7 @@ const ProfileEditPage: React.FC = () => {
             }
         };
         init();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     // Reload courses when college changes
@@ -106,6 +107,7 @@ const ProfileEditPage: React.FC = () => {
         api.get(`/courses?collegeId=${formData.collegeId}`)
             .then(r => setCourses(r.data))
             .catch(() => showToast('error', 'Failed to load courses.'));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [formData.collegeId]);
 
     const handleCollegeChange = (value: string) => {
@@ -151,7 +153,7 @@ const ProfileEditPage: React.FC = () => {
         e.preventDefault();
         setLoading(true);
         try {
-            const payload: Record<string, any> = {
+            const payload: Record<string, unknown> = {
                 fullName: formData.fullName,
                 email: formData.email,
                 phoneNumber: String(formData.phoneNumber || ''),
@@ -165,7 +167,8 @@ const ProfileEditPage: React.FC = () => {
             await api.patch('/members/me', payload);
             showToast('success', 'Profile updated successfully!');
             navigate('/profile');
-        } catch (err: any) {
+        } catch (e: unknown) {
+            const err = e as { response?: { data?: { message?: string } } };
             const msg = err.response?.data?.message || 'Failed to update profile.';
             showToast('error', msg);
         } finally {

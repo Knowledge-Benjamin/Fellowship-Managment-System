@@ -85,7 +85,8 @@ const LeadershipOverview = () => {
             await api.delete(`/leadership/regional-heads/${regionId}/remove`);
             toast.success('Regional head removed');
             fetchOrgStructure();
-        } catch (error: any) {
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { message?: string } } };
             toast.error(error.response?.data?.message || 'Failed to remove regional head');
         }
     };

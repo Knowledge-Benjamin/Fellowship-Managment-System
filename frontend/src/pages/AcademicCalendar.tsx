@@ -13,20 +13,7 @@ interface AcademicPeriod {
     createdAt: string;
 }
 
-const MONTHS = [
-    { value: 1, label: 'January' },
-    { value: 2, label: 'February' },
-    { value: 3, label: 'March' },
-    { value: 4, label: 'April' },
-    { value: 5, label: 'May' },
-    { value: 6, label: 'June' },
-    { value: 7, label: 'July' },
-    { value: 8, label: 'August' },
-    { value: 9, label: 'September' },
-    { value: 10, label: 'October' },
-    { value: 11, label: 'November' },
-    { value: 12, label: 'December' },
-];
+
 
 const AcademicCalendar: React.FC = () => {
     const { showToast } = useToast();
@@ -44,6 +31,7 @@ const AcademicCalendar: React.FC = () => {
 
     useEffect(() => {
         fetchPeriods();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const fetchPeriods = async () => {
@@ -86,8 +74,9 @@ const AcademicCalendar: React.FC = () => {
             setEditingPeriod(null);
             resetForm();
             fetchPeriods();
-        } catch (error: any) {
-            console.error('Error saving period:', error);
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { error?: string | Record<string, unknown> } } };
+            console.error('Error saving period:', err);
             const errorMessage = error.response?.data?.error || 'Failed to save period';
             showToast('error', typeof errorMessage === 'string' ? errorMessage : 'Validation error');
         }
@@ -112,8 +101,9 @@ const AcademicCalendar: React.FC = () => {
             await api.delete(`/academic-periods/${id}`);
             showToast('success', 'Period deleted successfully');
             fetchPeriods();
-        } catch (error: any) {
-            console.error('Delete error:', error);
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { error?: string } } };
+            console.error('Delete error:', err);
             const errorMessage = error.response?.data?.error || 'Failed to delete period';
             showToast('error', errorMessage);
         }
@@ -346,7 +336,6 @@ const AcademicCalendar: React.FC = () => {
                                 const end = new Date(period.endDate);
                                 const isActive = now >= start && now <= end;
                                 const isPast = now > end;
-                                const isFuture = now < start;
 
                                 return (
                                     <tr key={period.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">

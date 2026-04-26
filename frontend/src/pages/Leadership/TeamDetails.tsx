@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Users, UserPlus, Trash2, Loader, UserCheck, UserX, Mail, Phone } from 'lucide-react';
+import { ArrowLeft, Users, UserPlus, Trash2, Loader, UserX, Mail, Phone } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { formatDistanceToNow } from 'date-fns';
 import api from '../../api';
@@ -58,6 +58,7 @@ const TeamDetails = () => {
         if (id) {
             fetchTeamDetails();
         }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [id]);
 
     const fetchTeamDetails = async () => {
@@ -84,7 +85,8 @@ const TeamDetails = () => {
             await api.delete(`/teams/${id}/remove-leader`);
             toast.success('Team leader removed');
             fetchTeamDetails();
-        } catch (error: any) {
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { message?: string } } };
             console.error('Error removing leader:', error);
             toast.error(error.response?.data?.message || 'Failed to remove leader');
         }
@@ -99,7 +101,8 @@ const TeamDetails = () => {
             await api.delete(`/teams/${id}/members/${memberId}`);
             toast.success(`${memberName} removed from team`);
             fetchTeamDetails();
-        } catch (error: any) {
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { message?: string } } };
             console.error('Error removing member:', error);
             toast.error(error.response?.data?.message || 'Failed to remove member');
         }
@@ -116,7 +119,8 @@ const TeamDetails = () => {
             await api.delete(`/teams/${id}`);
             toast.success(`${team.name} deleted successfully`);
             navigate('/leadership/teams');
-        } catch (error: any) {
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { message?: string } } };
             console.error('Error deleting team:', error);
             toast.error(error.response?.data?.message || 'Failed to delete team');
         }

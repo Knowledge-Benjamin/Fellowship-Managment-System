@@ -5,7 +5,7 @@ import {
     CheckCircle, XCircle, ChevronDown, ChevronUp, Loader2,
     MapPin, AlertTriangle,
     ThumbsUp, ThumbsDown, Building, BookOpen,
-    Copy, Sparkles, Edit3, User, Phone, Mail
+    Copy, Sparkles, Edit3, User
 } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
 import CustomSelect from '../components/CustomSelect';
@@ -40,41 +40,11 @@ interface PendingMember {
     token: { label?: string; token: string };
 }
 
-interface CreatedCredentials {
-    fullName: string;
-    fellowshipNumber: string;
-    defaultPassword?: string;
-}
-
 // ── Field badge (resolved vs. suggestion vs. missing) ─────────────────────────
 function FieldBadge({ resolved, suggestion, label }: { resolved?: string | null; suggestion?: string | null; label: string }) {
     if (resolved) return <span className="inline-flex items-center gap-1 text-xs text-[#48A111] bg-[#e9f5e1] px-2 py-0.5 rounded-full"><CheckCircle size={10} />{label}: {resolved}</span>;
     if (suggestion) return <span className="inline-flex items-center gap-1 text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full"><AlertTriangle size={10} />{label}: "{suggestion}" (unresolved)</span>;
     return <span className="inline-flex items-center gap-1 text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{label}: not provided</span>;
-}
-
-// ── Inline input helper ───────────────────────────────────────────────────────
-function EditField({ label, icon, value, onChange, type = 'text', readOnly = false }: {
-    label: string; icon: React.ReactNode; value: string;
-    onChange: (v: string) => void; type?: string; readOnly?: boolean;
-}) {
-    return (
-        <div className="space-y-1">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
-                {icon} {label}
-            </label>
-            <input
-                type={type}
-                value={value}
-                onChange={e => onChange(e.target.value)}
-                readOnly={readOnly}
-                className={`w-full px-3 py-2 rounded-xl border-2 text-sm text-slate-800 transition-all outline-none
-                    ${readOnly
-                        ? 'bg-slate-50 border-slate-100 text-slate-400 cursor-not-allowed'
-                        : 'bg-white border-slate-200 focus:border-[#48A111] focus:ring-2 focus:ring-[#48A111]/10'}`}
-            />
-        </div>
-    );
 }
 
 // ── Approval modal ────────────────────────────────────────────────────────────
@@ -144,8 +114,8 @@ function ApproveModal({
             } else {
                 onApprove();
             }
-        } catch (err: any) {
-            showToast('error', err.response?.data?.error ?? 'Approval failed');
+        } catch (err: unknown) {
+            showToast('error', (err as { response?: { data?: { error?: string } } }).response?.data?.error ?? 'Approval failed');
         } finally {
             setSaving(false);
         }
@@ -389,7 +359,7 @@ const PendingMembers = () => {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [showToast]);
 
     useEffect(() => {
         fetchPending();
@@ -399,7 +369,7 @@ const PendingMembers = () => {
             api.get('/courses').then(r => setCourses(r.data)),
             api.get('/residences').then(r => setResidences(r.data)),
         ]).catch(() => { });
-    }, []);
+    }, [fetchPending]);
 
     const handleReject = async () => {
         if (!rejectTarget) return;

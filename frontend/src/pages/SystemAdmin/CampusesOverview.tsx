@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Server, Globe, ExternalLink, Activity, PowerOff, Settings } from 'lucide-react';
+import { Plus, Server, Globe, ExternalLink, Settings } from 'lucide-react';
 import systemApi from '../../systemApi';
 import ProvisionCampusModal from './components/ProvisionCampusModal';
 import { format } from 'date-fns';
@@ -11,7 +11,7 @@ interface Campus {
     subdomain: string;
     isActive: boolean;
     createdAt: string;
-    config: any;
+    config: { terminology?: Partial<{ Region: string; FamilyGroup: string; MinistryTeam: string; FellowshipManager: string }> };
 }
 
 const CampusesOverview: React.FC = () => {
@@ -26,8 +26,9 @@ const CampusesOverview: React.FC = () => {
             const { data } = await systemApi.get('/system/campuses');
             setCampuses(data);
             setError(null);
-        } catch (err: any) {
-            setError(err.response?.data?.error || 'Failed to load campuses');
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { error?: string } } };
+            setError(error.response?.data?.error || 'Failed to load campuses');
         } finally {
             setLoading(false);
         }

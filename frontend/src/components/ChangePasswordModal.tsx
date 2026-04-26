@@ -54,9 +54,10 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen, onClo
 
             showToast('success', 'Password changed successfully');
             onClose();
-        } catch (err: any) {
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { message?: string } } };
             console.error('[CHANGE_PW] Error:', err);
-            setError(err.response?.data?.message || 'Failed to change password. Please check your current password and try again.');
+            setError(error.response?.data?.message || 'Failed to change password. Please check your current password and try again.');
         } finally {
             setLoading(false);
         }

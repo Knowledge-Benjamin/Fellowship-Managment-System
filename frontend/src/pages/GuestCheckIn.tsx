@@ -33,7 +33,8 @@ const GuestCheckIn = () => {
             if (events.length === 1) {
                 setSelectedEvent(events[0]);
             }
-        } catch (error: any) {
+        } catch (err: unknown) {
+            const error = err as { response?: { status?: number } };
             if (error.response?.status === 404) {
                 setError('No active event at the moment');
             } else {
@@ -62,7 +63,8 @@ const GuestCheckIn = () => {
             setTimeout(() => {
                 setSuccess(false);
             }, 3000);
-        } catch (error: any) {
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { error?: string } } };
             const errorMessage = error.response?.data?.error || 'Check-in failed';
             setError(errorMessage);
             toast.error(errorMessage);

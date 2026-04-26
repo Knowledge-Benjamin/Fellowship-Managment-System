@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { X, Plus, Search, UserCheck } from 'lucide-react';
 import api from '../api';
 import { useToast } from './ToastProvider';
@@ -34,11 +34,7 @@ const VolunteerManager: React.FC<VolunteerManagerProps> = ({ eventId, onClose })
     const [searchResults, setSearchResults] = useState<Member[]>([]);
     const [loading, setLoading] = useState(false);
 
-    useEffect(() => {
-        fetchVolunteers();
-    }, [eventId]);
-
-    const fetchVolunteers = async () => {
+    const fetchVolunteers = useCallback(async () => {
         try {
             const response = await api.get(`/volunteers/${eventId}/volunteers`);
             setVolunteers(response.data);
@@ -46,7 +42,11 @@ const VolunteerManager: React.FC<VolunteerManagerProps> = ({ eventId, onClose })
             console.error('Failed to fetch volunteers:', error);
             showToast('error', 'Failed to load volunteers');
         }
-    };
+    }, [eventId, showToast]);
+
+    useEffect(() => {
+        fetchVolunteers();
+    }, [eventId, fetchVolunteers]);
 
     const handleSearch = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -71,9 +71,10 @@ const VolunteerManager: React.FC<VolunteerManagerProps> = ({ eventId, onClose })
             fetchVolunteers();
             setSearchResults([]);
             setSearchQuery('');
-        } catch (error: any) {
-            console.error('Failed to add volunteer:', error);
-            showToast('error', error.response?.data?.error || 'Failed to add volunteer');
+        } catch (err: unknown) {
+            console.error('Failed to add volunteer:', err);
+            const apiErr = err as { response?: { data?: { error?: string } } };
+            showToast('error', apiErr.response?.data?.error || 'Failed to add volunteer');
         }
     };
 

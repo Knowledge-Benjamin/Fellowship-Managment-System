@@ -36,8 +36,9 @@ const CreateTeamModal: React.FC<CreateTeamModalProps> = ({ isOpen, onClose, onSu
             onClose();
             setName('');
             setDescription('');
-        } catch (error: any) {
-            console.error('Error creating team:', error);
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { message?: string } } };
+            console.error('Error creating team:', err);
             toast.error(error.response?.data?.message || 'Failed to create team');
         } finally {
             setLoading(false);

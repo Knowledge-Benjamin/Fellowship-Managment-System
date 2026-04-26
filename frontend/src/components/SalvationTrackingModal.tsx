@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { X, Loader2 } from 'lucide-react';
 import api from '../api';
 import { useToast } from './ToastProvider';
@@ -38,13 +38,7 @@ const SalvationTrackingModal: React.FC<SalvationTrackingModalProps> = ({
     const [loading, setLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
 
-    useEffect(() => {
-        if (isOpen) {
-            fetchMembers();
-        }
-    }, [isOpen]);
-
-    const fetchMembers = async () => {
+    const fetchMembers = useCallback(async () => {
         try {
             const response = await api.get('/members');
             setMembers(response.data.data || []);
@@ -52,7 +46,13 @@ const SalvationTrackingModal: React.FC<SalvationTrackingModalProps> = ({
             console.error('Failed to fetch members:', error);
             showToast('error', 'Failed to fetch members');
         }
-    };
+    }, [showToast]);
+
+    useEffect(() => {
+        if (isOpen) {
+            fetchMembers();
+        }
+    }, [isOpen, fetchMembers]);
 
     const filteredMembers = members.filter((member) =>
         member.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -64,7 +64,18 @@ const SalvationTrackingModal: React.FC<SalvationTrackingModalProps> = ({
         setLoading(true);
 
         try {
-            const payload: any = {
+            interface SalvationPayload {
+                eventId: string;
+                decisionType: string;
+                baptismInterest: boolean;
+                notes?: string;
+                counselorId?: string;
+                memberId?: string;
+                guestName?: string;
+                guestPhone?: string;
+                guestEmail?: string;
+            }
+            const payload: SalvationPayload = {
                 eventId,
                 decisionType,
                 baptismInterest,
@@ -96,9 +107,10 @@ const SalvationTrackingModal: React.FC<SalvationTrackingModalProps> = ({
 
             showToast('success', 'Salvation record saved successfully');
             onSaved();
-        } catch (error: any) {
-            console.error('Failed to save salvation:', error);
-            showToast('error', error.response?.data?.error || 'Failed to save salvation record');
+        } catch (err: unknown) {
+            console.error('Failed to save salvation:', err);
+            const apiErr = err as { response?: { data?: { error?: string } } };
+            showToast('error', apiErr.response?.data?.error || 'Failed to save salvation record');
         } finally {
             setLoading(false);
         }

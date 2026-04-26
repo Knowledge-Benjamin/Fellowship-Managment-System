@@ -2,28 +2,30 @@ import React from 'react';
 import { Users, UserCheck, Edit, Trash2, Calendar, MapPin, Clock, UserX } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-interface FamilyCardProps {
-    family: {
+export interface FamilyData {
+    id: string;
+    name: string;
+    region: {
         id: string;
         name: string;
-        region: {
-            id: string;
-            name: string;
-        };
-        familyHead?: {
-            id: string;
-            fullName: string;
-        } | null;
-        meetingDay?: string | null;
-        meetingTime?: string | null;
-        meetingVenue?: string | null;
-        _count: {
-            members: number;
-        };
     };
+    familyHead?: {
+        id: string;
+        fullName: string;
+    } | null;
+    meetingDay?: string | null;
+    meetingTime?: string | null;
+    meetingVenue?: string | null;
+    _count: {
+        members: number;
+    };
+}
+
+interface FamilyCardProps {
+    family: FamilyData;
     onEdit?: (familyId: string) => void;
     onDelete?: (familyId: string) => void;
-    onAssignHead?: (family: any) => void;
+    onAssignHead?: (family: FamilyData) => void;
 }
 
 const FamilyCard: React.FC<FamilyCardProps> = ({ family, onEdit, onDelete, onAssignHead }) => {

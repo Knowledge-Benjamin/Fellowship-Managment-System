@@ -13,7 +13,7 @@ interface ModeOption {
     value: RegistrationMode;
     label: string;
     description: string;
-    icon: any;
+    icon: React.ElementType;
     autoAssignTag: boolean | null; // true = auto-assign, false = skip, null = manual decision
 }
 

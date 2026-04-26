@@ -7,11 +7,11 @@ import ContactChatModal from '../components/Campaigns/ContactChatModal';
 export default function Campaigns() {
     const { showToast } = useToast();
     const [loading, setLoading] = useState(true);
-    const [campaigns, setCampaigns] = useState<any[]>([]);
+    const [campaigns, setCampaigns] = useState<Array<Record<string, unknown> & { id: string; title: string; maxContacts: number; submissionDeadline: string; status: string; description?: string; _count?: { contacts: number } }>>([]);
     
     // State for the currently selected campaign to submit to
     const [activeCampaignId, setActiveCampaignId] = useState<string | null>(null);
-    const [activeCampaignDetail, setActiveCampaignDetail] = useState<any | null>(null);
+    const [activeCampaignDetail, setActiveCampaignDetail] = useState<Record<string, unknown> & { contacts?: Array<Record<string, unknown> & { id: string; name: string; phone: string; email?: string; relationship?: string; transportNeed?: string; location?: string; callStatus: string; isDuplicate?: boolean; _count?: { messages: number } }> } | null>(null);
     const [newContacts, setNewContacts] = useState([{ name: '', phone: '', email: '', relationship: '', callStatus: 'PENDING', transportNeed: 'PENDING', location: '' }]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [editingContact, setEditingContact] = useState<{ id: string; name: string; phone: string; email: string; relationship: string; transportNeed: string; location: string } | null>(null);
@@ -33,6 +33,7 @@ export default function Campaigns() {
 
     useEffect(() => {
         fetchCampaigns();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const fetchCampaigns = async () => {
@@ -78,7 +79,7 @@ export default function Campaigns() {
         setNewContacts(updated);
     };
 
-    const handleSubmitContacts = async (e: React.FormEvent, campaign: any) => {
+    const handleSubmitContacts = async (e: React.FormEvent, campaign: { id: string; maxContacts: number; contacts?: unknown[] }) => {
         e.preventDefault();
         
         const validContacts = newContacts.filter(c => {
@@ -104,7 +105,8 @@ export default function Campaigns() {
             setNewContacts([{ name: '', phone: '', email: '', relationship: '', callStatus: 'PENDING', transportNeed: 'PENDING', location: '' }]);
             fetchCampaigns(); // refresh to show updated progress
             fetchCampaignDetail(campaign.id); // also refresh detail view
-        } catch (error: any) {
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { message?: string } } };
             console.error('Submit error:', error);
             showToast('error', error.response?.data?.message || 'Failed to submit contacts');
         } finally {
@@ -116,7 +118,8 @@ export default function Campaigns() {
         try {
             await api.patch(`/campaigns/${campaignId}/contacts/${contactId}`, { callStatus });
             fetchCampaignDetail(campaignId);
-        } catch (error: any) {
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { message?: string } } };
             showToast('error', error.response?.data?.message || 'Failed to update status');
         }
     };
@@ -135,7 +138,8 @@ export default function Campaigns() {
             showToast('success', 'Contact updated!');
             setEditingContact(null);
             fetchCampaignDetail(campaignId);
-        } catch (error: any) {
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { message?: string } } };
             showToast('error', error.response?.data?.message || 'Failed to update contact');
         }
     };
@@ -160,10 +164,9 @@ export default function Campaigns() {
         );
     }
 
-    const activeCampaign = campaigns.find((c: any) => c.id === activeCampaignId) || campaigns[0];
+    const activeCampaign = campaigns.find((c) => c.id === activeCampaignId) || campaigns[0];
     // Use _count.contacts (from list view) for progress tracking
     const userSubmittedCount = activeCampaignDetail?.contacts?.length || 0;
-    const totalContactCount = activeCampaign._count?.contacts || 0;
     const isFull = userSubmittedCount >= activeCampaign.maxContacts;
     const remainingSlots = activeCampaign.maxContacts - userSubmittedCount;
     
@@ -194,7 +197,7 @@ export default function Campaigns() {
                 {/* Left Col: Campaign Selector */}
                 <div className="lg:col-span-1 space-y-4">
                     <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider px-2">Open Campaigns</h3>
-                    {campaigns.map((camp: any) => (
+                    {campaigns.map((camp) => (
                         <button
                             key={camp.id}
                             onClick={() => {
@@ -407,7 +410,7 @@ export default function Campaigns() {
                             </div>
                             
                             {/* Duplicate warning banner */}
-                            {activeCampaignDetail.contacts.some((c: any) => c.isDuplicate) && (
+                            {activeCampaignDetail.contacts.some((c: { isDuplicate?: boolean }) => c.isDuplicate) && (
                                 <div className="mx-4 mt-3 px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-2 text-amber-700 text-sm">
                                     <AlertTriangle size={16} className="shrink-0" />
                                     <span><strong>Note:</strong> Some contacts are flagged as duplicates — they share a phone number or email already on this campaign.</span>
@@ -415,7 +418,7 @@ export default function Campaigns() {
                             )}
 
                             <div className="p-4 grid sm:grid-cols-2 gap-3">
-                                {activeCampaignDetail.contacts.map((c: any) => (
+                                {activeCampaignDetail.contacts.map((c) => (
                                     <div key={c.id} className={`p-4 rounded-xl border flex flex-col gap-2 ${c.isDuplicate ? 'border-amber-200 bg-amber-50/50' : 'border-slate-100 bg-slate-50'}`}>
                                         {editingContact?.id === c.id ? (
                                             /* ── Inline Edit Form ── */
@@ -507,7 +510,7 @@ export default function Campaigns() {
                                                             title="Chat with Admin"
                                                         >
                                                             <MessageCircle size={16} />
-                                                            {c._count?.messages > 0 && (
+                                                            {(c._count?.messages || 0) > 0 && (
                                                                 <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
                                                             )}
                                                         </button>

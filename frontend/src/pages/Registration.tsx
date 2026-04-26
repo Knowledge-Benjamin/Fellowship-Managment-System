@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../api';
 import QRCode from 'react-qr-code';
 import { useToast } from '../components/ToastProvider';
-import { UserPlus, CheckCircle, Download, RotateCcw, Sparkles, Copy, Mail, MapPin, GraduationCap, Tag as TagIcon, BookOpen, Plus, Loader2, Building, Users, ArrowRight } from 'lucide-react';
+import { UserPlus, CheckCircle, Download, RotateCcw, Sparkles, Copy, Mail, MapPin, GraduationCap, Tag as TagIcon, Plus, Loader2, Building, Users, ArrowRight } from 'lucide-react';
 import type { E164Number } from 'libphonenumber-js/core';
 import PhoneInput from '../components/PhoneInput';
 import '../styles/phoneInput.css';
@@ -29,7 +29,7 @@ interface Tag {
 interface College {
     id: string;
     name: string;
-    code?: string;
+    code?: string | null;
 }
 
 interface Course {
@@ -112,7 +112,7 @@ const Registration = () => {
         qrCode: string;
         email: string;
         region?: { name: string };
-        tags?: any[];
+        tags?: Array<{ id: string; name: string }>;
     } | null>(null);
 
     useEffect(() => {
@@ -121,6 +121,7 @@ const Registration = () => {
         fetchColleges();
         fetchCourses();
         fetchResidences();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     // Auto-set Non-Resident region when isMakerereStudent changes to false
@@ -143,6 +144,7 @@ const Registration = () => {
         } else if (!formData.isMakerereStudent) {
             fetchCourses();
         }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [formData.collegeId, formData.isMakerereStudent]);
 
     const fetchRegions = async () => {
@@ -245,6 +247,7 @@ const Registration = () => {
             setFamilies([]);
             setFormData(prev => ({ ...prev, familyId: '' }));
         }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [formData.regionId, formData.isMakerereStudent]);
 
     const handleCollegeChange = (value: string) => {
@@ -309,7 +312,7 @@ const Registration = () => {
 
         try {
             // Build clean payload - remove UI-only fields and empty values
-            const payload: any = {
+            const payload: Record<string, unknown> = {
                 fullName: formData.fullName,
                 email: formData.email,
                 phoneNumber: formData.phoneNumber,
@@ -320,9 +323,15 @@ const Registration = () => {
             // Add optional fields only if they have values
             if (formData.classificationTagId) payload.classificationTagId = formData.classificationTagId;
             if (formData.additionalTagIds?.length > 0) payload.additionalTagIds = formData.additionalTagIds;
-            if (formData.courseId) payload.courseId = formData.courseId;
-            if (formData.initialYearOfStudy) payload.initialYearOfStudy = formData.initialYearOfStudy;
-            if (formData.initialSemester) payload.initialSemester = formData.initialSemester;
+            if (formData.courseId) {
+                payload.courseId = formData.courseId;
+                // Only include academic progress fields when a course is assigned;
+                // year/semester is meaningless without one, and omitting it for
+                // non-Makerere members prevents them from being miscounted in year
+                // breakdown statistics.
+                if (formData.initialYearOfStudy) payload.initialYearOfStudy = formData.initialYearOfStudy;
+                if (formData.initialSemester) payload.initialSemester = formData.initialSemester;
+            }
             if (formData.residenceId) payload.residenceId = formData.residenceId;
             if (formData.hostelName) payload.hostelName = formData.hostelName;
 
@@ -351,7 +360,8 @@ const Registration = () => {
                         memberId: member.id,
                     });
                     // Don't show separate success for family - it's part of registration
-                } catch (familyError: any) {
+                } catch (familyErr: unknown) {
+                    const familyError = familyErr as { response?: { data?: { error?: string } } };
                     console.warn('Family assignment failed:', familyError);
                     // Don't fail registration if family assignment fails
                     const familyErrorMsg = familyError.response?.data?.error || 'Could not assign to family';
@@ -362,7 +372,8 @@ const Registration = () => {
             // Set member data for success display (include fellowshipNumber at top level)
             setCreatedMember({ ...member, fellowshipNumber });
             showToast('success', 'Member registered successfully!');
-        } catch (error: any) {
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { error?: string; details?: Array<{ message: string }> } }; message?: string };
             console.error('Registration error:', error);
 
             // Extract meaningful error message
@@ -374,7 +385,7 @@ const Registration = () => {
                 // Zod validation errors
                 const details = error.response.data.details;
                 if (Array.isArray(details) && details.length > 0) {
-                    errorMessage = details.map((d: any) => d.message).join(', ');
+                    errorMessage = details.map((d) => d.message).join(', ');
                 }
             } else if (error.message) {
                 errorMessage = error.message;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import api from '../api';
 import { useToast } from '../components/ToastProvider';
 import { Tag as TagIcon, Plus, Trash2, Users, Search, X, Loader2 } from 'lucide-react';
@@ -44,11 +44,7 @@ const TagManagement = () => {
     const [tagMembers, setTagMembers] = useState<Member[]>([]);
     const [loadingMembers, setLoadingMembers] = useState(false);
 
-    useEffect(() => {
-        fetchTags();
-    }, []);
-
-    const fetchTags = async () => {
+    const fetchTags = useCallback(async () => {
         try {
             setLoading(true);
             const response = await api.get('/tags');
@@ -59,7 +55,11 @@ const TagManagement = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [showToast]);
+
+    useEffect(() => {
+        fetchTags();
+    }, [fetchTags]);
 
     const handleAddTag = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -72,7 +72,8 @@ const TagManagement = () => {
             setNewTag({ name: '', description: '', color: '#6366f1' });
             setIsAdding(false);
             showToast('success', 'Tag created successfully');
-        } catch (error: any) {
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { error?: string } } };
             console.error('Failed to create tag:', error);
             showToast('error', error.response?.data?.error || 'Failed to create tag');
         } finally {
@@ -93,7 +94,8 @@ const TagManagement = () => {
                 setTagMembers([]);
             }
             showToast('success', 'Tag deleted successfully');
-        } catch (error: any) {
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { error?: string } } };
             console.error('Failed to delete tag:', error);
             showToast('error', error.response?.data?.error || 'Failed to delete tag');
         }
@@ -126,8 +128,8 @@ const TagManagement = () => {
             });
             setTags(tags.map(t => t.id === tagId ? { ...t, showOnRegistration: !currentValue } : t));
             showToast('success', `Tag ${!currentValue ? 'enabled' : 'disabled'} for registration`);
-        } catch (error: any) {
-            console.error('Failed to update tag:', error);
+        } catch (err: unknown) {
+            console.error('Failed to update tag:', err);
             showToast('error', 'Failed to update tag visibility');
         }
     };

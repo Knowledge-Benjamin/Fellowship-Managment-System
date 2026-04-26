@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
 import {
-    Calendar, Plus, Trash2, ToggleLeft, ToggleRight, Users,
+    Calendar, Plus, Trash2, Users,
     Play, Square, BarChart2, List, Heart, X, Clock, MapPin, Repeat, Tag, Pencil, UserCheck
 } from 'lucide-react';
 import VolunteerManager from '../components/VolunteerManager';
@@ -44,11 +44,7 @@ const EventManagement = () => {
         allowGuestCheckin: false,
     });
 
-    useEffect(() => {
-        fetchEvents();
-    }, []);
-
-    const fetchEvents = async () => {
+    const fetchEvents = useCallback(async () => {
         try {
             const response = await api.get('/events');
             setEvents(response.data);
@@ -57,7 +53,11 @@ const EventManagement = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        fetchEvents();
+    }, [fetchEvents]);
 
     const handleCreateEvent = async (e: React.FormEvent) => {
         e.preventDefault();

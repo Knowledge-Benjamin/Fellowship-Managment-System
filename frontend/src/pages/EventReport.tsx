@@ -118,7 +118,7 @@ function StatCard({
     accent = GREEN,
     onClick,
 }: {
-    icon: any;
+    icon: React.ElementType;
     label: string;
     value: string | number;
     sub?: React.ReactNode;
@@ -142,7 +142,7 @@ function StatCard({
     );
 }
 
-function SectionHeader({ icon: Icon, title }: { icon: any; title: string }) {
+function SectionHeader({ icon: Icon, title }: { icon: React.ElementType; title: string }) {
     return (
         <div className="flex items-center gap-2 mb-4">
             <Icon size={16} className="text-slate-400" />
@@ -154,7 +154,7 @@ function SectionHeader({ icon: Icon, title }: { icon: any; title: string }) {
 function Card({
     title, icon: Icon, badge, children, scrollable, onClick,
 }: {
-    title: string; icon?: any; badge?: string | number; children: React.ReactNode; scrollable?: boolean; onClick?: () => void;
+    title: string; icon?: React.ElementType; badge?: string | number; children: React.ReactNode; scrollable?: boolean; onClick?: () => void;
 }) {
     return (
         <div className={`bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col transition-shadow ${onClick ? 'cursor-pointer hover:shadow-md hover:border-slate-300' : ''}`} onClick={onClick}>
@@ -193,12 +193,12 @@ function HorizontalBarList({ data, accent = GREEN, onItemClick }: { data: Array<
     );
 }
 
-const CustomTooltip = ({ active, payload, label }: any) => {
+const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ name: string; value: number }>; label?: string }) => {
     if (!active || !payload?.length) return null;
     return (
         <div className="bg-white border border-slate-200 rounded-lg shadow-lg px-3 py-2 text-sm">
             {label && <p className="font-semibold text-slate-800 mb-1">{label}</p>}
-            {payload.map((p: any) => (
+            {payload.map((p) => (
                 <p key={p.name} className="text-slate-600">{p.name}: <strong>{p.value}</strong></p>
             ))}
         </div>
@@ -207,11 +207,29 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 
 // ── Drilldown Components ─────────────────────────────────────────────────────
 
+type AttendeeData = {
+    id?: string;
+    name?: string;
+    gender?: string;
+    contactPhone?: string;
+    isGuest?: boolean;
+    course?: string;
+    college?: string;
+    year?: number;
+    region?: string;
+    residence?: string;
+    families?: string[];
+    teams?: string[];
+    tags?: string[];
+    purpose?: string;
+    isFirstTimer?: boolean;
+};
+
 interface DrilldownState {
     title: string;
-    filterFn: (attendee: any) => boolean;
+    filterFn: (attendee: AttendeeData) => boolean;
     dataSource?: 'attendees' | 'salvations';
-    exportCategorizeBy?: (attendee: any) => string | string[];
+    exportCategorizeBy?: (attendee: AttendeeData) => string | string[];
 }
 
 function DrilldownTable({
@@ -222,9 +240,9 @@ function DrilldownTable({
     onClose,
 }: {
     title: string;
-    attendees: any[];
-    fullDataset: any[];
-    exportCategorizeBy?: (attendee: any) => string | string[];
+    attendees: AttendeeData[];
+    fullDataset: AttendeeData[];
+    exportCategorizeBy?: (attendee: AttendeeData) => string | string[];
     onClose: () => void;
 }) {
     const [page, setPage] = useState(1);
@@ -256,7 +274,7 @@ function DrilldownTable({
                         const wb = XLSX.utils.book_new();
 
                         // 1. Prepare Export Map
-                        const exportMap: Record<string, any[]> = {};
+                        const exportMap: Record<string, Record<string, unknown>[]> = {};
 
                         const datasetToProcess = exportCategorizeBy ? fullDataset : attendees;
 
@@ -322,7 +340,7 @@ function DrilldownTable({
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                            {paginatedAttendees.map((a: any) => (
+                            {paginatedAttendees.map((a: AttendeeData) => (
                                 <tr key={a.id} className="hover:bg-slate-50/50 transition-colors">
                                     <td className="px-6 py-4 font-medium text-slate-900">
                                         {a.name}
@@ -351,8 +369,8 @@ function DrilldownTable({
                                             <div className="text-xs text-slate-500 flex flex-col gap-0.5">
                                                 {a.region && <span><MapPin size={10} className="inline mr-1" />{a.region}</span>}
                                                 {a.course && <span><GraduationCap size={10} className="inline mr-1" />{a.course} ({a.college}) - Yr {a.year}</span>}
-                                                {a.families?.length > 0 && <span><Users size={10} className="inline mr-1" />{a.families.join(', ')}</span>}
-                                                {a.teams?.length > 0 && <span><Layers size={10} className="inline mr-1" />{a.teams.join(', ')}</span>}
+                                                {(a.families?.length || 0) > 0 && <span><Users size={10} className="inline mr-1" />{a.families?.join(', ')}</span>}
+                                                {(a.teams?.length || 0) > 0 && <span><Layers size={10} className="inline mr-1" />{a.teams?.join(', ')}</span>}
                                             </div>
                                         )}
                                     </td>
@@ -413,7 +431,7 @@ const EventReport = () => {
     const [error, setError] = useState<string | null>(null);
     const [showExportMenu, setShowExportMenu] = useState(false);
     const [activeDrilldown, setActiveDrilldown] = useState<DrilldownState | null>(null);
-    const [allMembersDrilldown, setAllMembersDrilldown] = useState<any[] | null>(null);
+    const [allMembersDrilldown, setAllMembersDrilldown] = useState<Array<Record<string, unknown>> | null>(null);
     const exportRef = useRef<HTMLDivElement>(null);
 
     const fetchAllMembers = async () => {
@@ -434,6 +452,7 @@ const EventReport = () => {
     useEffect(() => {
         fetchReport();
         if (isFellowshipManager) fetchReportStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [id]);
 
     useEffect(() => {
@@ -454,8 +473,9 @@ const EventReport = () => {
             ]);
             setReport(reportRes.data);
             setComparison(compareRes.data);
-        } catch (err: any) {
-            if (err.response?.status === 403) setError(err.response.data.message || 'Report not yet available');
+        } catch (err: unknown) {
+            const error = err as { response?: { status?: number; data?: { message?: string } } };
+            if (error.response?.status === 403) setError(error.response.data?.message || 'Report not yet available');
             else setError('Failed to load report');
         } finally { setLoading(false); }
     };
@@ -749,7 +769,7 @@ const EventReport = () => {
                         <div className="grid grid-cols-2 lg:grid-cols-6 gap-4 mb-8">
                             <StatCard
                                 icon={Users} label="Total Attendance" value={stats.totalAttendance} accent={GREEN}
-                                onClick={() => setActiveDrilldown({ title: 'Total Attendance', filterFn: () => true, exportCategorizeBy: a => a.isGuest ? 'Guests' : 'Members' })}
+                                onClick={() => setActiveDrilldown({ title: 'Total Attendance', filterFn: () => true, exportCategorizeBy: (a: AttendeeData) => a.isGuest ? 'Guests' : 'Members' })}
                                 sub={pctChange != null ? (
                                     <span className={`flex items-center gap-1 font-medium ${diff >= 0 ? 'text-green-600' : 'text-red-500'}`}>
                                         {diff >= 0 ? <TrendingUp size={13} /> : <TrendingDown size={13} />}
@@ -768,7 +788,7 @@ const EventReport = () => {
                             />
                             <StatCard
                                 icon={UserCheck} label="Checked In" value={stats.memberCount} accent="#3b82f6"
-                                onClick={() => setActiveDrilldown({ title: 'Checked In', filterFn: a => !a.isGuest, exportCategorizeBy: a => a.gender || 'Unknown Gender' })}
+                                onClick={() => setActiveDrilldown({ title: 'Checked In', filterFn: (a: AttendeeData) => !a.isGuest, exportCategorizeBy: (a: AttendeeData) => a.gender || 'Unknown Gender' })}
                                 sub={<span className="text-slate-400">{pct(stats.memberCount, stats.totalAttendance)} of attendance</span>}
                             />
                             <StatCard
@@ -777,12 +797,12 @@ const EventReport = () => {
                             />
                             <StatCard
                                 icon={UserCheck} label="First Timers" value={stats.firstTimersCount} accent="#f59e0b"
-                                onClick={() => setActiveDrilldown({ title: 'First Timers', filterFn: a => a.isFirstTimer === true, exportCategorizeBy: a => a.isFirstTimer ? 'First Timers' : 'Returning Attendees' })}
+                                onClick={() => setActiveDrilldown({ title: 'First Timers', filterFn: (a: AttendeeData) => a.isFirstTimer === true, exportCategorizeBy: (a: AttendeeData) => a.isFirstTimer ? 'First Timers' : 'Returning Attendees' })}
                                 sub={<span className="text-slate-400">{pct(stats.firstTimersCount, stats.memberCount)} of checked in</span>}
                             />
                             <StatCard
                                 icon={UserPlus} label="Guests" value={stats.guestCount} accent="#8b5cf6"
-                                onClick={() => setActiveDrilldown({ title: 'Guests', filterFn: a => a.isGuest, exportCategorizeBy: a => a.isGuest ? 'Guests' : 'Members' })}
+                                onClick={() => setActiveDrilldown({ title: 'Guests', filterFn: (a: AttendeeData) => !!a.isGuest, exportCategorizeBy: (a: AttendeeData) => a.isGuest ? 'Guests' : 'Members' })}
                                 sub={<span className="text-slate-400">{pct(stats.guestCount, stats.totalAttendance)} of total</span>}
                             />
                         </div>
@@ -808,9 +828,9 @@ const EventReport = () => {
                                                     onClick={() => setActiveDrilldown({
                                                         title: label,
                                                         filterFn: a => {
-                                                            if (label === 'Alumni') return a.tags?.includes('ALUMNI');
+                                                            if (label === 'Alumni') return !!a.tags?.includes('ALUMNI');
                                                             if (label === 'Makerere Students') return !a.tags?.includes('ALUMNI') && !!a.course;
-                                                            return !a.tags?.includes('ALUMNI') && !a.course && !a.isGuest;
+                                                            return !!(!a.tags?.includes('ALUMNI') && !a.course && !a.isGuest);
                                                         },
                                                         exportCategorizeBy: a => {
                                                             if (a.tags?.includes('ALUMNI')) return 'Alumni';
@@ -855,7 +875,7 @@ const EventReport = () => {
                                     ].map(({ label, value, accent, tag }) => (
                                         <div
                                             key={label}
-                                            onClick={() => setActiveDrilldown({ title: label, filterFn: a => a.tags?.includes(tag) })}
+                                            onClick={() => setActiveDrilldown({ title: label, filterFn: a => a.tags?.includes(tag) ?? false })}
                                             className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 flex items-center justify-between cursor-pointer hover:shadow-md hover:border-slate-300 transition-all"
                                         >
                                             <div>
@@ -948,7 +968,7 @@ const EventReport = () => {
 
                                         {/* Year of Study */}
                                         {yearData.length > 0 && (
-                                            <Card title="Year of Study" icon={GraduationCap} onClick={() => setActiveDrilldown({ title: 'Year of Study', filterFn: () => true, exportCategorizeBy: a => a.year || 'Unknown Year' })}>
+                                            <Card title="Year of Study" icon={GraduationCap} onClick={() => setActiveDrilldown({ title: 'Year of Study', filterFn: () => true, exportCategorizeBy: a => String(a.year || 'Unknown Year') })}>
                                                 <div className="h-44">
                                                     <ResponsiveContainer width="100%" height="100%">
                                                         <BarChart data={yearData.map(([n, v]) => ({ name: n, value: v }))} barSize={28}>
@@ -1006,7 +1026,7 @@ const EventReport = () => {
                                             <HorizontalBarList
                                                 data={Object.entries(stats.familyBreakdown).sort((a, b) => b[1] - a[1])}
                                                 accent={GREEN}
-                                                onItemClick={(family) => setActiveDrilldown({ title: `Family: ${family}`, filterFn: a => family === 'No Family' ? !a.families?.length : a.families?.includes(family), exportCategorizeBy: a => a.families && a.families.length > 0 ? a.families : 'No Family' })}
+                                                onItemClick={(family) => setActiveDrilldown({ title: `Family: ${family}`, filterFn: a => family === 'No Family' ? !a.families?.length : (a.families?.includes(family) ?? false), exportCategorizeBy: a => a.families && a.families.length > 0 ? a.families : 'No Family' })}
                                             />
                                         </Card>
                                     )}
@@ -1015,7 +1035,7 @@ const EventReport = () => {
                                             <HorizontalBarList
                                                 data={Object.entries(stats.teamBreakdown).sort((a, b) => b[1] - a[1])}
                                                 accent="#14b8a6"
-                                                onItemClick={(team) => setActiveDrilldown({ title: `Team: ${team}`, filterFn: a => team === 'No Team' ? !a.teams?.length : a.teams?.includes(team), exportCategorizeBy: a => a.teams && a.teams.length > 0 ? a.teams : 'No Team' })}
+                                                onItemClick={(team) => setActiveDrilldown({ title: `Team: ${team}`, filterFn: a => team === 'No Team' ? !a.teams?.length : (a.teams?.includes(team) ?? false), exportCategorizeBy: a => a.teams && a.teams.length > 0 ? a.teams : 'No Team' })}
                                             />
                                         </Card>
                                     )}
@@ -1071,7 +1091,7 @@ const EventReport = () => {
                                                     .map(([tag, count]) => (
                                                         <tr
                                                             key={tag}
-                                                            onClick={() => setActiveDrilldown({ title: `Tag: ${tag}`, filterFn: a => a.tags?.includes(tag) })}
+                                                            onClick={() => setActiveDrilldown({ title: `Tag: ${tag}`, filterFn: a => a.tags?.includes(tag) ?? false })}
                                                             className="hover:bg-slate-50 transition-colors cursor-pointer group"
                                                         >
                                                             <td className="px-5 py-3 text-slate-700 group-hover:text-slate-900 group-hover:font-medium">{tag.replace(/_/g, ' ')}</td>

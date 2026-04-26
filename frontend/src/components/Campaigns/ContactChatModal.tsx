@@ -42,25 +42,37 @@ export default function ContactChatModal({
     const [isSending, setIsSending] = useState(false);
     
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const hasMarkedReadRef = useRef(false); // Ensure read-mark fires only once per open session
 
     const apiBaseUrl = type === 'BRING_ONE' 
         ? `/bring-one/pledges/${entityId}/messages` 
         : `/campaigns/contacts/${entityId}/messages`;
 
     useEffect(() => {
-        if (!isOpen) return;
-        
+        if (!isOpen) {
+            // Reset the read-mark guard whenever the modal is closed
+            hasMarkedReadRef.current = false;
+            return;
+        }
+
         const fetchMessages = async () => {
             try {
                 setIsLoading(true);
                 const { data } = await api.get<CampaignMessage[]>(apiBaseUrl);
                 setMessages(data);
-                
-                // If there are unread messages not from us, mark them read
-                const hasUnread = data.some((m: CampaignMessage) => !m.isRead && m.senderId !== currentUserId);
-                if (hasUnread) {
-                    await api.patch(`${apiBaseUrl}/read`);
-                    if (onMessagesRead) onMessagesRead();
+
+                // Mark unread messages as read only ONCE per open session (on first load).
+                // Subsequent poll cycles skip this to avoid redundant PATCH calls.
+                if (!hasMarkedReadRef.current) {
+                    const hasUnread = data.some(
+                        (m: CampaignMessage) => !m.isRead && m.senderId !== currentUserId
+                    );
+                    if (hasUnread) {
+                        await api.patch(`${apiBaseUrl}/read`);
+                        if (onMessagesRead) onMessagesRead();
+                    }
+                    // Mark as done regardless — even if nothing was unread, no need to re-check
+                    hasMarkedReadRef.current = true;
                 }
             } catch (error) {
                 console.error('Failed to fetch messages:', error);
@@ -70,8 +82,8 @@ export default function ContactChatModal({
         };
 
         fetchMessages();
-        
-        // Setup simple polling every 5 seconds while open
+
+        // Poll every 5 seconds to pick up messages sent by the other party
         const interval = setInterval(fetchMessages, 5000);
         return () => clearInterval(interval);
     }, [isOpen, entityId, type, currentUserId, apiBaseUrl, onMessagesRead]);

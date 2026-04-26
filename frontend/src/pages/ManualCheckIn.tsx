@@ -71,6 +71,7 @@ const ManualCheckIn = () => {
             fetchMembers(page, searchTerm);
         }, 300);
         return () => clearTimeout(to);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [searchTerm, selectedRegion, selectedGender, selectedStatus, eventId, user, page]);
 
     const fetchRegions = async () => {
@@ -101,7 +102,8 @@ const ManualCheckIn = () => {
             if (response.data.stats) {
                 setCheckInStats(response.data.stats);
             }
-        } catch (error: any) {
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { error?: string } } };
             console.error('Failed to fetch members:', error);
             toast.error(error?.response?.data?.error || 'Failed to load members');
         } finally {
@@ -133,7 +135,8 @@ const ManualCheckIn = () => {
                 checkedIn: prev.checkedIn + 1,
                 notCheckedIn: Math.max(0, prev.notCheckedIn - 1)
             }));
-        } catch (error: any) {
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { error?: string } } };
             console.error('Check-in failed:', error);
             toast.error(error?.response?.data?.error || 'Check-in failed');
         } finally {

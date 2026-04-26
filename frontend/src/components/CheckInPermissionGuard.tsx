@@ -10,7 +10,6 @@ interface CheckInPermissionGuardProps {
 const CheckInPermissionGuard: React.FC<CheckInPermissionGuardProps> = ({ children }) => {
     const { isAuthenticated, isManager, user } = useAuth();
     const [hasPermission, setHasPermission] = useState<boolean | null>(null);
-    const [activeEventId, setActiveEventId] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -52,10 +51,9 @@ const CheckInPermissionGuard: React.FC<CheckInPermissionGuardProps> = ({ childre
                         const permissionResponse = await api.get(`/volunteers/${event.id}/check-permission`);
                         if (permissionResponse.data.hasPermission === true) {
                             hasPermissionForAny = true;
-                            setActiveEventId(event.id); // Store which event granted permission
                             break; // Found one, can stop checking
                         }
-                    } catch (error) {
+                    } catch {
                         // Continue checking other events
                         continue;
                     }

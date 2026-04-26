@@ -1,7 +1,7 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+/* eslint-disable react-refresh/only-export-components */
+import React, { createContext, useContext, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import systemApi from '../systemApi';
 
 interface SystemAdminUser {
     adminName: string;
@@ -19,22 +19,19 @@ interface SystemAdminAuthContextType {
 const SystemAdminAuthContext = createContext<SystemAdminAuthContextType | undefined>(undefined);
 
 export const SystemAdminAuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const [adminUser, setAdminUser] = useState<SystemAdminUser | null>(null);
-    const [token, setToken] = useState<string | null>(null);
-    const [loading, setLoading] = useState(true);
-    const navigate = useNavigate();
-
-    useEffect(() => {
-        const storedToken = localStorage.getItem('system_admin_token');
-        const storedUser = localStorage.getItem('system_admin_user');
-
-        if (storedToken && storedUser) {
-            setToken(storedToken);
-            setAdminUser(JSON.parse(storedUser));
+    const [adminUser, setAdminUser] = useState<SystemAdminUser | null>(() => {
+        try {
+            const stored = localStorage.getItem('system_admin_user');
+            return stored ? (JSON.parse(stored) as SystemAdminUser) : null;
+        } catch {
+            return null;
         }
-
-        setLoading(false);
-    }, []);
+    });
+    const [token, setToken] = useState<string | null>(
+        () => localStorage.getItem('system_admin_token')
+    );
+    const [loading] = useState(false);
+    const navigate = useNavigate();
 
     const login = (newToken: string, newAdmin: SystemAdminUser) => {
         setToken(newToken);

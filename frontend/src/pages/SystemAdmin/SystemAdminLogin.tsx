@@ -21,8 +21,9 @@ const SystemAdminLogin: React.FC = () => {
             const { data } = await systemApi.post('/system/auth/login', { email, password });
             login(data.token, { adminName: data.adminName });
             // The context handles navigation to dashboard
-        } catch (err: any) {
-            setError(err.response?.data?.error || 'Failed to authenticate system admin');
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { error?: string } } };
+            setError(error.response?.data?.error || 'Failed to authenticate system admin');
             setLoading(false);
         }
     };

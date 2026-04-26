@@ -3,8 +3,8 @@ import { useSearchParams } from 'react-router-dom';
 import { useToast } from '../components/ToastProvider';
 import api from '../api';
 import {
-    Sparkles, RotateCcw, MapPin, GraduationCap, Building, Loader2,
-    ArrowRight, CheckCircle, AlertTriangle, ChevronLeft, BookOpen, Phone, Mail, User
+    Sparkles, MapPin, GraduationCap, Loader2,
+    ArrowRight, CheckCircle, AlertTriangle, ChevronLeft, BookOpen, Phone, User
 } from 'lucide-react';
 import type { E164Number } from 'libphonenumber-js/core';
 import PhoneInput from '../components/PhoneInput';
@@ -141,8 +141,9 @@ const SelfRegistration = () => {
 
         api.get(`/register/validate?token=${tokenParam}`)
             .then(() => setStep('consent'))
-            .catch((err: any) => {
-                setInvalidReason(err.response?.data?.reason ?? 'This registration link is invalid or has expired.');
+            .catch((err: unknown) => {
+                const error = err as { response?: { data?: { reason?: string } } };
+                setInvalidReason(error.response?.data?.reason ?? 'This registration link is invalid or has expired.');
                 setStep('invalid');
             })
             .finally(() => setValidating(false));
@@ -186,7 +187,7 @@ const SelfRegistration = () => {
             setFamilies([]);
             setFormData(p => ({ ...p, familyId: '' }));
         }
-    }, [formData.regionId, formData.isMakerereStudent, registrationMode]);
+    }, [formData.regionId, formData.isMakerereStudent, registrationMode, tokenParam]);
 
     // ── Handle Course Change (clamp year of study to duration) ────────────────
     const handleCourseChange = (courseId: string, courseSuggestion: string = '') => {
@@ -275,8 +276,9 @@ const SelfRegistration = () => {
 
             localStorage.setItem(`reg_submitted_${tokenParam}`, '1');
             setStep('success');
-        } catch (err: any) {
-            showToast('error', err.response?.data?.error ?? 'Registration failed. Please try again.');
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { error?: string } } };
+            showToast('error', error.response?.data?.error ?? 'Registration failed. Please try again.');
         } finally {
             setLoading(false);
         }

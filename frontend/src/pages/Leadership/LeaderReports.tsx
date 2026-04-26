@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../api';
-import { useAuth } from '../../context/AuthContext';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { FileText, Calendar, Users, AlertCircle, Eye } from 'lucide-react';
 import { toast } from 'react-hot-toast';
@@ -24,7 +23,6 @@ interface PublishedReport {
 }
 
 const LeaderReports: React.FC = () => {
-    const { user } = useAuth();
     const [reports, setReports] = useState<PublishedReport[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -37,7 +35,8 @@ const LeaderReports: React.FC = () => {
             setLoading(true);
             const response = await api.get('/reports/published');
             setReports(response.data);
-        } catch (error: any) {
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { error?: string } } };
             console.error('Failed to fetch reports:', error);
             toast.error('Failed to load reports');
         } finally {

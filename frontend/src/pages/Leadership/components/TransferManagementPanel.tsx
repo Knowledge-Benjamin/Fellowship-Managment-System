@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowRightLeft, CheckCircle, XCircle, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
+import { ArrowRightLeft, CheckCircle, XCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import api from '../../../api';
 import { useAuth } from '../../../context/AuthContext';
@@ -56,7 +56,8 @@ const TransferManagementPanel: React.FC<Props> = ({ currentRegionId }) => {
             setReviewNote('');
             setExpandedId(null);
             fetchTransfers();
-        } catch (error: any) {
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { message?: string } } };
             toast.error(error.response?.data?.message || 'Failed to review transfer');
         } finally {
             setReviewingId(null);

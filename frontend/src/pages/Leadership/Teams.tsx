@@ -40,7 +40,8 @@ const TeamsManagement = () => {
             await api.delete(`/teams/${teamId}`);
             toast.success(`${team.name} deleted`);
             fetchTeams();
-        } catch (error: any) {
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { message?: string } } };
             toast.error(error.response?.data?.message || 'Failed to delete team');
         }
     };

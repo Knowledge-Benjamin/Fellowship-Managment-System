@@ -46,14 +46,14 @@ export const useCheckInAccess = () => {
                             hasPermissionForAny = true;
                             break; // Found one, can stop checking
                         }
-                    } catch (error) {
+                    } catch {
                         // Continue checking other events
                         continue;
                     }
                 }
 
                 setHasAccess(hasPermissionForAny);
-            } catch (error) {
+            } catch {
                 setHasAccess(false);
             } finally {
                 setLoading(false);

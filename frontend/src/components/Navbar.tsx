@@ -14,7 +14,7 @@ import { createPortal } from 'react-dom';
 interface NavLinkProps {
     to: string;
     children: React.ReactNode;
-    icon: any;
+    icon: React.ElementType;
     onClick?: () => void;
     className?: string;
 }
@@ -45,7 +45,7 @@ function NavLink({ to, children, icon: Icon, onClick, className = '' }: NavLinkP
 }
 
 const Navbar = () => {
-    const { user, logout, isAuthenticated, isManager, hasTag, hasTeamLeaderTag, hasTeamMemberTag, hasFamilyMemberTag } = useAuth();
+    const { logout, isAuthenticated, isManager, hasTag, hasTeamLeaderTag, hasTeamMemberTag, hasFamilyMemberTag } = useAuth();
     const { hasAccess: hasCheckInAccess } = useCheckInAccess();
     const { t } = useTerminology();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -71,12 +71,6 @@ const Navbar = () => {
     // Only non-FM leaders see the dispatched /leader/reports link.
     // FMs already have their own full reporting via the Management dropdown (/reports/custom).
     const isLeader = !isManager && (isRegionalHead || isFamilyHead || hasTeamLeaderTag());
-
-    // Close mobile menu on route change
-    useEffect(() => {
-        setIsMobileMenuOpen(false);
-        setIsManagementOpen(false);
-    }, [location.pathname]);
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -186,8 +180,8 @@ const Navbar = () => {
                                                             >
                                                                 <link.icon size={16} />
                                                                 <span className="flex-1">{link.label}</span>
-                                                                {(link as any).badge > 0 && (
-                                                                    <span className="ml-auto text-xs bg-amber-100 text-amber-700 font-bold px-1.5 py-0.5 rounded-full">{(link as any).badge}</span>
+                                                                {link.badge != null && link.badge > 0 && (
+                                                                    <span className="ml-auto text-xs bg-amber-100 text-amber-700 font-bold px-1.5 py-0.5 rounded-full">{link.badge}</span>
                                                                 )}
                                                             </Link>
                                                         ))}

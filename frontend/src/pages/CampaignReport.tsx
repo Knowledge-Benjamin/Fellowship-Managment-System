@@ -3,8 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api';
 import { toast } from 'react-hot-toast';
 import {
-    ArrowLeft, Users, Target, Activity, TrendingUp, UserCheck, Download, MapPin, 
-    CheckCircle2, AlertCircle, FileSpreadsheet, ChevronDown, Send
+    ArrowLeft, Users, Target, Activity, TrendingUp, UserCheck, Download, 
+    CheckCircle2, AlertCircle, FileSpreadsheet, Send
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
@@ -47,7 +47,7 @@ function pct(value: number) {
 
 // ── Sub-components ────────────────────────────────────────
 
-function StatCard({ icon: Icon, label, value, sub, accent = '#48A111' }: any) {
+function StatCard({ icon: Icon, label, value, sub, accent = '#48A111' }: { icon: React.ElementType; label: string; value: string | number; sub?: React.ReactNode; accent?: string }) {
     return (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 flex flex-col gap-3 transition-shadow hover:shadow-md hover:border-slate-300">
             <div className="flex items-center gap-3">
@@ -78,6 +78,7 @@ export default function CampaignReport() {
 
     useEffect(() => {
         fetchReport();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [id, type]);
 
     const fetchReport = async () => {
@@ -88,8 +89,7 @@ export default function CampaignReport() {
             
             const res = await api.get(endpoint);
             setReport(res.data);
-        } catch (error: any) {
-            console.error(error);
+        } catch {
             toast.error('Failed to load campaign report.');
         } finally {
             setLoading(false);
@@ -145,7 +145,7 @@ export default function CampaignReport() {
         XLSX.utils.book_append_sheet(wb, wsSubmitters, 'Submitters');
 
         // 3. Raw Contacts Sheets (Grouped by Region)
-        const regionMap = new Map<string, any[]>();
+        const regionMap = new Map<string, Array<{ id: string, contactName: string; phone: string; submittedBy: string; region: string; status: string; isDuplicate: boolean }>>();
         report.drilldowns.contacts.forEach(c => {
             const r = c.region || 'Unassigned';
             if (!regionMap.has(r)) regionMap.set(r, []);

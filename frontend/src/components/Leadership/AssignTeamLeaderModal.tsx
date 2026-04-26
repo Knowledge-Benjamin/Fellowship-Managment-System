@@ -77,8 +77,9 @@ const AssignTeamLeaderModal: React.FC<AssignTeamLeaderModalProps> = ({
             await refreshUser();
             onSuccess();
             handleClose();
-        } catch (error: any) {
-            console.error('Error assigning team leader:', error);
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { message?: string } } };
+            console.error('Error assigning team leader:', err);
             toast.error(error.response?.data?.message || 'Failed to assign team leader');
         } finally {
             setLoading(false);

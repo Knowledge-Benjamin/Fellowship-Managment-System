@@ -208,7 +208,8 @@ const FamiliesManagement = () => {
             await api.delete(`/families/${familyId}`);
             toast.success(`${family.name} deleted successfully`);
             fetchFamilies();
-        } catch (error: any) {
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { message?: string } } };
             toast.error(error.response?.data?.message || 'Failed to delete family');
         }
     };

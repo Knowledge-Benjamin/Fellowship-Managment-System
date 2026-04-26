@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import api from '../api';
 import { useToast } from '../components/ToastProvider';
 import {
@@ -49,10 +49,10 @@ interface RefData { id: string; name: string; }
 
 /* ── Edit modal ── */
 function EditMemberModal({
-    member, regions, colleges, courses, residences, onClose, onSaved,
+    member, regions, courses, residences, onClose, onSaved,
 }: {
     member: Member;
-    regions: RefData[]; colleges: RefData[]; courses: RefData[]; residences: RefData[];
+    regions: RefData[]; courses: RefData[]; residences: RefData[];
     onClose: () => void;
     onSaved: (updated: Partial<Member>) => void;
 }) {
@@ -92,8 +92,8 @@ function EditMemberModal({
             });
             showToast('success', `${form.fullName} updated`);
             onSaved(res.data.member);
-        } catch (err: any) {
-            showToast('error', err.response?.data?.message ?? 'Update failed');
+        } catch (err: unknown) {
+            showToast('error', (err as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Update failed');
         } finally {
             setSaving(false);
         }
@@ -236,7 +236,6 @@ const MemberManagement = () => {
 
     // Reference data for edit modal
     const [regions, setRegions] = useState<RefData[]>([]);
-    const [colleges, setColleges] = useState<RefData[]>([]);
     const [courses, setCourses] = useState<RefData[]>([]);
     const [residences, setResidences] = useState<RefData[]>([]);
 
@@ -264,13 +263,13 @@ const MemberManagement = () => {
             fetchData(page, searchQuery, filterRegion, filterTag, filterFamily, filterTeam);
         }, 300);
         return () => clearTimeout(to);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [searchQuery, page, filterRegion, filterTag, filterFamily, filterTeam]);
 
     useEffect(() => {
         // Load reference data once for the edit modal
         Promise.all([
             api.get('/regions').then(r => setRegions(r.data)),
-            api.get('/colleges').then(r => setColleges(r.data)),
             api.get('/courses').then(r => setCourses(r.data)),
             api.get('/residences').then(r => setResidences(r.data)),
             api.get('/families').then(r => setFamilies(r.data)),
@@ -278,18 +277,18 @@ const MemberManagement = () => {
         ]).catch(() => {});
     }, []);
 
-    const fetchEditRequests = async () => {
+    const fetchEditRequests = useCallback(async () => {
         try {
             setLoadingRequests(true);
             const res = await api.get('/members/edit-requests?status=PENDING');
             setEditRequests(res.data);
         } catch { /* silent */ }
         finally { setLoadingRequests(false); }
-    };
+    }, []);
 
     useEffect(() => {
         if (activeTab === 'editRequests') fetchEditRequests();
-    }, [activeTab]);
+    }, [activeTab, fetchEditRequests]);
 
     const handleReview = async (reqId: string, status: 'APPROVED' | 'REJECTED') => {
         try {
@@ -299,8 +298,8 @@ const MemberManagement = () => {
             setReviewNote('');
             setExpandedReqId(null);
             setEditRequests(prev => prev.filter(r => r.id !== reqId));
-        } catch (err: any) {
-            showToast('error', err.response?.data?.message ?? 'Action failed');
+        } catch (err: unknown) {
+            showToast('error', (err as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Action failed');
         } finally {
             setReviewingId(null);
         }
@@ -309,7 +308,7 @@ const MemberManagement = () => {
     const fetchData = async (currentPage = page, search = searchQuery, region = filterRegion, tag = filterTag, fam = filterFamily, team = filterTeam) => {
         try {
             setLoading(true);
-            const params: any = { page: currentPage, limit: 50 };
+            const params: Record<string, unknown> = { page: currentPage, limit: 50 };
             if (search) params.search = search;
             if (region) params.regionId = region;
             if (tag) params.tags = tag;
@@ -334,7 +333,7 @@ const MemberManagement = () => {
     const handleExport = async () => {
         try {
             setExporting(true);
-            const params: any = {};
+            const params: Record<string, unknown> = {};
             if (searchQuery) params.search = searchQuery;
             if (filterRegion) params.regionId = filterRegion;
             if (filterTag) params.tags = filterTag;
@@ -353,7 +352,7 @@ const MemberManagement = () => {
             link.click();
             link.remove();
             showToast('success', 'Export successful');
-        } catch (error) {
+        } catch {
             showToast('error', 'Export failed');
         } finally {
             setExporting(false);
@@ -370,7 +369,7 @@ const MemberManagement = () => {
 
     const handleSelectMember = (id: string) => {
         const next = new Set(selectedMembers);
-        next.has(id) ? next.delete(id) : next.add(id);
+        if (next.has(id)) { next.delete(id); } else { next.add(id); }
         setSelectedMembers(next);
     };
 
@@ -398,8 +397,8 @@ const MemberManagement = () => {
             setShowBulkTagModal(false);
             setSelectedMembers(new Set());
             fetchData();
-        } catch (error: any) {
-            showToast('error', error.response?.data?.error || 'Operation failed');
+        } catch (err: unknown) {
+            showToast('error', (err as { response?: { data?: { error?: string } } }).response?.data?.error || 'Operation failed');
         } finally {
             setSubmitting(false);
         }
@@ -627,7 +626,7 @@ const MemberManagement = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50">
-                                {members.map((member: any) => {
+                                {members.map((member: Member) => {
                                     const isSelected = selectedMembers.has(member.id);
                                     return (
                                         <tr
@@ -897,7 +896,7 @@ const MemberManagement = () => {
             {editTarget && (
                 <EditMemberModal
                     member={editTarget}
-                    regions={regions} colleges={colleges} courses={courses} residences={residences}
+                    regions={regions} courses={courses} residences={residences}
                     onClose={() => setEditTarget(null)}
                     onSaved={(updated) => {
                         setMembers(ms => ms.map(m => m.id === editTarget.id ? { ...m, ...updated } : m));

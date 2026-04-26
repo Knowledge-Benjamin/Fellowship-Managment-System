@@ -1,7 +1,7 @@
 import React from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useSystemAdminAuth } from '../context/SystemAdminAuthContext';
-import { Server, Settings, LogOut, Shield } from 'lucide-react';
+import { Server, LogOut, Shield } from 'lucide-react';
 
 const SystemAdminLayout: React.FC = () => {
     const { adminUser, logout } = useSystemAdminAuth();

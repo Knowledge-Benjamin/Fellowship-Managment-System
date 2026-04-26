@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { X, Crown, AlertCircle, Search, Users, UserCheck } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import api from '../../api';
@@ -33,11 +33,7 @@ const AssignRegionalHeadModal: React.FC<AssignRegionalHeadModalProps> = ({
     const [fetchingMembers, setFetchingMembers] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
 
-    useEffect(() => {
-        if (isOpen) fetchMembers();
-    }, [isOpen, region.id]);
-
-    const fetchMembers = async () => {
+    const fetchMembers = useCallback(async () => {
         setFetchingMembers(true);
         try {
             // regionId is enforced server-side — DB returns only members in this region
@@ -48,7 +44,11 @@ const AssignRegionalHeadModal: React.FC<AssignRegionalHeadModalProps> = ({
         } finally {
             setFetchingMembers(false);
         }
-    };
+    }, [region.id]);
+
+    useEffect(() => {
+        if (isOpen) fetchMembers();
+    }, [isOpen, region.id, fetchMembers]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -64,7 +64,8 @@ const AssignRegionalHeadModal: React.FC<AssignRegionalHeadModalProps> = ({
             await refreshUser();
             onSuccess();
             handleClose();
-        } catch (error: any) {
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { message?: string } } };
             toast.error(error.response?.data?.message || 'Failed to assign regional head');
         } finally {
             setLoading(false);

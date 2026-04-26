@@ -6,14 +6,14 @@ import { useCheckInAccess } from '../hooks/useCheckInAccess';
 import {
     Home, QrCode, Bus, Calendar, UserPlus, PieChart, LogOut,
     User, MapPin, Tag, Users, BookOpen, Heart, Link2, Mail, Target,
-    ChevronLeft, ChevronRight, Menu
+    ChevronLeft, ChevronRight
 } from 'lucide-react';
 import api from '../api';
 import logo from '../assets/logo.jpg';
 
 interface SidebarLinkProps {
     to: string;
-    icon: any;
+    icon: React.ElementType;
     label: string;
     isCollapsed: boolean;
     badgeCount?: number;
@@ -59,7 +59,7 @@ const SidebarLink = ({ to, icon: Icon, label, isCollapsed, badgeCount }: Sidebar
 };
 
 export default function Sidebar() {
-    const { user, logout, isManager, hasTag, hasTeamLeaderTag, hasTeamMemberTag, hasFamilyMemberTag } = useAuth();
+    const { logout, isManager, hasTag, hasTeamLeaderTag, hasTeamMemberTag, hasFamilyMemberTag } = useAuth();
     const { hasAccess: hasCheckInAccess } = useCheckInAccess();
     const { t } = useTerminology();
 

@@ -99,15 +99,27 @@ export const aggregateAttendanceStats = async (prisma: PrismaClient, attendances
         const hasAlumniTag = att.member?.memberTags?.some((mt: any) => mt.tag?.name === 'ALUMNI');
         if (hasAlumniTag) return;
 
-        const currentYear = computeCurrentYearFromPeriods(
+        // A member is non-Makerere if they have a classification tag OR are in the
+        // Non-Resident region (which is assigned to all non-campus members).
+        // This handles members registered via the internal form without a tag.
+        const isNonMakerere = att.member?.memberTags?.some(
+            (mt: any) => mt.tag?.name === 'OTHER_CAMPUS_STUDENT' || mt.tag?.name === 'OTHER'
+        ) || att.member?.region?.name === 'Non-Resident';
+
+        // Only compute a year for members who have a course assigned.
+        // Members without a course (e.g. OTHER, Non-Resident) have no meaningful
+        // academic year — guard against spuriously-stored initialYearOfStudy = 1.
+        const hasCourse = !!att.member?.courseRelation;
+
+        const currentYear = hasCourse ? computeCurrentYearFromPeriods(
             {
                 registrationDate: att.member?.createdAt,
                 initialYearOfStudy: att.member?.initialYearOfStudy,
                 initialSemester: att.member?.initialSemester
             },
             allPeriods,
-            new Date() // Use actual current time for year progressing calculation
-        );
+            new Date()
+        ) : null;
 
         let yearKey = 'Unknown';
         if (currentYear && currentYear <= 4) {
@@ -119,11 +131,6 @@ export const aggregateAttendanceStats = async (prisma: PrismaClient, attendances
         yearOfStudyBreakdown[yearKey]++;
 
         // Split into Makerere vs Non-Makerere
-        // Based on findings, use the OTHER_CAMPUS_STUDENT and OTHER classification tags rather than courseId
-        const isNonMakerere = att.member?.memberTags?.some(
-            (mt: any) => mt.tag?.name === 'OTHER_CAMPUS_STUDENT' || mt.tag?.name === 'OTHER'
-        );
-
         if (isNonMakerere) {
             nonMakerereYearBreakdown[yearKey]++;
         } else {
@@ -201,15 +208,16 @@ export const aggregateAttendanceStats = async (prisma: PrismaClient, attendances
     const memberTypeBreakdown = attendances.reduce(
         (acc: Record<string, number>, curr: any) => {
             const tagNames = (curr.member?.memberTags || []).map((mt: any) => mt.tag?.name);
-            const isNonMakerere = tagNames.includes('OTHER_CAMPUS_STUDENT') || tagNames.includes('OTHER');
-            const isMakerere = !isNonMakerere;
             const isAlumni = tagNames.includes('ALUMNI');
+            // Non-Makerere: classification tag OR Non-Resident region
+            const isNonMakerere = tagNames.includes('OTHER_CAMPUS_STUDENT') || tagNames.includes('OTHER')
+                || curr.member?.region?.name === 'Non-Resident';
             if (isAlumni) {
                 acc['Alumni'] = (acc['Alumni'] || 0) + 1;
-            } else if (isMakerere) {
-                acc['Makerere Students'] = (acc['Makerere Students'] || 0) + 1;
-            } else {
+            } else if (isNonMakerere) {
                 acc['Non-Makerere / Other'] = (acc['Non-Makerere / Other'] || 0) + 1;
+            } else {
+                acc['Makerere Students'] = (acc['Makerere Students'] || 0) + 1;
             }
             return acc;
         },

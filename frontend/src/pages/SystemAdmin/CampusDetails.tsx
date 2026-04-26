@@ -34,7 +34,7 @@ const CampusDetails: React.FC = () => {
             try {
                 // Fetch all campuses and manually find our campus since there's no single-campus GET explicitly
                 const { data } = await systemApi.get('/system/campuses');
-                const campus = data.find((c: any) => c.id === id);
+                const campus = data.find((c: { id: string; name: string; isActive: boolean; subdomain: string; config?: { terminology?: Partial<CampusTerminologies> } }) => c.id === id);
                 if (!campus) {
                     setError('Campus not found.');
                     return;
@@ -51,7 +51,7 @@ const CampusDetails: React.FC = () => {
                     MinistryTeam: existingTerminology.MinistryTeam || 'Ministry Team',
                     FellowshipManager: existingTerminology.FellowshipManager || 'Fellowship Manager',
                 });
-            } catch (err: any) {
+            } catch {
                 setError('Failed to fetch campus data.');
             } finally {
                 setLoading(false);
@@ -75,8 +75,9 @@ const CampusDetails: React.FC = () => {
             });
             setSuccess(true);
             setTimeout(() => setSuccess(false), 3000);
-        } catch (err: any) {
-            setError(err.response?.data?.error || 'Failed to update campus configuration.');
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { error?: string } } };
+            setError(error.response?.data?.error || 'Failed to update campus configuration.');
         } finally {
             setSaving(false);
         }

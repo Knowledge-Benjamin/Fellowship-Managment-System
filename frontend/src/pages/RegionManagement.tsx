@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
 import { useToast } from '../components/ToastProvider';
-import { MapPin, Plus, Trash2, Users, Search, AlertCircle, Loader2 } from 'lucide-react';
+import { MapPin, Plus, Trash2, Users, Search, Loader2 } from 'lucide-react';
 
 interface Region {
     id: string;
@@ -22,6 +22,7 @@ const RegionManagement = () => {
 
     useEffect(() => {
         fetchRegions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const fetchRegions = async () => {
@@ -48,7 +49,8 @@ const RegionManagement = () => {
             setNewRegionName('');
             setIsAdding(false);
             showToast('success', 'Region added successfully');
-        } catch (error: any) {
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { error?: string } } };
             console.error('Add region error:', error);
             const errorMessage = error.response?.data?.error || 'Failed to add region';
             showToast('error', errorMessage);
@@ -71,7 +73,8 @@ const RegionManagement = () => {
             await api.delete(`/regions/${id}`);
             setRegions(regions.filter(r => r.id !== id));
             showToast('success', 'Region deleted successfully');
-        } catch (error: any) {
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { error?: string } } };
             console.error('Delete region error:', error);
             const errorMessage = error.response?.data?.error || 'Failed to delete region';
             showToast('error', errorMessage);

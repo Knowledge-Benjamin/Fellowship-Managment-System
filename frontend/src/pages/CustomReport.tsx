@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
-import { ArrowLeft, Filter, Users, TrendingUp, UserCheck, PieChart as PieChartIcon, MapPin, Download, ChevronDown, Heart, Tag } from 'lucide-react';
+import { ArrowLeft, Filter, Users, TrendingUp, UserCheck, PieChart as PieChartIcon, Download, ChevronDown, Heart, Tag } from 'lucide-react';
 import {
     LineChart,
     Line,
@@ -85,7 +85,6 @@ const CustomReport = () => {
 
         // Validate date range
         const start = new Date(startDate);
-        const end = new Date(endDate);
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
@@ -131,11 +130,11 @@ const CustomReport = () => {
         setEndDate(end.toISOString().split('T')[0]);
     };
 
-    // Trigger fetch when filters change
     useEffect(() => {
         if (startDate && endDate) {
             fetchReport();
         }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [startDate, endDate, type, regionId]);
 
     const handleExportPDF = async () => {

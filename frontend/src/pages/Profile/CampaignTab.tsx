@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../api';
-import { Target, UserPlus, Loader2, CheckCircle2, Clock, Plus, Flag, Trash2, Calendar, AlertCircle, Pencil, X, Check, MessageCircle } from 'lucide-react';
+import { Target, UserPlus, Loader2, CheckCircle2, Plus, Flag, Trash2, Calendar, AlertCircle, Pencil, X, Check, MessageCircle } from 'lucide-react';
 import { useToast } from '../../components/ToastProvider';
 import ContactChatModal from '../../components/Campaigns/ContactChatModal';
 
 export default function CampaignTab() {
     const { showToast } = useToast();
     const [loading, setLoading] = useState(true);
-    const [campaigns, setCampaigns] = useState<any[]>([]);
-    const [pledges, setPledges] = useState<any[]>([]);
-    const [events, setEvents] = useState<any[]>([]);
+    const [campaigns, setCampaigns] = useState<Array<{ id: string; title: string; description?: string; minPledges: number }>>([]);
+    const [pledges, setPledges] = useState<Array<{ id: string; name: string; email: string; phone1?: string; phone2?: string; event: { name: string; date: string }; status: string; createdAt: string; _count?: { messages: number } }>>([]);
+    const [events, setEvents] = useState<Array<{ id: string; name: string; status: string; date: string }>>([]);
     const [selectedEventId, setSelectedEventId] = useState<string>('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [editingPledge, setEditingPledge] = useState<{ id: string; name: string; email: string; phone1: string; phone2: string } | null>(null);
@@ -34,6 +34,7 @@ export default function CampaignTab() {
 
     useEffect(() => {
         fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const fetchData = async () => {
@@ -47,7 +48,7 @@ export default function CampaignTab() {
             setCampaigns(campRes.data);
             setPledges(pledgeRes.data);
 
-            const upcomingEvents = eventsRes.data.filter((e: any) => e.status === 'UPCOMING' || e.status === 'ONGOING');
+            const upcomingEvents = eventsRes.data.filter((e: { status: string; id: string; name: string; date: string }) => e.status === 'UPCOMING' || e.status === 'ONGOING');
             setEvents(upcomingEvents);
             if (upcomingEvents.length > 0) {
                 setSelectedEventId(upcomingEvents[0].id);
@@ -108,7 +109,8 @@ export default function CampaignTab() {
             // Refresh pledges
             const pledgeRes = await api.get('/bring-one/my-pledges');
             setPledges(pledgeRes.data);
-        } catch (error: any) {
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { message?: string } } };
             console.error('Submission error:', error);
             showToast('error', error.response?.data?.message || 'Failed to submit pledges');
         } finally {
@@ -129,7 +131,8 @@ export default function CampaignTab() {
             setEditingPledge(null);
             const pledgeRes = await api.get('/bring-one/my-pledges');
             setPledges(pledgeRes.data);
-        } catch (error: any) {
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { message?: string } } };
             showToast('error', error.response?.data?.message || 'Failed to update pledge');
         }
     };
@@ -344,7 +347,7 @@ export default function CampaignTab() {
                                                                     title="Chat with Admin"
                                                                 >
                                                                     <MessageCircle size={16} />
-                                                                    {pledge._count?.messages > 0 && (
+                                                                    {(pledge._count?.messages || 0) > 0 && (
                                                                         <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
                                                                     )}
                                                                 </button>

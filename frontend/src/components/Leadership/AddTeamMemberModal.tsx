@@ -70,8 +70,9 @@ const AddTeamMemberModal: React.FC<AddTeamMemberModalProps> = ({
             toast.success(`${selectedMember?.fullName} added to ${team.name}`);
             onSuccess();
             handleClose();
-        } catch (error: any) {
-            console.error('Error adding team member:', error);
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { message?: string } } };
+            console.error('Error adding team member:', err);
             toast.error(error.response?.data?.message || 'Failed to add member');
         } finally {
             setLoading(false);

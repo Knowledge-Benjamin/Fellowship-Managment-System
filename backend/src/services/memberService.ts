@@ -105,7 +105,7 @@ export async function createMemberRecord(
     const registrationMode = input.registrationMode ?? 'NEW_MEMBER';
 
     // 1. Pre-generate credentials (outside-of-row writes, safe to do inline)
-    const fellowshipNumber = await generateFellowshipNumber();
+    const fellowshipNumber = await generateFellowshipNumber(tx);
     
     // Generate secure 8-character random password
     const temporaryPassword = randomBytes(4).toString('hex');
@@ -169,7 +169,7 @@ export async function createMemberRecord(
 
     // 5. Finalist / alumni tag evaluation (requires course + year + semester)
     if (input.courseId && input.initialYearOfStudy && input.initialSemester) {
-        await updateMemberTags(tx as any, member.id, member.id, tx);
+        await updateMemberTags(tx as unknown as import('@prisma/client').PrismaClient, member.id, member.id, tx);
     }
 
     // 6. Welcome email is queued by the caller AFTER the transaction commits

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
 import { useNavigate } from 'react-router-dom';
-import { Target, Users, Loader2, Calendar, Plus, Flag, Download, FileSpreadsheet, Search, CheckCircle2, AlertCircle, Phone, FileText, Edit2, Trash2, AlertTriangle, PieChart, MessageCircle } from 'lucide-react';
+import { Target, Users, Loader2, Plus, Flag, FileSpreadsheet, CheckCircle2, Phone, FileText, Edit2, Trash2, AlertTriangle, PieChart, MessageCircle } from 'lucide-react';
 import { useToast } from '../components/ToastProvider';
 import ContactChatModal from '../components/Campaigns/ContactChatModal';
 
@@ -12,16 +12,16 @@ export default function CampaignManagement() {
     const [loading, setLoading] = useState(true);
 
     // --- Data States ---
-    const [events, setEvents] = useState<any[]>([]);
+    const [events, setEvents] = useState<Array<Record<string, unknown> & { id: string; name: string; date: string; status?: string }>>([]);
     
     // Mobilization Data
-    const [mobCampaigns, setMobCampaigns] = useState<any[]>([]);
-    const [selectedMobCampaign, setSelectedMobCampaign] = useState<any | null>(null);
+    const [mobCampaigns, setMobCampaigns] = useState<Array<Record<string, unknown> & { id: string; title: string; status: string; _count?: { contacts: number } }>>([]);
+    const [selectedMobCampaign, setSelectedMobCampaign] = useState<Record<string, unknown> & { id: string; title: string; submissionDeadline: string; contacts?: Array<Record<string, unknown> & { id: string; name: string; isDuplicate?: boolean; duplicateMatches?: Array<{id: string, name: string}>; phone?: string; email?: string; transportNeed?: string; location?: string; relationship?: string; callStatus?: string; notes?: string; calledBy?: { fullName: string }; submittedBy?: { fullName: string; fellowshipNumber?: string } }> } | null>(null);
 
     // Bring 1 Data
-    const [b1GlobalCampaign, setB1GlobalCampaign] = useState<any | null>(null);
-    const [b1EventPledges, setB1EventPledges] = useState<any[]>([]);
-    const [b1Stats, setB1Stats] = useState<any>(null);
+    const [b1GlobalCampaign, setB1GlobalCampaign] = useState<Record<string, unknown> | null>(null);
+    const [b1EventPledges, setB1EventPledges] = useState<Array<Record<string, unknown> & { id: string; name: string; email?: string; phone1?: string; status?: string; matchedBy?: string; inviter?: { fullName: string; fellowshipNumber?: string } }>>([]);
+    const [b1Stats, setB1Stats] = useState<{ totalPledges: number; uniqueInviters: number; joinedCount: number; attendedCount: number } | null>(null);
     const [selectedB1EventId, setSelectedB1EventId] = useState<string>('');
 
     // Pagination States
@@ -31,12 +31,12 @@ export default function CampaignManagement() {
 
     // Form States
     const [showCreateMobModal, setShowCreateMobModal] = useState(false);
-    const [newMobData, setNewMobData] = useState({ eventId: '', title: '', description: '', submissionDeadline: '', maxContacts: 20 });
-    const [editMobData, setEditMobData] = useState<any | null>(null);
+    const [newMobData, setNewMobData] = useState<{ eventId: string; title: string; description: string; submissionDeadline: string; maxContacts: number; manualTarget?: number | null }>({ eventId: '', title: '', description: '', submissionDeadline: '', maxContacts: 20 });
+    const [editMobData, setEditMobData] = useState<Record<string, unknown> & { id: string; title: string; description: string; submissionDeadline: string; maxContacts: number; manualTarget?: number | null } | null>(null);
 
     const [showCreateB1Modal, setShowCreateB1Modal] = useState(false);
-    const [newB1Data, setNewB1Data] = useState({ title: '', description: '', minPledges: 1 });
-    const [editB1Data, setEditB1Data] = useState<any | null>(null);
+    const [newB1Data, setNewB1Data] = useState<{ title: string; description: string; minPledges: number; manualTarget?: number | null }>({ title: '', description: '', minPledges: 1 });
+    const [editB1Data, setEditB1Data] = useState<Record<string, unknown> & { id: string; title: string; description: string; minPledges: number; manualTarget?: number | null } | null>(null);
 
     // Chat State
     const [chatEntity, setChatEntity] = useState<{ id: string; name: string; type: 'BRING_ONE' | 'MOBILIZATION' } | null>(null);
@@ -69,12 +69,13 @@ export default function CampaignManagement() {
                 fetchBring1Pledges(selectedB1EventId);
             }
         }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeTab]);
 
     const fetchInitialData = async () => {
         try {
             const evRes = await api.get('/events');
-            const validEvents = evRes.data.filter((e: any) => e.status !== 'PAST');
+            const validEvents = evRes.data.filter((e: { status: string }) => e.status !== 'PAST');
             setEvents(validEvents);
             if (validEvents.length > 0) {
                 setNewMobData(prev => ({ ...prev, eventId: validEvents[0].id }));
@@ -99,7 +100,7 @@ export default function CampaignManagement() {
                 // Reload full detail for currently selected campaign
                 loadMobCampaignDetail(selectedMobCampaign.id);
             }
-        } catch (error) {
+        } catch {
             showToast('error', 'Failed to load mobilization campaigns');
         } finally {
             setLoading(false);
@@ -109,14 +110,15 @@ export default function CampaignManagement() {
     const handleCreateMobCampaign = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const res = await api.post('/campaigns', {
+            await api.post('/campaigns', {
                 ...newMobData,
                 submissionDeadline: new Date(newMobData.submissionDeadline).toISOString()
             });
             showToast('success', 'Mobilization campaign created');
             setShowCreateMobModal(false);
             fetchMobCampaigns();
-        } catch (error: any) {
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { message?: string } } };
             showToast('error', error.response?.data?.message || 'Failed to create campaign');
         }
     };
@@ -126,7 +128,7 @@ export default function CampaignManagement() {
             const res = await api.get(`/campaigns/${id}?adminView=true`);
             setSelectedMobCampaign(res.data);
             setMobCurrentPage(1); // Reset pagination on new campaign load
-        } catch (error) {
+        } catch {
             showToast('error', 'Failed to load campaign detail');
         }
     };
@@ -134,7 +136,7 @@ export default function CampaignManagement() {
     const jumpToMobContact = (contactId: string) => {
         if (!selectedMobCampaign || !selectedMobCampaign.contacts) return;
         
-        const index = selectedMobCampaign.contacts.findIndex((c: any) => c.id === contactId);
+        const index = selectedMobCampaign.contacts.findIndex((c: { id: string }) => c.id === contactId);
         if (index !== -1) {
             const targetPage = Math.floor(index / PAGE_SIZE) + 1;
             setMobCurrentPage(targetPage);
@@ -154,40 +156,45 @@ export default function CampaignManagement() {
 
     const handleUpdateMobCampaign = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!editMobData) return;
         try {
             await api.patch(`/campaigns/${editMobData.id}`, {
                 title: editMobData.title,
                 description: editMobData.description,
                 submissionDeadline: new Date(editMobData.submissionDeadline).toISOString(),
                 maxContacts: Number(editMobData.maxContacts),
-                manualTarget: editMobData.manualTarget === "" || editMobData.manualTarget === null ? null : Number(editMobData.manualTarget)
+                manualTarget: String(editMobData.manualTarget) === "" || editMobData.manualTarget === null ? null : Number(editMobData.manualTarget)
             });
             showToast('success', 'Mobilization campaign updated');
             setEditMobData(null);
             fetchMobCampaigns();
-        } catch (error: any) {
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { message?: string } } };
             showToast('error', error.response?.data?.message || 'Failed to update campaign');
         }
     };
 
     const handleDeleteMobCampaign = async () => {
+        if (!selectedMobCampaign) return;
         if (!window.confirm('Are you sure you want to delete this campaign? All contacts will be permanently lost.')) return;
         try {
             await api.delete(`/campaigns/${selectedMobCampaign.id}`);
             showToast('success', 'Campaign deleted');
             setSelectedMobCampaign(null);
             fetchMobCampaigns();
-        } catch (error: any) {
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { message?: string } } };
             showToast('error', error.response?.data?.message || 'Failed to delete campaign');
         }
     };
 
     const handleUpdateCallStatus = async (contactId: string, status: string, notes?: string) => {
+        if (!selectedMobCampaign) return;
         try {
             await api.patch(`/campaigns/${selectedMobCampaign.id}/contacts/${contactId}`, { callStatus: status, notes });
             showToast('success', 'Status updated');
             loadMobCampaignDetail(selectedMobCampaign.id); // Reload full detail to refresh contact rows
-        } catch (error) {
+        } catch {
             showToast('error', 'Failed to update status');
         }
     };
@@ -243,29 +250,33 @@ export default function CampaignManagement() {
             setShowCreateB1Modal(false);
             setNewB1Data({ title: '', description: '', minPledges: 1 });
             fetchBring1Global();
-        } catch (error: any) {
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { message?: string } } };
             showToast('error', error.response?.data?.message || 'Failed to create campaign');
         }
     };
 
     const handleUpdateBring1Global = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!editB1Data) return;
         try {
             await api.patch(`/bring-one/campaigns/${editB1Data.id}`, {
                 title: editB1Data.title,
                 description: editB1Data.description,
                 minPledges: Number(editB1Data.minPledges),
-                manualTarget: editB1Data.manualTarget === "" || editB1Data.manualTarget === null ? null : Number(editB1Data.manualTarget)
+                manualTarget: String(editB1Data.manualTarget) === "" || editB1Data.manualTarget === null ? null : Number(editB1Data.manualTarget)
             });
             showToast('success', 'Bring 1 campaign updated');
             setEditB1Data(null);
             fetchBring1Global();
-        } catch (error: any) {
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { message?: string } } };
             showToast('error', error.response?.data?.message || 'Failed to update campaign');
         }
     };
 
     const handleDeleteBring1Global = async () => {
+        if (!b1GlobalCampaign) return;
         if (!window.confirm('Are you sure you want to delete the current Bring 1 configuration? All related pledges will be permanently deleted.')) return;
         try {
             await api.delete(`/bring-one/campaigns/${b1GlobalCampaign.id}`);
@@ -274,7 +285,8 @@ export default function CampaignManagement() {
             setB1EventPledges([]);
             setB1Stats(null);
             fetchBring1Global();
-        } catch (error: any) {
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { message?: string } } };
             showToast('error', error.response?.data?.message || 'Failed to delete Bring 1 campaign');
         }
     };
@@ -321,7 +333,7 @@ export default function CampaignManagement() {
                         ) : (
                             <>
                                 <button 
-                                    onClick={() => setEditB1Data(b1GlobalCampaign)}
+                                    onClick={() => setEditB1Data(b1GlobalCampaign as NonNullable<typeof editB1Data>)}
                                     className="px-4 py-2 bg-white border border-slate-200 hover:border-slate-300 text-slate-700 rounded-lg flex items-center gap-2 font-bold shadow-sm transition-colors"
                                 >
                                     <Edit2 size={18} /> Edit Config
@@ -371,7 +383,7 @@ export default function CampaignManagement() {
                             Campaigns
                         </div>
                         <div className="divide-y divide-slate-100 max-h-[600px] overflow-y-auto">
-                            {mobCampaigns.map((camp: any) => (
+                            {mobCampaigns.map((camp) => (
                                 <button
                                     key={camp.id}
                                     onClick={() => loadMobCampaignDetail(camp.id)}
@@ -405,7 +417,7 @@ export default function CampaignManagement() {
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <button 
-                                            onClick={() => setEditMobData(selectedMobCampaign)}
+                                            onClick={() => setEditMobData(selectedMobCampaign as NonNullable<typeof editMobData>)}
                                             className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 hover:border-slate-300 text-slate-600 rounded-lg shadow-sm font-semibold transition-all"
                                         >
                                             <Edit2 size={18} />
@@ -445,7 +457,7 @@ export default function CampaignManagement() {
                                             {selectedMobCampaign.contacts?.length === 0 ? (
                                                 <tr><td colSpan={5} className="p-8 text-center text-slate-400">No contacts submitted yet.</td></tr>
                                             ) : (
-                                                selectedMobCampaign.contacts?.slice((mobCurrentPage - 1) * PAGE_SIZE, mobCurrentPage * PAGE_SIZE).map((contact: any) => (
+                                                selectedMobCampaign.contacts?.slice((mobCurrentPage - 1) * PAGE_SIZE, mobCurrentPage * PAGE_SIZE).map((contact) => (
                                                     <tr id={`contact-row-${contact.id}`} key={contact.id} className={`${contact.isDuplicate ? 'bg-amber-50/40' : 'hover:bg-slate-50/50'}`}>
                                                         <td className="px-6 py-4">
                                                             <div className="font-bold text-slate-800">{contact.submittedBy?.fullName || 'Unknown'}</div>
@@ -459,7 +471,7 @@ export default function CampaignManagement() {
                                                                         <span className="text-[10px] font-bold px-1.5 py-0.5 bg-amber-100 text-amber-700 border border-amber-200 rounded-full flex items-center gap-0.5">
                                                                             <AlertTriangle size={9} /> DUPLICATE OF:
                                                                         </span>
-                                                                        {contact.duplicateMatches?.map((match: any) => (
+                                                                        {contact.duplicateMatches?.map((match) => (
                                                                             <button 
                                                                                 key={match.id}
                                                                                 onClick={() => jumpToMobContact(match.id)}
@@ -519,7 +531,7 @@ export default function CampaignManagement() {
                                                                     onClick={() => setChatEntity({ id: contact.id, name: contact.name, type: 'MOBILIZATION' })}
                                                                 >
                                                                     <MessageCircle size={16} />
-                                                                    {(contact as any)._count?.messages > 0 && (
+                                                                    {(((contact as unknown) as { _count?: { messages: number } })._count?.messages ?? 0) > 0 && (
                                                                         <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
                                                                     )}
                                                                 </button>
@@ -527,7 +539,7 @@ export default function CampaignManagement() {
                                                                     className="text-indigo-600 hover:bg-indigo-50 p-1.5 rounded"
                                                                     onClick={() => {
                                                                         const notes = prompt("Enter notes for " + contact.name, contact.notes || "");
-                                                                        if (notes !== null) handleUpdateCallStatus(contact.id, contact.callStatus, notes);
+                                                                        if (notes !== null) handleUpdateCallStatus(contact.id, contact.callStatus || '', notes);
                                                                     }}
                                                                 >
                                                                     <FileText size={16} />
@@ -540,14 +552,14 @@ export default function CampaignManagement() {
                                         </tbody>
                                     </table>
                                 </div>
-                                {selectedMobCampaign.contacts?.length > PAGE_SIZE && (
+                                {selectedMobCampaign.contacts && selectedMobCampaign.contacts.length > PAGE_SIZE && (
                                     <div className="flex justify-between items-center px-6 py-4 border-t border-slate-100 bg-slate-50">
                                         <span className="text-sm text-slate-500 font-medium">
                                             Showing {(mobCurrentPage - 1) * PAGE_SIZE + 1} to {Math.min(mobCurrentPage * PAGE_SIZE, selectedMobCampaign.contacts.length)} of {selectedMobCampaign.contacts.length}
                                         </span>
                                         <div className="flex gap-2">
                                             <button disabled={mobCurrentPage === 1} onClick={() => setMobCurrentPage(p => p - 1)} className="px-3 py-1.5 bg-white border border-slate-200 font-bold text-slate-600 rounded-lg hover:bg-slate-50 disabled:opacity-50 transition-colors">Prev</button>
-                                            <button disabled={mobCurrentPage * PAGE_SIZE >= selectedMobCampaign.contacts.length} onClick={() => setMobCurrentPage(p => p + 1)} className="px-3 py-1.5 bg-white border border-slate-200 font-bold text-slate-600 rounded-lg hover:bg-slate-50 disabled:opacity-50 transition-colors">Next</button>
+                                            <button disabled={selectedMobCampaign.contacts && mobCurrentPage * PAGE_SIZE >= selectedMobCampaign.contacts.length} onClick={() => setMobCurrentPage(p => p + 1)} className="px-3 py-1.5 bg-white border border-slate-200 font-bold text-slate-600 rounded-lg hover:bg-slate-50 disabled:opacity-50 transition-colors">Next</button>
                                         </div>
                                     </div>
                                 )}
@@ -671,7 +683,7 @@ export default function CampaignManagement() {
                                                             onClick={() => setChatEntity({ id: pledge.id, name: pledge.name, type: 'BRING_ONE' })}
                                                         >
                                                             <MessageCircle size={16} />
-                                                            {(pledge as any)._count?.messages > 0 && (
+                                                            {(((pledge as unknown) as { _count?: { messages: number } })._count?.messages ?? 0) > 0 && (
                                                                 <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
                                                             )}
                                                         </button>
@@ -750,7 +762,7 @@ export default function CampaignManagement() {
                                         type="number" min="1" placeholder="Auto-calculated if empty"
                                         onChange={e => {
                                             const val = e.target.value;
-                                            setNewMobData(prev => ({ ...prev, manualTarget: val ? parseInt(val) : '' as any }));
+                                            setNewMobData(prev => ({ ...prev, manualTarget: val ? parseInt(val) : null }));
                                         }}
                                         className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-indigo-500"
                                     />
@@ -818,7 +830,7 @@ export default function CampaignManagement() {
                                     type="number" min="1" placeholder="Auto-calculated if empty"
                                     onChange={e => {
                                         const val = e.target.value;
-                                        setNewB1Data(prev => ({ ...prev, manualTarget: val ? parseInt(val) : '' as any }));
+                                        setNewB1Data(prev => ({ ...prev, manualTarget: val ? parseInt(val) : null }));
                                     }}
                                     className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-[#48A111]"
                                 />
@@ -826,7 +838,7 @@ export default function CampaignManagement() {
                             </div>
                             
                             <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl flex gap-3 text-amber-800 text-sm mt-4">
-                                <AlertCircle size={20} className="shrink-0 text-amber-500 mt-0.5" />
+                                <AlertTriangle size={15} className="shrink-0 text-amber-500 mt-0.5" />
                                 <p><strong>Note:</strong> Creating this campaign will automatically set it as the active Bring 1 Campaign ecosystem-wide. Previous campaigns will be deactivated.</p>
                             </div>
 
@@ -881,7 +893,7 @@ export default function CampaignManagement() {
                                     <input 
                                         type="number" required min="1"
                                         value={editMobData.maxContacts}
-                                        onChange={e => setEditMobData({...editMobData, maxContacts: e.target.value})}
+                                        onChange={e => setEditMobData({...editMobData, maxContacts: Number(e.target.value)})}
                                         className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:border-indigo-600 transition-colors"
                                     />
                                 </div>
@@ -950,7 +962,7 @@ export default function CampaignManagement() {
                                     <input 
                                         type="number" required min="1"
                                         value={editB1Data.minPledges}
-                                        onChange={e => setEditB1Data({...editB1Data, minPledges: e.target.value})}
+                                        onChange={e => setEditB1Data({...editB1Data, minPledges: Number(e.target.value)})}
                                         className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:border-[#48A111] transition-colors"
                                     />
                                 </div>
@@ -995,7 +1007,7 @@ export default function CampaignManagement() {
                     currentUserId={currentUserId}
                     onClose={() => setChatEntity(null)} 
                     onMessagesRead={() => {
-                        if (activeTab === 'mobilization') loadMobCampaignDetail(selectedMobCampaign.id);
+                        if (activeTab === 'mobilization' && selectedMobCampaign) loadMobCampaignDetail(selectedMobCampaign.id);
                         if (activeTab === 'bring1') fetchBring1Pledges(selectedB1EventId);
                     }}
                 />

@@ -1,14 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
     Search,
     Filter,
-    Calendar,
     User,
-    Phone,
-    Mail,
-    CheckCircle,
-    Clock,
-    XCircle,
     Heart,
     ChevronDown,
     Loader2
@@ -49,11 +43,9 @@ const SalvationManagement = () => {
     const [statusFilter, setStatusFilter] = useState<string>('ALL');
     const [typeFilter, setTypeFilter] = useState<string>('ALL');
 
-    useEffect(() => {
-        fetchSalvations();
-    }, []);
 
-    const fetchSalvations = async () => {
+
+    const fetchSalvations = useCallback(async () => {
         try {
             const response = await api.get('/salvations');
             setSalvations(response.data);
@@ -63,7 +55,11 @@ const SalvationManagement = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [showToast]);
+
+    useEffect(() => {
+        fetchSalvations();
+    }, [fetchSalvations]);
 
     const handleStatusUpdate = async (id: string, newStatus: string) => {
         try {

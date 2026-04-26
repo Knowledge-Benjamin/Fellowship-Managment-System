@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, Calendar, MapPin, Mail, Phone, Hash, Loader2, User2, AlertCircle } from 'lucide-react';
+import { Users, Calendar, MapPin, Mail, Phone, Loader2, User2, AlertCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { formatDistanceToNow } from 'date-fns';
@@ -51,6 +51,7 @@ const FamilyHeadDashboard = () => {
 
     useEffect(() => {
         fetchFamilyData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const fetchFamilyData = async () => {
@@ -74,7 +75,8 @@ const FamilyHeadDashboard = () => {
                 // Not assigned to any family
                 setError('You are not currently assigned to any family');
             }
-        } catch (error: any) {
+        } catch (err: unknown) {
+            const error = err as { response?: { status?: number } };
             console.error('Failed to fetch family:', error);
             if (error.response?.status === 404) {
                 setError('You are not assigned as a family head');

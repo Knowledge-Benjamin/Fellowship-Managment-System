@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+/* eslint-disable react-refresh/only-export-components */
+import React, { createContext, useContext, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
@@ -37,23 +38,23 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const [user, setUser] = useState<User | null>(null);
-    const [token, setToken] = useState<string | null>(null);
-    const [loading, setLoading] = useState(true); // Start as loading
-    const navigate = useNavigate();
-
-    useEffect(() => {
-        const storedToken = localStorage.getItem('token');
-        const storedUser = localStorage.getItem('user');
-
-        if (storedToken && storedUser) {
-            setToken(storedToken);
-            setUser(JSON.parse(storedUser));
-            api.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+    const [user, setUser] = useState<User | null>(() => {
+        try {
+            const stored = localStorage.getItem('user');
+            return stored ? (JSON.parse(stored) as User) : null;
+        } catch {
+            return null;
         }
-
-        setLoading(false); // Done checking localStorage
-    }, []);
+    });
+    const [token, setToken] = useState<string | null>(() => {
+        const stored = localStorage.getItem('token');
+        if (stored) {
+            api.defaults.headers.common['Authorization'] = `Bearer ${stored}`;
+        }
+        return stored;
+    });
+    const [loading] = useState(false);
+    const navigate = useNavigate();
 
     const login = (newToken: string, newUser: User) => {
         setToken(newToken);

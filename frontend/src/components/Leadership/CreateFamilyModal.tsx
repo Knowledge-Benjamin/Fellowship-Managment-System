@@ -30,7 +30,7 @@ const CreateFamilyModal: React.FC<CreateFamilyModalProps> = ({ isOpen, onClose, 
         try {
             const response = await api.get('/regions');
             setRegions(response.data);
-        } catch (error) {
+        } catch {
             toast.error('Failed to load regions');
         } finally {
             setFetchingRegions(false);
@@ -48,7 +48,8 @@ const CreateFamilyModal: React.FC<CreateFamilyModalProps> = ({ isOpen, onClose, 
             toast.success(`${name} created successfully!`);
             onSuccess();
             handleClose();
-        } catch (error: any) {
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { message?: string } } };
             toast.error(error.response?.data?.message || 'Failed to create family');
         } finally {
             setLoading(false);

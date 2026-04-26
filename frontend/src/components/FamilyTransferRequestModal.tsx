@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { X, Loader2, Users, Send } from 'lucide-react';
 import api from '../api';
 import { useToast } from './ToastProvider';
@@ -24,25 +24,25 @@ const FamilyTransferRequestModal: React.FC<FamilyTransferRequestModalProps> = ({
     const [reason, setReason] = useState('');
     const [submitting, setSubmitting] = useState(false);
 
+    const fetchFamilies = useCallback(async () => {
+        try {
+            setLoadingFamilies(true);
+            const res = await api.get('/families');
+            setFamilies(res.data);
+        } catch {
+            showToast('error', 'Failed to load families.');
+        } finally {
+            setLoadingFamilies(false);
+        }
+    }, [showToast]);
+
     useEffect(() => {
         if (isOpen) {
             fetchFamilies();
             setSelectedFamilyId('');
             setReason('');
         }
-    }, [isOpen]);
-
-    const fetchFamilies = async () => {
-        try {
-            setLoadingFamilies(true);
-            const res = await api.get('/families');
-            setFamilies(res.data);
-        } catch (error) {
-            showToast('error', 'Failed to load families.');
-        } finally {
-            setLoadingFamilies(false);
-        }
-    };
+    }, [isOpen, fetchFamilies]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -60,7 +60,8 @@ const FamilyTransferRequestModal: React.FC<FamilyTransferRequestModalProps> = ({
             });
             showToast('success', 'Family transfer request submitted successfully. Awaiting approval.');
             onClose();
-        } catch (error: any) {
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { message?: string } } };
             showToast('error', error.response?.data?.message || 'Failed to submit transfer request.');
         } finally {
             setSubmitting(false);

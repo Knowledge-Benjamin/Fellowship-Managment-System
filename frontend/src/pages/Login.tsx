@@ -42,13 +42,13 @@ const Login = () => {
     // Audio context for sound effects
     const playErrorSound = () => {
         try {
-            const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+            const AudioContext = window.AudioContext || (window as unknown as { webkitAudioContext: typeof window.AudioContext }).webkitAudioContext;
             if (!AudioContext) return;
 
             const ctx = new AudioContext();
             const oscillators = [220, 110]; // Low frequency "buzz"
 
-            oscillators.forEach((freq, i) => {
+            oscillators.forEach((freq) => {
                 const osc = ctx.createOscillator();
                 const gain = ctx.createGain();
 
@@ -69,13 +69,13 @@ const Login = () => {
         }
     };
 
-    const getErrorMessage = (error: any) => {
-        if (!error.response) {
+    const getErrorMessage = (error: unknown) => {
+        const err = error as { response?: { status?: number; data?: { message?: string } } };
+        if (!err.response) {
             return 'Network error. Please check your connection.';
         }
-
-        const status = error.response.status;
-        const data = error.response.data;
+        const status = err.response.status;
+        const data = err.response.data;
 
         if (data && data.message) return data.message;
 
@@ -144,9 +144,10 @@ const Login = () => {
                     tags: userData.tags || [],
                 });
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
+            const e = err as { response?: { data?: { message?: string } }; message?: string };
             console.error('[LOGIN] Error:', err);
-            setError(err.response?.data?.message || err.message || 'Login failed');
+            setError(e.response?.data?.message || e.message || 'Login failed');
         } finally {
             setLoading(false);
         }
@@ -163,7 +164,7 @@ const Login = () => {
                 otp,
             });
 
-            const { token, message, ...userData } = response.data;
+            const { token, ...userData } = response.data;
 
             console.log('[OTP] Verification successful');
             setIsSuccess(true);
@@ -191,7 +192,7 @@ const Login = () => {
                     tags: userData.tags || [],
                 });
             }, 800);
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('[OTP] Verification error:', err);
 
             // Visual feedback
@@ -234,9 +235,10 @@ const Login = () => {
                     return prev - 1;
                 });
             }, 1000);
-        } catch (err: any) {
+        } catch (err: unknown) {
+            const e = err as { response?: { data?: { message?: string } } };
             console.error('[RESEND OTP] Error:', err);
-            setError(err.response?.data?.message || 'Failed to resend code');
+            setError(e.response?.data?.message || 'Failed to resend code');
         } finally {
             setLoading(false);
         }
@@ -258,10 +260,11 @@ const Login = () => {
         try {
             const res = await api.post('/auth/forgot-password', { email: forgotEmail });
             setForgotStatus({ type: 'success', msg: res.data.message });
-        } catch (err: any) {
+        } catch (err: unknown) {
+            const e = err as { response?: { data?: { message?: string } } };
             setForgotStatus({ 
                 type: 'error', 
-                msg: err.response?.data?.message || 'Failed to send reset email. Please try again.' 
+                msg: e.response?.data?.message || 'Failed to send reset email. Please try again.' 
             });
         } finally {
             setForgotLoading(false);

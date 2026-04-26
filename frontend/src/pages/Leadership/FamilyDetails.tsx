@@ -7,7 +7,6 @@ import {
 import { toast } from 'react-hot-toast';
 import api from '../../api';
 import AddFamilyMemberModal from '../../components/Leadership/AddFamilyMemberModal';
-import { useAuth } from '../../context/AuthContext';
 
 interface FamilyMember {
     id: string;
@@ -55,7 +54,6 @@ const inputFocus = {
 const FamilyDetailsPage = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const { user } = useAuth();
 
     const [family, setFamily] = useState<FamilyDetails | null>(null);
     const [loading, setLoading] = useState(true);
@@ -70,6 +68,7 @@ const FamilyDetailsPage = () => {
 
     useEffect(() => {
         if (id) fetchFamilyDetails();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [id]);
 
     const fetchFamilyDetails = async () => {
@@ -96,7 +95,8 @@ const FamilyDetailsPage = () => {
             await api.delete(`/families/${id}/members/${memberId}`);
             toast.success(`${memberName} removed from family`);
             fetchFamilyDetails();
-        } catch (error: any) {
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { message?: string } } };
             toast.error(error.response?.data?.message || 'Failed to remove member');
         }
     };
@@ -107,7 +107,8 @@ const FamilyDetailsPage = () => {
             toast.success('Meeting schedule updated');
             setEditingSchedule(false);
             fetchFamilyDetails();
-        } catch (error: any) {
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { message?: string } } };
             toast.error(error.response?.data?.message || 'Failed to update schedule');
         }
     };

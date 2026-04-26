@@ -56,7 +56,8 @@ const FamilyTransferManagementPanel: React.FC<Props> = ({ currentFamilyId }) => 
             setReviewNote('');
             setExpandedId(null);
             fetchTransfers();
-        } catch (error: any) {
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { message?: string } } };
             toast.error(error.response?.data?.message || 'Failed to review transfer');
         } finally {
             setReviewingId(null);

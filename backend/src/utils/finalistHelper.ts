@@ -62,8 +62,8 @@ export async function updateMemberTags(
             return;
         }
 
-        const isNowFinalist = await isMemberFinalist(prisma, member);
-        const isNowAlumni = await isMemberAlumni(prisma, member);
+        const isNowFinalist = await isMemberFinalist(db as unknown as PrismaClient, member);
+        const isNowAlumni = await isMemberAlumni(db as unknown as PrismaClient, member);
 
         // Get both system tags
         const [finalistTag, alumniTag] = await Promise.all([

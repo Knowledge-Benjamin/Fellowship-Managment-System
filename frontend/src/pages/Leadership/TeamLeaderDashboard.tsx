@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, Calendar, Mail, Phone, Hash, Loader2, User2, AlertCircle, Award } from 'lucide-react';
+import { Users, Calendar, Mail, Phone, Loader2, User2, AlertCircle, Award } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { formatDistanceToNow } from 'date-fns';
@@ -50,6 +50,7 @@ const TeamLeaderDashboard = () => {
 
     useEffect(() => {
         fetchTeamData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const fetchTeamData = async () => {
@@ -73,7 +74,8 @@ const TeamLeaderDashboard = () => {
                 // Not assigned to any team
                 setError('You are not currently assigned to any team');
             }
-        } catch (error: any) {
+        } catch (err: unknown) {
+            const error = err as { response?: { status?: number } };
             console.error('Failed to fetch team:', error);
             if (error.response?.status === 404) {
                 setError('You are not assigned as a team leader');

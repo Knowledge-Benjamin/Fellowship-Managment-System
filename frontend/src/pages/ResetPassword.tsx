@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Shield, Key, Lock, ArrowRight, CheckCircle2 } from 'lucide-react';
 import api from '../api';
-import logo from '../assets/logo.jpg';
 
 const ResetPassword = () => {
     const [searchParams] = useSearchParams();
@@ -25,7 +24,7 @@ const ResetPassword = () => {
     // Sound effect
     const playSuccessSound = () => {
         try {
-            const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+            const AudioContext = window.AudioContext || (window as unknown as { webkitAudioContext: typeof window.AudioContext }).webkitAudioContext;
             if (!AudioContext) return;
             const ctx = new AudioContext();
             
@@ -94,9 +93,10 @@ const ResetPassword = () => {
             playSuccessSound();
             setStatus('success');
             setMessage(response.data.message || 'Password successfully reset.');
-        } catch (err: any) {
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { message?: string } } };
             setStatus('error');
-            setMessage(err.response?.data?.message || 'Failed to reset password. The link may have expired.');
+            setMessage(error.response?.data?.message || 'Failed to reset password. The link may have expired.');
         }
     };
 

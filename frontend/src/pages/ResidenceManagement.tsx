@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import api from '../api';
 import { useToast } from '../components/ToastProvider';
 import { Home, Plus, Trash2, Search, X, Loader2, Edit2, Users, MapPin } from 'lucide-react';
@@ -23,11 +23,7 @@ const ResidenceManagement = () => {
     const [formData, setFormData] = useState({ name: '', type: 'HALL' });
     const [submitting, setSubmitting] = useState(false);
 
-    useEffect(() => {
-        fetchResidences();
-    }, []);
-
-    const fetchResidences = async () => {
+    const fetchResidences = useCallback(async () => {
         try {
             setLoading(true);
             const response = await api.get('/residences');
@@ -38,7 +34,11 @@ const ResidenceManagement = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [showToast]);
+
+    useEffect(() => {
+        fetchResidences();
+    }, [fetchResidences]);
 
     const handleOpenModal = (residence?: Residence) => {
         if (residence) {
@@ -78,7 +78,8 @@ const ResidenceManagement = () => {
                 showToast('success', 'Residence created successfully');
             }
             handleCloseModal();
-        } catch (error: any) {
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { error?: string } } };
             console.error('Failed to save residence:', error);
             showToast('error', error.response?.data?.error || 'Failed to save residence');
         } finally {
@@ -93,7 +94,8 @@ const ResidenceManagement = () => {
             await api.delete(`/residences/${residence.id}`);
             setResidences(residences.filter(r => r.id !== residence.id));
             showToast('success', 'Residence deleted successfully');
-        } catch (error: any) {
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { error?: string } } };
             console.error('Failed to delete residence:', error);
             showToast('error', error.response?.data?.error || 'Failed to delete residence');
         }

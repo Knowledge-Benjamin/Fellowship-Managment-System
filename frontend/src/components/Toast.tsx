@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { CheckCircle, XCircle, AlertTriangle, Info, X } from 'lucide-react';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
@@ -15,6 +15,11 @@ const Toast = ({ id, type, message, duration = 4000, onClose }: ToastProps) => {
     const [progress, setProgress] = useState(100);
     const [isExiting, setIsExiting] = useState(false);
 
+    const handleClose = useCallback(() => {
+        setIsExiting(true);
+        setTimeout(() => onClose(id), 300);
+    }, [id, onClose]);
+
     useEffect(() => {
         const interval = setInterval(() => {
             setProgress((prev) => {
@@ -29,12 +34,7 @@ const Toast = ({ id, type, message, duration = 4000, onClose }: ToastProps) => {
         }, 50);
 
         return () => clearInterval(interval);
-    }, [duration]);
-
-    const handleClose = () => {
-        setIsExiting(true);
-        setTimeout(() => onClose(id), 300);
-    };
+    }, [duration, handleClose]);
 
     const icons = {
         success: <CheckCircle className="w-6 h-6" />,

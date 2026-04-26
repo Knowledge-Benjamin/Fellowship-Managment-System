@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { X, UserCheck, AlertCircle } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import api from '../../api';
@@ -43,13 +43,7 @@ const AssignFamilyHeadModal: React.FC<AssignFamilyHeadModalProps> = ({
     const [fetchingMembers, setFetchingMembers] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
 
-    useEffect(() => {
-        if (isOpen) {
-            fetchMembers();
-        }
-    }, [isOpen, family.region.id]);
-
-    const fetchMembers = async () => {
+    const fetchMembers = useCallback(async () => {
         setFetchingMembers(true);
         try {
             // limit=500 ensures all members in the region are returned.
@@ -57,12 +51,18 @@ const AssignFamilyHeadModal: React.FC<AssignFamilyHeadModalProps> = ({
             // Without this, the default limit=50 would silently truncate the list.
             const response = await api.get(`/members?regionId=${family.region.id}&limit=500`);
             setMembers(response.data.data || []);
-        } catch (error) {
+        } catch {
             toast.error('Failed to load members');
         } finally {
             setFetchingMembers(false);
         }
-    };
+    }, [family.region.id]);
+
+    useEffect(() => {
+        if (isOpen) {
+            fetchMembers();
+        }
+    }, [isOpen, family.region.id, fetchMembers]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -84,7 +84,8 @@ const AssignFamilyHeadModal: React.FC<AssignFamilyHeadModalProps> = ({
             await refreshUser();
             onSuccess();
             handleClose();
-        } catch (error: any) {
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { message?: string } } };
             console.error('Error assigning family head:', error);
             toast.error(error.response?.data?.message || 'Failed to assign family head');
         } finally {

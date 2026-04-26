@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import api from '../api';
 import { useToast } from './ToastProvider';
 import { Loader2, X, BookOpen } from 'lucide-react';
@@ -6,7 +6,7 @@ import { Loader2, X, BookOpen } from 'lucide-react';
 interface AddCourseModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSuccess: (course: any) => void;
+    onSuccess: (course: { id: string; name: string; code: string; durationYears: number; collegeId?: string }) => void;
     preSelectedCollegeId?: string; // Optional: If passed, course is linked to this college
 }
 
@@ -25,7 +25,7 @@ const AddCourseModal: React.FC<AddCourseModalProps> = ({ isOpen, onClose, onSucc
 
         try {
             setLoading(true);
-            const payload: any = {
+            const payload: { name: string; code: string; durationYears: number; collegeId?: string } = {
                 name: name.trim(),
                 code: code.trim().toUpperCase(),
                 durationYears: durationYears
@@ -43,9 +43,10 @@ const AddCourseModal: React.FC<AddCourseModalProps> = ({ isOpen, onClose, onSucc
             setCode('');
             setDurationYears(3);
             onClose();
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Failed to create course:', error);
-            showToast('error', error.response?.data?.error || 'Failed to create course');
+            const err = error as { response?: { data?: { error?: string } } };
+            showToast('error', err.response?.data?.error || 'Failed to create course');
         } finally {
             setLoading(false);
         }

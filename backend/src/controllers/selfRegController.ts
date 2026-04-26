@@ -434,7 +434,7 @@ export const approvePendingMember = async (req: Request, res: Response) => {
                 resolvedCourseId = existing.id;
             } else {
                 const baseCode = pending.courseSuggestion.replace(/\s/g, '').substring(0, 3).toUpperCase();
-                const code = `${baseCode}${Math.floor(100 + Math.random() * 900)}`;
+                const code = `${baseCode}${crypto.randomInt(100, 1000)}`;
                 resolvedCourseId = (await prisma.course.create({
                     data: { name: pending.courseSuggestion, code, ...(resolvedCollegeId && { collegeId: resolvedCollegeId }) },
                 })).id;

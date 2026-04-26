@@ -33,6 +33,7 @@ const CourseManagement = () => {
     useEffect(() => {
         fetchColleges();
         fetchCourses();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const fetchColleges = async () => {
@@ -81,7 +82,7 @@ const CourseManagement = () => {
 
         try {
             setSubmitting(true);
-            const payload: any = {
+            const payload: Record<string, string | undefined> = {
                 name: formData.name.trim(),
                 code: formData.code.trim().toUpperCase(),
                 collegeId: formData.collegeId || undefined
@@ -97,8 +98,9 @@ const CourseManagement = () => {
                 showToast('success', 'Course created successfully');
             }
             handleCloseModal();
-        } catch (error: any) {
-            console.error('Failed to save course:', error);
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { error?: string } } };
+            console.error('Failed to save course:', err);
             showToast('error', error.response?.data?.error || 'Failed to save course');
         } finally {
             setSubmitting(false);
@@ -112,8 +114,9 @@ const CourseManagement = () => {
             await api.delete(`/courses/${course.id}`);
             setCourses(courses.filter(c => c.id !== course.id));
             showToast('success', 'Course deleted successfully');
-        } catch (error: any) {
-            console.error('Failed to delete course:', error);
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { error?: string } } };
+            console.error('Failed to delete course:', err);
             showToast('error', error.response?.data?.error || 'Failed to delete course');
         }
     };

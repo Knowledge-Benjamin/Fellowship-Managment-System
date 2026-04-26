@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import api from '../api';
 import { useToast } from './ToastProvider';
-import { Loader2, X, Building, Home } from 'lucide-react';
+import { Loader2, X, Home } from 'lucide-react';
 
 interface AddResidenceModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSuccess: (residence: any) => void;
+    onSuccess: (residence: { id: string; name: string; type: string }) => void;
 }
 
 const AddResidenceModal: React.FC<AddResidenceModalProps> = ({ isOpen, onClose, onSuccess }) => {
@@ -33,9 +33,10 @@ const AddResidenceModal: React.FC<AddResidenceModalProps> = ({ isOpen, onClose, 
             setName('');
             setType('HALL');
             onClose();
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Failed to create residence:', error);
-            showToast('error', error.response?.data?.error || 'Failed to create residence');
+            const err = error as { response?: { data?: { error?: string } } };
+            showToast('error', err.response?.data?.error || 'Failed to create residence');
         } finally {
             setLoading(false);
         }

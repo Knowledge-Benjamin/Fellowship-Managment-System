@@ -1,6 +1,7 @@
 import { execSync } from 'child_process';
 import * as bcrypt from 'bcryptjs';
 import { getManagementClient, disconnectManagementClient } from './lib/managementClient';
+import { PrismaClient } from '@prisma/client';
 
 async function migrateAllDatabases() {
   console.log('[Migrate] Starting global migration process...');
@@ -47,6 +48,27 @@ async function migrateAllDatabases() {
       console.log(`[Migrate] Migrating Tenant: ${campus.name} (${campus.subdomain})`);
 
       try {
+        // Auto-heal stuck migrations (specifically the Event.type enum -> string migration)
+        console.log(`[Migrate] Checking for stuck migrations on ${campus.name}...`);
+        const tenantPrisma = new PrismaClient({ datasources: { db: { url: campus.databaseUrl } } });
+        
+        try {
+          const result: any = await tenantPrisma.$queryRaw`
+            SELECT data_type 
+            FROM information_schema.columns 
+            WHERE table_name = 'Event' AND column_name = 'type'
+          `;
+          
+          if (result && result.length > 0 && result[0].data_type === 'USER-DEFINED') {
+              console.log(`[Migrate] Auto-healing: Event.type is still an Enum. Deleting false migration record...`);
+              await tenantPrisma.$executeRaw`DELETE FROM _prisma_migrations WHERE migration_name = '20260426130503_change_event_type_to_string'`;
+          }
+        } catch (healErr: any) {
+          console.warn(`[Migrate] Auto-heal check failed (safe to ignore):`, healErr.message);
+        } finally {
+          await tenantPrisma.$disconnect();
+        }
+
         execSync(`npx prisma migrate deploy --schema=prisma/schema.prisma`, {
           env: {
             ...process.env,
